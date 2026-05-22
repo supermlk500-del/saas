@@ -4,7 +4,7 @@ type Field = {
   name: string
   type: 'input' | 'select' | 'date' | string
   placeholder?: string
-  options?: { label: string; value: string }[]
+  options?: { label: string; value: string | number }[]
   width?: string
 }
 

@@ -1,246 +1,266 @@
 <script setup lang="ts">
-import { reactive, onMounted, ref } from 'vue'
+import { onMounted, reactive, ref } from 'vue'
+import { message } from 'ant-design-vue'
+import {
+  createEquipment,
+  fetchEquipments,
+  updateEquipment,
+  type EquipmentQuery,
+  type MachineUpsertRequest,
+} from '@/api/master/equipment'
 import TablePage from '@/components/TablePage.vue'
 import SearchBar from '@/components/SearchBar.vue'
-import FormModal from '@/components/FormModal.vue'
+import { machineStatusOptions } from '@/constants/dictionaries'
 import { useTable } from '@/hooks/useTable'
-import { PlusOutlined } from '@ant-design/icons-vue'
+import type { MachineItem } from '@/types/domain'
 
-type MachineItem = {
-  key: string
-  code: string
-  name: string
-  type: string
-  specs: string
-  workshop: string
-  status: 'Running' | 'Error' | 'Maintenance'
+type MachineFormModel = {
+  machineId?: number
+  machineCode: string
+  machineName: string
+  machineType: string
+  description: string
+  status: string | undefined
 }
 
 const searchForm = reactive({
-  keyword: '',
-  workshop: undefined as string | undefined,
-  machineType: undefined as string | undefined,
+  machineCode: '',
+  machineName: '',
+  machineType: '',
+  status: undefined as string | undefined,
 })
 
 const searchFields = [
-  { label: '关键词', name: 'keyword', type: 'input' as const, placeholder: '设备编号/名称', width: '200px' },
+  { label: '设备编码', name: 'machineCode', type: 'input' as const, placeholder: '请输入设备编码', width: '180px' },
+  { label: '设备名称', name: 'machineName', type: 'input' as const, placeholder: '请输入设备名称', width: '180px' },
+  { label: '设备类型', name: 'machineType', type: 'input' as const, placeholder: '请输入设备类型', width: '180px' },
   {
-    label: '车间',
-    name: 'workshop',
+    label: '状态',
+    name: 'status',
     type: 'select' as const,
-    placeholder: '选择车间',
-    options: [
-      { label: '一号织造车间', value: '一号织造车间' },
-      { label: '二号准备车间', value: '二号准备车间' },
-      { label: '三号整理车间', value: '三号整理车间' },
-    ],
-  },
-  {
-    label: '机器类型',
-    name: 'machineType',
-    type: 'select' as const,
-    placeholder: '选择类型',
-    options: [
-      { label: '经轴机 (Warping Machine)', value: '经轴机' },
-      { label: '喷气织机 (Air-jet Loom)', value: '喷气织机' },
-      { label: '剑杆织机 (Rapier Loom)', value: '剑杆织机' },
-      { label: '整经机 (Beaming Machine)', value: '整经机' },
-    ],
+    placeholder: '全部',
+    options: machineStatusOptions,
+    width: '160px',
   },
 ]
 
 const columns = [
-  { title: '设备编号', dataIndex: 'code', key: 'code', width: '120px' },
-  { title: '设备名称', dataIndex: 'name', key: 'name' },
-  { title: '设备类型', dataIndex: 'type', key: 'type' },
-  { title: '核心规格', dataIndex: 'specs', key: 'specs' },
-  { title: '车间', dataIndex: 'workshop', key: 'workshop' },
-  { title: '状态', dataIndex: 'status', key: 'status', width: '120px' },
-  { title: '操作', key: 'action', width: '150px' },
+  { title: '设备ID', dataIndex: 'machineId', key: 'machineId', width: 100 },
+  { title: '设备编码', dataIndex: 'machineCode', key: 'machineCode', width: 160 },
+  { title: '设备名称', dataIndex: 'machineName', key: 'machineName', width: 180 },
+  { title: '设备类型', dataIndex: 'machineType', key: 'machineType', width: 180 },
+  { title: '描述', dataIndex: 'description', key: 'description' },
+  { title: '状态', dataIndex: 'status', key: 'status', width: 120 },
+  { title: '创建时间', dataIndex: 'createTime', key: 'createTime', width: 180 },
+  { title: '操作', key: 'action', width: 140, fixed: 'right' as const },
 ]
 
 const { data, loading, pagination } = useTable<MachineItem>()
 
-const allData: MachineItem[] = [
-  { key: '1', code: 'W-001', name: '高速整经机', type: '经轴机', specs: '1200 RPM, 180cm Width, Auto-tension', workshop: '二号准备车间', status: 'Running' },
-  { key: '2', code: 'L-102', name: '津田驹喷气织机', type: '喷气织机', specs: '800 RPM, 200cm Width, Air-jet', workshop: '一号织造车间', status: 'Running' },
-  { key: '3', code: 'L-105', name: '必佳乐剑杆织机', type: '剑杆织机', specs: '550 RPM, 220cm Width, Rapier', workshop: '一号织造车间', status: 'Error' },
-  { key: '4', code: 'B-201', name: '分条整经机', type: '整经机', specs: '600 RPM, 240cm Width, Sizing Integration', workshop: '二号准备车间', status: 'Maintenance' },
-  { key: '5', code: 'L-108', name: '丰田喷气织机', type: '喷气织机', specs: '850 RPM, 190cm Width, Electronic Let-off', workshop: '一号织造车间', status: 'Running' },
-  { key: '6', code: 'W-003', name: '超宽幅整经机', type: '经轴机', specs: '1000 RPM, 360cm Width, Multi-yarn', workshop: '二号准备车间', status: 'Running' },
-]
+const modalOpen = ref(false)
+const submitting = ref(false)
+const modalMode = ref<'create' | 'edit'>('create')
+const formRef = ref()
 
-const loadData = () => {
+const formModel = reactive<MachineFormModel>({
+  machineCode: '',
+  machineName: '',
+  machineType: '',
+  description: '',
+  status: 'IDLE',
+})
+
+const rules = {
+  machineCode: [{ required: true, message: '请输入设备编码' }],
+  machineName: [{ required: true, message: '请输入设备名称' }],
+  status: [{ required: true, message: '请选择设备状态' }],
+}
+
+const loadData = async () => {
   loading.value = true
-  // 模拟 API 请求
-  setTimeout(() => {
-    data.value = allData.filter((item) => {
-      const hitKeyword = !searchForm.keyword || item.code.includes(searchForm.keyword) || item.name.includes(searchForm.keyword)
-      const hitWorkshop = !searchForm.workshop || item.workshop === searchForm.workshop
-      const hitType = !searchForm.machineType || item.type === searchForm.machineType
-      return hitKeyword && hitWorkshop && hitType
-    })
-    pagination.total = data.value.length
+
+  try {
+    const query: EquipmentQuery = {
+      pageNum: pagination.current,
+      pageSize: pagination.pageSize,
+      machineCode: searchForm.machineCode || undefined,
+      machineName: searchForm.machineName || undefined,
+      machineType: searchForm.machineType || undefined,
+      status: searchForm.status,
+    }
+
+    const response = await fetchEquipments(query)
+    data.value = response.list
+    pagination.total = response.total
+  } finally {
     loading.value = false
-  }, 300)
+  }
+}
+
+pagination.onChange = (page: number, pageSize: number) => {
+  pagination.current = page
+  pagination.pageSize = pageSize
+  void loadData()
 }
 
 const resetSearch = () => {
-  searchForm.keyword = ''
-  searchForm.workshop = undefined
-  searchForm.machineType = undefined
-  loadData()
+  searchForm.machineCode = ''
+  searchForm.machineName = ''
+  searchForm.machineType = ''
+  searchForm.status = undefined
+  pagination.current = 1
+  void loadData()
 }
 
-onMounted(loadData)
+const getStatusOption = (status?: string) =>
+  machineStatusOptions.find((item) => item.value === status)
 
-const getStatusColor = (status: string) => {
-  switch (status) {
-    case 'Running': return 'green'
-    case 'Error': return 'red'
-    case 'Maintenance': return 'default'
-    default: return 'blue'
-  }
+const resetFormModel = () => {
+  formModel.machineId = undefined
+  formModel.machineCode = ''
+  formModel.machineName = ''
+  formModel.machineType = ''
+  formModel.description = ''
+  formModel.status = 'IDLE'
 }
 
-const getStatusText = (status: string) => {
-  switch (status) {
-    case 'Running': return '运行中'
-    case 'Error': return '故障'
-    case 'Maintenance': return '维护中'
-    default: return status
-  }
+const openCreateModal = () => {
+  modalMode.value = 'create'
+  resetFormModel()
+  modalOpen.value = true
 }
 
-// Modal related
-const modalOpen = ref(false)
-const formModel = reactive({
-  code: '',
-  name: '',
-  type: undefined as string | undefined,
-  rpm: '',
-  width: '',
-  extra: '',
-  workshop: undefined as string | undefined,
+const openEditModal = (record: MachineItem) => {
+  modalMode.value = 'edit'
+  formModel.machineId = record.machineId
+  formModel.machineCode = record.machineCode
+  formModel.machineName = record.machineName
+  formModel.machineType = record.machineType || ''
+  formModel.description = record.description || ''
+  formModel.status = record.status
+  modalOpen.value = true
+}
+
+const buildPayload = (): MachineUpsertRequest => ({
+  machineCode: formModel.machineCode.trim(),
+  machineName: formModel.machineName.trim(),
+  machineType: formModel.machineType.trim() || undefined,
+  description: formModel.description.trim() || undefined,
+  status: formModel.status || 'IDLE',
 })
 
-const formFields = [
-  { label: '设备编号', name: 'code', type: 'input' as const, placeholder: '请输入设备编号' },
-  { label: '设备名称', name: 'name', type: 'input' as const, placeholder: '请输入设备名称' },
-  {
-    label: '设备类型',
-    name: 'type',
-    type: 'select' as const,
-    placeholder: '请选择设备类型',
-    options: searchFields[2]?.options ?? [],
-  },
-  { label: '运行转速 (RPM)', name: 'rpm', type: 'input' as const, placeholder: '例如：800' },
-  { label: '加工门幅 (cm)', name: 'width', type: 'input' as const, placeholder: '例如：200' },
-  { label: '技术特征/备注', name: 'extra', type: 'input' as const, placeholder: '例如：Air-jet, Auto-tension' },
-  {
-    label: '车间',
-    name: 'workshop',
-    type: 'select' as const,
-    placeholder: '请选择车间',
-    options: searchFields[1]?.options ?? [],
-  },
-]
+const handleSubmit = async () => {
+  await formRef.value?.validate()
 
-const handleAdd = () => {
-  modalOpen.value = true
-  // Reset form
-  Object.assign(formModel, {
-    code: '',
-    name: '',
-    type: undefined,
-    rpm: '',
-    width: '',
-    extra: '',
-    workshop: undefined,
-  })
+  submitting.value = true
+  try {
+    const payload = buildPayload()
+
+    if (modalMode.value === 'create') {
+      await createEquipment(payload)
+      message.success('新增设备成功')
+    } else if (formModel.machineId) {
+      await updateEquipment(formModel.machineId, payload)
+      message.success('编辑设备成功')
+    }
+
+    modalOpen.value = false
+    await loadData()
+  } finally {
+    submitting.value = false
+  }
 }
 
-const handleOk = () => {
-  console.log('Form data:', formModel)
-  // Combine specs for table display
-  const combinedSpecs = [
-    formModel.rpm ? `${formModel.rpm} RPM` : '',
-    formModel.width ? `${formModel.width}cm Width` : '',
-    formModel.extra,
-  ]
-    .filter(Boolean)
-    .join(', ')
-
-  // Simulate adding
-  const newItem: MachineItem = {
-    key: String(allData.length + 1),
-    code: formModel.code,
-    name: formModel.name,
-    type: formModel.type || '',
-    specs: combinedSpecs,
-    workshop: formModel.workshop || '',
-    status: 'Running',
-  }
-  allData.unshift(newItem)
-  loadData()
+const handleCancel = () => {
   modalOpen.value = false
 }
+
+onMounted(() => {
+  void loadData()
+})
 </script>
 
 <template>
-  <TablePage title="机器管理" :columns="columns" :data="data" :loading="loading" :pagination="pagination">
+  <TablePage title="设备管理" :columns="columns" :data="data" :loading="loading" :pagination="pagination">
     <template #search>
       <SearchBar :model="searchForm" :fields="searchFields" @search="loadData" @reset="resetSearch" />
     </template>
 
     <template #actions>
-      <a-button type="primary" class="add-btn" @click="handleAdd">
-        <template #icon><PlusOutlined /></template>
-        新增设备
-      </a-button>
+      <a-button type="primary" @click="openCreateModal">新增设备</a-button>
     </template>
 
     <template #bodyCell="{ column, record }">
-      <template v-if="column.key === 'status'">
-        <a-tag :color="getStatusColor(record.status)">
-          {{ getStatusText(record.status) }}
+      <template v-if="column.key === 'machineType'">
+        {{ record.machineType || '-' }}
+      </template>
+      <template v-else-if="column.key === 'description'">
+        {{ record.description || '-' }}
+      </template>
+      <template v-else-if="column.key === 'status'">
+        <a-tag :color="getStatusOption(record.status)?.color">
+          {{ getStatusOption(record.status)?.label || record.status }}
         </a-tag>
       </template>
+      <template v-else-if="column.key === 'createTime'">
+        {{ record.createTime || '-' }}
+      </template>
       <template v-else-if="column.key === 'action'">
-        <a-space>
-          <a-button type="link" size="small">详情</a-button>
-          <a-button type="link" size="small">编辑</a-button>
-        </a-space>
+        <a-button type="link" @click="openEditModal(record)">编辑</a-button>
       </template>
     </template>
   </TablePage>
 
-  <FormModal
+  <a-modal
     v-model:open="modalOpen"
-    title="新增设备"
-    :model="formModel"
-    :fields="formFields"
-    @ok="handleOk"
-  />
+    :title="modalMode === 'create' ? '新增设备' : '编辑设备'"
+    ok-text="保存"
+    cancel-text="取消"
+    :confirm-loading="submitting"
+    width="680px"
+    @ok="handleSubmit"
+    @cancel="handleCancel"
+  >
+    <a-form ref="formRef" :model="formModel" :rules="rules" layout="vertical">
+      <div class="form-grid">
+        <a-form-item label="设备编码" name="machineCode">
+          <a-input v-model:value="formModel.machineCode" placeholder="请输入设备编码" />
+        </a-form-item>
+
+        <a-form-item label="设备名称" name="machineName">
+          <a-input v-model:value="formModel.machineName" placeholder="请输入设备名称" />
+        </a-form-item>
+
+        <a-form-item label="设备类型" name="machineType">
+          <a-input v-model:value="formModel.machineType" placeholder="请输入设备类型" />
+        </a-form-item>
+
+        <a-form-item label="设备状态" name="status">
+          <a-select
+            v-model:value="formModel.status"
+            :options="machineStatusOptions"
+            placeholder="请选择设备状态"
+          />
+        </a-form-item>
+      </div>
+
+      <a-form-item label="描述" name="description">
+        <a-textarea v-model:value="formModel.description" :rows="4" placeholder="请输入设备描述" />
+      </a-form-item>
+    </a-form>
+  </a-modal>
 </template>
 
 <style scoped>
-.add-btn {
-  background-color: #ff7a45;
-  border-color: #ff7a45;
+.form-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0 16px;
 }
 
-.add-btn:hover {
-  background-color: #ff9c6e;
-  border-color: #ff9c6e;
-}
-
-:deep(.ant-table-thead > tr > th) {
-  background-color: #ffffff;
-  border-bottom: 1px solid #f1f5f9;
-}
-
-:deep(.ant-table-tbody > tr > td) {
-  border-bottom: 1px solid #f1f5f9;
+@media (max-width: 900px) {
+  .form-grid {
+    grid-template-columns: 1fr;
+  }
 }
 </style>

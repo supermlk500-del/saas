@@ -1,18 +1,6 @@
 import axios, { type AxiosError, type AxiosRequestConfig } from 'axios'
 import { message } from 'ant-design-vue'
-
-export interface RuoYiResponse<T = unknown> {
-  code: number
-  msg: string
-  data?: T
-}
-
-export interface RuoYiListResponse<T = unknown> {
-  code: number
-  msg: string
-  rows?: T[]
-  total?: number
-}
+import type { ApiErrorResponse } from '@/types/http'
 
 const service = axios.create({
   baseURL: import.meta.env.VITE_APP_BASE_API ?? '/prod-api',
@@ -38,7 +26,7 @@ service.interceptors.response.use(
   (error: AxiosError) => {
     const errorMessage =
       error.response?.data && typeof error.response.data === 'object' && 'msg' in error.response.data
-        ? String(error.response.data.msg)
+        ? String((error.response.data as ApiErrorResponse).msg)
         : error.message || 'Network request error'
 
     message.error(errorMessage)
@@ -55,5 +43,9 @@ export const download = <T = Blob>(config: AxiosRequestConfig) =>
     responseType: 'blob',
     ...config,
   })
+
+export type { ApiListResponse, ApiSuccessResponse } from '@/types/http'
+export type RuoYiResponse<T = unknown> = import('@/types/http').ApiSuccessResponse<T>
+export type RuoYiListResponse<T = unknown> = import('@/types/http').ApiListResponse<T>
 
 export default request

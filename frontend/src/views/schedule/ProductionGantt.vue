@@ -1,657 +1,501 @@
 <script setup lang="ts">
-import { ref, computed } from 'vue'
-import {
-  RocketOutlined,
-  CalendarOutlined,
-  ClockCircleOutlined,
-  ThunderboltOutlined,
-} from '@ant-design/icons-vue'
+import { computed, nextTick, onBeforeUnmount, onMounted, reactive, ref, watch } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
+import { fetchPlans, getPlanGantt, type GanttResponse } from '@/api/plan/plan'
+import { planStepStatusOptions } from '@/constants/dictionaries'
+import type { GanttTaskItem, ProductionPlanItem } from '@/types/domain'
 
-type Priority = 'High' | 'Normal' | 'Low'
-type Order = {
-  id: string
-  fabric: string
-  qty: string
-  priority: Priority
+const route = useRoute()
+const router = useRouter()
+
+const loading = ref(false)
+const planLoading = ref(false)
+const planOptions = ref<ProductionPlanItem[]>([])
+const gantt = ref<GanttResponse | null>(null)
+const ganttCardRef = ref<HTMLElement | null>(null)
+const trackWidth = ref(0)
+let resizeObserver: ResizeObserver | null = null
+
+type GanttRow = GanttTaskItem & {
+  left: number
+  width: number
+  statusLabel: string
+  statusClass: string
 }
 
-type Machine = {
-  id: string
-  name: string
-  workshop: string
-}
+const filterForm = reactive({
+  planId: undefined as number | undefined,
+})
 
-type TaskStatus = 'Scheduled' | 'Completed'
-type Task = {
-  id: string
-  machineId: string
-  orderId: string
-  status: TaskStatus
-  progress: number
-  startDay: number // 0-6 (index in timelineDays)
-  startShift: number // 0-2 (早中晚)
-  durationShifts: number // 持续班次数
-  estFinish: string
-  qcAlert?: boolean
-}
-
-const viewMode = ref<'Day' | 'Week' | 'Month'>('Day')
-
-const pendingOrders = ref<Order[]>([
-  { id: 'ORD-101', fabric: '全棉 32S 平纹', qty: '5000m', priority: 'High' },
-  { id: 'ORD-104', fabric: '斜纹色丁', qty: '8000m', priority: 'Low' },
-])
-
-const machines = ref<Machine[]>([
-  { id: 'L-01', name: 'Loom-01', workshop: '一号织造车间' },
-  { id: 'L-02', name: 'Loom-02', workshop: '一号织造车间' },
-  { id: 'L-03', name: 'Loom-03', workshop: '一号织造车间' },
-  { id: 'S-01', name: 'Sizing-01', workshop: '二号准备车间' },
-  { id: 'W-01', name: 'Warping-01', workshop: '二号准备车间' },
-])
-
-const scheduledTasks = ref<Task[]>([
-  {
-    id: 'T-1',
-    machineId: 'L-01',
-    orderId: 'ORD-102',
-    status: 'Scheduled',
-    progress: 45,
-    startDay: 0,
-    startShift: 1,
-    durationShifts: 5,
-    estFinish: '4/09',
-    qcAlert: true,
-  },
-  {
-    id: 'T-2',
-    machineId: 'L-02',
-    orderId: 'ORD-103',
-    status: 'Completed',
-    progress: 100,
-    startDay: 0,
-    startShift: 0,
-    durationShifts: 3,
-    estFinish: '4/08',
-  },
-  {
-    id: 'T-3',
-    machineId: 'S-01',
-    orderId: 'ORD-105',
-    status: 'Scheduled',
-    progress: 12,
-    startDay: 2,
-    startShift: 0,
-    durationShifts: 4,
-    estFinish: '4/10',
-  },
-  {
-    id: 'T-4',
-    machineId: 'L-03',
-    orderId: 'ORD-106',
-    status: 'Scheduled',
-    progress: 0,
-    startDay: 3,
-    startShift: 1,
-    durationShifts: 6,
-    estFinish: '4/12',
-  },
-])
-
-const timelineDays = ['4/07', '4/08', '4/09', '4/10', '4/11', '4/12', '4/13']
-const shifts = ['Morning', 'Afternoon', 'Evening']
-
-const getPriorityColor = (p: Priority) => {
-  switch (p) {
-    case 'High': return '#ff4d4f'
-    case 'Normal': return '#1890ff'
-    case 'Low': return '#d9d9d9'
+const loadPlanOptions = async () => {
+  planLoading.value = true
+  try {
+    const response = await fetchPlans({
+      pageNum: 1,
+      pageSize: 200,
+    })
+    planOptions.value = response.list
+  } finally {
+    planLoading.value = false
   }
 }
 
-const getTaskStyle = (task: Task) => {
-  const cellWidth = 40 // matched with .grid-cell min-width
-  const startOffset = (task.startDay * 3 + task.startShift) * cellWidth
-  const width = task.durationShifts * cellWidth
-  
-  let backgroundColor = task.status === 'Completed' ? '#52c41a' : '#1890ff'
-  let boxShadow = 'none'
-  let animation = 'none'
-  let zIndex = 2
-
-  if (task.qcAlert) {
-    backgroundColor = '#ff4d4f'
-    boxShadow = '0 0 20px rgba(255, 77, 79, 0.8)'
-    animation = 'pulse-red 2s infinite'
-    zIndex = 10
+const parseDate = (value?: string | null) => {
+  if (!value) {
+    return null
   }
-  
+
+  const normalized = value.includes('T') ? value : value.replace(' ', 'T')
+  const date = new Date(normalized)
+  return Number.isNaN(date.getTime()) ? null : date
+}
+
+const formatDateTime = (value?: string | null) => {
+  const date = parseDate(value)
+  if (!date) {
+    return '-'
+  }
+
+  const year = date.getFullYear()
+  const month = String(date.getMonth() + 1).padStart(2, '0')
+  const day = String(date.getDate()).padStart(2, '0')
+  const hours = String(date.getHours()).padStart(2, '0')
+  const minutes = String(date.getMinutes()).padStart(2, '0')
+  return `${year}-${month}-${day} ${hours}:${minutes}`
+}
+
+const getStatusMeta = (status?: string) =>
+  planStepStatusOptions.find((item) => item.value === status)
+
+const getStatusMinWidthPx = (status?: string) => {
+  switch (status) {
+    case 'PENDING':
+      return 118
+    case 'READY':
+    case 'RUNNING':
+    case 'PAUSED':
+    case 'FINISHED':
+      return 108
+    case 'ABNORMAL':
+      return 96
+    default:
+      return 108
+  }
+}
+
+const taskTimes = computed(() => {
+  const tasks = gantt.value?.tasks ?? []
+  const timestamps = tasks.flatMap((item) => {
+    const start = parseDate(item.start)?.getTime()
+    const end = parseDate(item.end)?.getTime()
+    return [start, end].filter((value): value is number => typeof value === 'number')
+  })
+
+  if (!timestamps.length) {
+    return null
+  }
+
   return {
-    left: `${startOffset}px`,
-    width: `${width}px`,
-    backgroundColor,
-    boxShadow,
-    animation,
-    zIndex
+    min: Math.min(...timestamps),
+    max: Math.max(...timestamps),
+  }
+})
+
+const ganttRows = computed<GanttRow[]>(() => {
+  const tasks = gantt.value?.tasks ?? []
+  const range = taskTimes.value
+
+  if (!range || range.max === range.min) {
+    return tasks.map((task) => ({
+      ...task,
+      left: 0,
+      width: 100,
+      statusLabel: getStatusMeta(task.status)?.label || task.status,
+      statusClass: task.status?.toLowerCase() || 'default',
+    }))
+  }
+
+  const span = range.max - range.min
+
+  return tasks.map((task) => {
+    const start = parseDate(task.start)?.getTime() ?? range.min
+    const end = parseDate(task.end)?.getTime() ?? range.min
+    const rawLeft = ((start - range.min) / span) * 100
+    const rawWidth = ((end - start) / span) * 100
+    const statusMeta = getStatusMeta(task.status)
+    const minWidthPx = getStatusMinWidthPx(task.status)
+    const minWidthPercent = trackWidth.value > 0 ? Math.min((minWidthPx / trackWidth.value) * 100, 100) : 14
+    const desiredWidth = Math.max(rawWidth, minWidthPercent)
+    const safeLeft = Math.max(0, Math.min(rawLeft, 100 - minWidthPercent))
+    const safeWidth = Math.min(desiredWidth, 100 - safeLeft)
+
+    return {
+      ...task,
+      left: safeLeft,
+      width: safeWidth,
+      statusLabel: statusMeta?.label || task.status,
+      statusClass: task.status?.toLowerCase() || 'default',
+    }
+  })
+})
+
+const ganttSummary = computed(() => {
+  const tasks = gantt.value?.tasks ?? []
+  const range = taskTimes.value
+
+  return {
+    totalTasks: tasks.length,
+    runningTasks: tasks.filter((item) => item.status === 'RUNNING').length,
+    abnormalTasks: tasks.filter((item) => item.status === 'ABNORMAL').length,
+    start: range ? formatDateTime(new Date(range.min).toISOString()) : '-',
+    end: range ? formatDateTime(new Date(range.max).toISOString()) : '-',
+  }
+})
+
+const updateTrackWidth = () => {
+  const firstTrack = ganttCardRef.value?.querySelector('.task-track') as HTMLElement | null
+  trackWidth.value = firstTrack?.clientWidth ?? 0
+}
+
+const fetchGanttData = async (planId: number) => {
+  loading.value = true
+  try {
+    const response = await getPlanGantt(planId)
+    gantt.value = response.data
+  } finally {
+    loading.value = false
   }
 }
 
-const getTasksByMachine = (machineId: string) => {
-  return scheduledTasks.value.filter(t => t.machineId === machineId)
-}
-
-// Drawer related
-const drawerVisible = ref(false)
-const selectedTask = ref<Task | null>(null)
-
-const handleTaskClick = (task: Task) => {
-  if (task.qcAlert) {
-    selectedTask.value = task
-    drawerVisible.value = true
+const handleSearch = async () => {
+  if (!filterForm.planId) {
+    gantt.value = null
+    return
   }
+
+  await router.replace({
+    path: '/schedule/board',
+    query: { planId: String(filterForm.planId) },
+  })
+
+  await fetchGanttData(filterForm.planId)
 }
+
+const resetSearch = async () => {
+  filterForm.planId = undefined
+  gantt.value = null
+  await router.replace({
+    path: '/schedule/board',
+    query: {},
+  })
+}
+
+watch(
+  () => route.query.planId,
+  async (planId) => {
+    if (!planId) {
+      return
+    }
+
+    const numericId = Number(planId)
+    if (!Number.isNaN(numericId) && numericId > 0) {
+      filterForm.planId = numericId
+      await fetchGanttData(numericId)
+    }
+  },
+  { immediate: true },
+)
+
+watch(
+  () => ganttRows.value.length,
+  async () => {
+    await nextTick()
+    updateTrackWidth()
+  },
+)
+
+onMounted(async () => {
+  await nextTick()
+  updateTrackWidth()
+
+  if (typeof ResizeObserver !== 'undefined') {
+    resizeObserver = new ResizeObserver(() => {
+      updateTrackWidth()
+    })
+
+    if (ganttCardRef.value) {
+      resizeObserver.observe(ganttCardRef.value)
+    }
+  }
+
+  await loadPlanOptions()
+
+  if (!filterForm.planId && planOptions.value.length === 1) {
+    filterForm.planId = planOptions.value[0]?.planId
+    if (filterForm.planId) {
+      await handleSearch()
+    }
+  }
+})
+
+onBeforeUnmount(() => {
+  resizeObserver?.disconnect()
+})
 </script>
 
 <template>
-  <div class="schedule-workbench">
-    <!-- Top Header -->
-    <div class="workbench-header">
-      <div class="header-left">
-        <h2 class="page-title">生产排产工作台</h2>
-        <a-radio-group v-model:value="viewMode" size="small" class="view-switcher">
-          <a-radio-button value="Day">日视图</a-radio-button>
-          <a-radio-button value="Week">周视图</a-radio-button>
-          <a-radio-button value="Month">月视图</a-radio-button>
-        </a-radio-group>
-      </div>
-      <div class="header-right">
-        <a-space>
-          <a-button class="auto-schedule-btn" type="primary">
-            <template #icon><ThunderboltOutlined /></template>
-            自动排产
-          </a-button>
-        </a-space>
-      </div>
+  <div class="gantt-page">
+    <a-card class="page-card filter-card" :bordered="false">
+      <a-form layout="inline">
+        <a-form-item label="生产计划">
+          <a-select
+            v-model:value="filterForm.planId"
+            :options="planOptions.map((item) => ({ label: `#${item.planId} / ${item.batchNo || item.batchId}`, value: item.planId }))"
+            :loading="planLoading"
+            placeholder="请选择生产计划"
+            show-search
+            option-filter-prop="label"
+            style="width: 320px"
+          />
+        </a-form-item>
+        <a-form-item>
+          <a-button type="primary" @click="handleSearch">查询</a-button>
+          <a-button style="margin-left: 8px" @click="resetSearch">重置</a-button>
+        </a-form-item>
+      </a-form>
+    </a-card>
+
+    <div class="summary-grid">
+      <a-card class="page-card summary-card" :bordered="false">
+        <div class="summary-label">工序任务总数</div>
+        <div class="summary-value">{{ ganttSummary.totalTasks }}</div>
+      </a-card>
+      <a-card class="page-card summary-card" :bordered="false">
+        <div class="summary-label">执行中工序</div>
+        <div class="summary-value">{{ ganttSummary.runningTasks }}</div>
+      </a-card>
+      <a-card class="page-card summary-card" :bordered="false">
+        <div class="summary-label">异常工序</div>
+        <div class="summary-value">{{ ganttSummary.abnormalTasks }}</div>
+      </a-card>
+      <a-card class="page-card summary-card" :bordered="false">
+        <div class="summary-label">时间跨度</div>
+        <div class="summary-range">{{ ganttSummary.start }} 至 {{ ganttSummary.end }}</div>
+      </a-card>
     </div>
 
-    <div class="main-layout">
-      <!-- Left: Pending Orders Pool -->
-      <div class="orders-pool">
-        <div class="pool-title">
-          待排订单池
-          <a-badge :count="pendingOrders.length" :number-style="{ backgroundColor: '#ff7a45' }" />
+    <a-card ref="ganttCardRef" class="page-card gantt-card" :bordered="false">
+      <template v-if="ganttRows.length">
+        <div class="gantt-header">
+          <div>工序</div>
+          <div>设备</div>
+          <div>开始 / 结束</div>
+          <div>调度条</div>
         </div>
-        <div class="pool-content">
-          <a-card v-for="order in pendingOrders" :key="order.id" class="order-card" size="small">
-            <div class="order-card-header">
-              <span class="order-id">{{ order.id }}</span>
-              <a-tag :color="getPriorityColor(order.priority)" class="priority-tag">{{ order.priority }}</a-tag>
-            </div>
-            <div class="order-fabric">{{ order.fabric }}</div>
-            <div class="order-footer">
-              <span class="order-qty">数量: {{ order.qty }}</span>
-            </div>
-          </a-card>
-        </div>
-      </div>
 
-      <!-- Center: Gantt Chart Area -->
-      <div class="gantt-container">
-        <!-- Gantt Header (Timeline) -->
-        <div class="gantt-header-row">
-          <div class="resource-col-header">设备 / 车间</div>
-          <div class="timeline-header">
-            <div v-for="day in timelineDays" :key="day" class="day-col">
-              <div class="day-label">{{ day }}</div>
-              <div class="shift-labels">
-                <span v-for="shift in shifts" :key="shift">{{ shift }}</span>
+        <div class="gantt-list">
+          <div v-for="task in ganttRows" :key="task.planStepId" class="gantt-row">
+            <div class="task-step">
+              <div class="task-title">{{ task.stepName || `工序 ${task.planStepId}` }}</div>
+              <div class="task-sub">工序计划ID：{{ task.planStepId }}</div>
+            </div>
+
+            <div class="task-machine">{{ task.machineName || '未分配设备' }}</div>
+
+            <div class="task-time">
+              <div>{{ formatDateTime(task.start) }}</div>
+              <div>{{ formatDateTime(task.end) }}</div>
+            </div>
+
+            <div class="task-track">
+              <div
+                class="task-bar"
+                :class="`status-${task.statusClass}`"
+                :style="{ left: `${task.left}%`, width: `${task.width}%` }"
+              >
+                <span class="task-bar-label">{{ task.statusLabel }}</span>
               </div>
             </div>
           </div>
         </div>
-
-        <!-- Gantt Body -->
-        <div class="gantt-body">
-          <div v-for="machine in machines" :key="machine.id" class="gantt-row">
-            <div class="resource-info">
-              <div class="machine-name">{{ machine.name }}</div>
-              <div class="workshop-name">{{ machine.workshop }}</div>
-            </div>
-            <div class="grid-cells">
-              <div v-for="n in timelineDays.length * 3" :key="n" class="grid-cell"></div>
-              
-              <!-- Task Blocks -->
-              <template v-for="task in getTasksByMachine(machine.id)" :key="task.id">
-                <a-tooltip placement="top">
-                  <template #title>
-                    <div class="gantt-tooltip">
-                      <div class="tooltip-id">{{ task.orderId }}</div>
-                      <div class="tooltip-progress">当前进度: {{ task.progress }}%</div>
-                      <div class="tooltip-finish">预计完成: {{ task.estFinish }}</div>
-                    </div>
-                  </template>
-                  <div
-                    class="task-block"
-                    :style="getTaskStyle(task)"
-                    @click="handleTaskClick(task)"
-                  >
-                    <span class="task-label">{{ task.orderId }}</span>
-                  </div>
-                </a-tooltip>
-              </template>
-            </div>
-          </div>
-        </div>
-      </div>
-    </div>
-
-    <!-- QC Anomaly Drawer -->
-    <a-drawer
-      v-model:open="drawerVisible"
-      title="质检异常联动 (Loom-01)"
-      placement="right"
-      width="460"
-      :header-style="{ borderBottom: '1px solid #f1f5f9' }"
-      :body-style="{ padding: '24px' }"
-    >
-      <template #title>
-        <span style="color: #ff4d4f; font-weight: 700; font-size: 18px;">QC Anomaly Linkage (Loom-01)</span>
       </template>
-      
-      <div class="drawer-content">
-        <div class="anomaly-summary">
-          <a-image
-            :width="120"
-            class="defect-thumb"
-            src="https://picsum.photos/seed/oilstain/200/200"
-            fallback="https://via.placeholder.com/120?text=Defect+Image"
-          />
-          <div class="summary-text">
-            <div class="anomaly-label">实时异常监控</div>
-            <div class="anomaly-time">检测时间: 10:45:22 AM</div>
-          </div>
-        </div>
 
-        <a-descriptions title="Production Impact" :column="1" bordered size="small" class="custom-descriptions">
-          <a-descriptions-item label="Original Order">
-            <span class="order-link">{{ selectedTask?.orderId }} (Downgraded)</span>
-          </a-descriptions-item>
-          <a-descriptions-item label="Defect Type">
-            <a-tag color="error">油污 (Oil Stain)</a-tag>
-          </a-descriptions-item>
-          <a-descriptions-item label="Quantity Lost">
-            <span style="color: #ff4d4f; font-weight: 800; font-size: 16px;">300m</span>
-          </a-descriptions-item>
-          <a-descriptions-item label="Operator">张伟 (Shift-A)</a-descriptions-item>
-        </a-descriptions>
-
-        <div class="drawer-actions">
-          <div class="action-title">决策处理建议</div>
-          <a-space direction="vertical" style="width: 100%" size="middle">
-            <a-button type="primary" block size="large" style="background: #ff7a45; border-color: #ff7a45">
-              自动补单 (Auto-Replenish Order)
-            </a-button>
-            <a-button type="primary" block size="large">
-              重新排产 (Reschedule)
-            </a-button>
-            <a-button block size="large">
-              忽略 (Ignore)
-            </a-button>
-          </a-space>
-        </div>
-      </div>
-    </a-drawer>
+      <a-empty v-else description="请选择生产计划后查看甘特图" />
+    </a-card>
   </div>
 </template>
 
 <style scoped>
-.schedule-workbench {
+.gantt-page {
   display: flex;
   flex-direction: column;
-  height: calc(100vh - 120px);
-  background: #f8fafc;
   gap: 16px;
 }
 
-.workbench-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: 0 4px;
+.filter-card {
+  padding-bottom: 0;
 }
 
-.header-left {
-  display: flex;
-  align-items: center;
-  gap: 20px;
-}
-
-.page-title {
-  margin: 0;
-  font-size: 20px;
-  font-weight: 700;
-  color: #1e293b;
-}
-
-.auto-schedule-btn {
-  background-color: #ff7a45;
-  border-color: #ff7a45;
-  height: 36px;
-  border-radius: 8px;
-  font-weight: 600;
-}
-
-.auto-schedule-btn:hover {
-  background-color: #ff9c6e;
-  border-color: #ff9c6e;
-}
-
-.main-layout {
-  display: flex;
-  flex: 1;
+.summary-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
   gap: 16px;
-  min-height: 0;
 }
 
-/* Left Sidebar */
-.orders-pool {
-  width: 260px;
-  background: #ffffff;
-  border-radius: 16px;
-  display: flex;
-  flex-direction: column;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.03);
+.summary-card {
+  min-height: 120px;
 }
 
-.pool-title {
-  padding: 16px;
+.summary-label {
+  color: #667085;
+  font-size: 14px;
+}
+
+.summary-value {
+  margin-top: 12px;
+  color: #1f2937;
+  font-size: 34px;
   font-weight: 700;
-  font-size: 15px;
-  color: #1e293b;
-  border-bottom: 1px solid #f1f5f9;
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
 }
 
-.pool-content {
-  flex: 1;
-  overflow-y: auto;
-  padding: 12px;
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
-}
-
-.order-card {
-  border-radius: 12px;
-  border: 1px solid #f1f5f9;
-  cursor: grab;
-  transition: all 0.2s;
-}
-
-.order-card:hover {
-  border-color: #ff7a45;
-  box-shadow: 0 4px 12px rgba(255, 122, 69, 0.1);
-}
-
-.order-card-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 8px;
-}
-
-.order-id {
-  font-weight: 700;
-  color: #475569;
-}
-
-.priority-tag {
-  font-size: 10px;
-  margin: 0;
-  padding: 0 4px;
-}
-
-.order-fabric {
-  font-size: 13px;
-  color: #1e293b;
-  font-weight: 500;
-  margin-bottom: 8px;
-}
-
-.order-footer {
-  font-size: 12px;
-  color: #64748b;
-}
-
-/* Center Gantt Area */
-.gantt-container {
-  flex: 1;
-  background: #ffffff;
-  border-radius: 16px;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.03);
-  display: flex;
-  flex-direction: column;
-  position: relative;
-  overflow: hidden;
-}
-
-.gantt-header-row {
-  display: flex;
-  border-bottom: 1px solid #f1f5f9;
-  background: #fcfcfd;
-}
-
-.resource-col-header {
-  width: 180px;
-  padding: 12px 16px;
+.summary-range {
+  margin-top: 12px;
+  color: #1f2937;
+  font-size: 16px;
+  line-height: 1.7;
   font-weight: 600;
-  color: #64748b;
-  border-right: 1px solid #f1f5f9;
-  display: flex;
+}
+
+.gantt-header,
+.gantt-row {
+  display: grid;
+  grid-template-columns: 240px 180px 240px 1fr;
+  gap: 16px;
   align-items: center;
 }
 
-.timeline-header {
-  flex: 1;
-  display: flex;
-  overflow-x: auto;
+.gantt-header {
+  padding: 0 0 16px;
+  color: #667085;
+  font-size: 13px;
+  font-weight: 700;
+  border-bottom: 1px solid rgba(145, 158, 171, 0.16);
 }
 
-.day-col {
-  flex: 1;
-  min-width: 120px;
-  border-right: 1px solid #f1f5f9;
+.gantt-list {
   display: flex;
   flex-direction: column;
-}
-
-.day-label {
-  padding: 8px;
-  text-align: center;
-  font-weight: 700;
-  font-size: 13px;
-  color: #1e293b;
-  border-bottom: 1px solid #f8fafc;
-}
-
-.shift-labels {
-  display: flex;
-  justify-content: space-around;
-  font-size: 11px;
-  color: #94a3b8;
-  padding: 4px 0;
-}
-
-.gantt-body {
-  flex: 1;
-  overflow-y: auto;
 }
 
 .gantt-row {
-  display: flex;
-  height: 64px;
-  border-bottom: 1px solid #f1f5f9;
+  min-height: 88px;
+  padding: 18px 0;
+  border-bottom: 1px solid rgba(145, 158, 171, 0.12);
 }
 
-.resource-info {
-  width: 180px;
-  padding: 0 16px;
-  border-right: 1px solid #f1f5f9;
-  display: flex;
-  flex-direction: column;
-  justify-content: center;
-  background: #ffffff;
-}
-
-.machine-name {
+.task-title {
+  color: #1f2937;
   font-weight: 700;
-  color: #1e293b;
-  font-size: 14px;
 }
 
-.workshop-name {
-  font-size: 11px;
-  color: #94a3b8;
+.task-sub {
+  margin-top: 4px;
+  color: #667085;
+  font-size: 13px;
 }
 
-.grid-cells {
-  flex: 1;
-  display: flex;
+.task-machine,
+.task-time {
+  color: #344054;
+}
+
+.task-track {
   position: relative;
-  height: 64px;
+  height: 44px;
+  border-radius: 999px;
+  background:
+    linear-gradient(90deg, rgba(214, 111, 34, 0.06) 0%, rgba(214, 111, 34, 0.02) 100%),
+    #f8fafc;
+  overflow: hidden;
 }
 
-.grid-cell {
-  flex: 1;
-  min-width: 40px;
-  border-right: 1px solid #f1f5f9;
-  background-image: 
-    linear-gradient(to right, #f1f5f9 1px, transparent 1px);
-  background-size: 33.33% 100%;
-}
-
-.task-block {
+.task-bar {
   position: absolute;
-  top: 0;
-  height: 100%;
+  top: 6px;
+  height: 32px;
+  min-width: 0;
   display: flex;
   align-items: center;
   justify-content: center;
-  color: #ffffff;
+  padding: 0 14px;
+  border-radius: 999px;
+  overflow: hidden;
+  box-sizing: border-box;
+}
+
+.task-bar-label {
+  color: inherit;
+  font-size: 13px;
   font-weight: 700;
-  font-size: 12px;
-  cursor: pointer;
-  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-  box-shadow: none;
-}
-
-.task-block:hover {
-  filter: brightness(1.1);
-  box-shadow: inset 0 0 0 2px rgba(255, 255, 255, 0.3);
-}
-
-.task-label {
-  white-space: nowrap;
+  max-width: 100%;
   overflow: hidden;
   text-overflow: ellipsis;
-  text-align: center;
-  width: 100%;
+  white-space: nowrap;
 }
 
-/* Tooltip Styles */
-.gantt-tooltip {
-  padding: 4px;
+.task-bar.status-pending {
+  color: #925834;
+  background: rgba(214, 111, 34, 0.14);
+  box-shadow: inset 0 0 0 1px rgba(214, 111, 34, 0.28);
 }
 
-.tooltip-id {
-  font-weight: 800;
-  font-size: 14px;
-  margin-bottom: 4px;
-  color: #ffffff;
+.task-bar.status-ready {
+  color: #2452d6;
+  background: rgba(59, 130, 246, 0.14);
+  box-shadow: inset 0 0 0 1px rgba(59, 130, 246, 0.28);
 }
 
-.tooltip-progress,
-.tooltip-finish {
-  font-size: 12px;
-  color: rgba(255, 255, 255, 0.85);
+.task-bar.status-running {
+  color: #117a56;
+  background: rgba(34, 197, 94, 0.16);
+  box-shadow: inset 0 0 0 1px rgba(34, 197, 94, 0.28);
 }
 
-/* QC Alert Pulsing Animation */
-@keyframes pulse-red {
-  0% {
-    box-shadow: 0 0 0 0 rgba(255, 77, 79, 0.7);
-    filter: brightness(1);
+.task-bar.status-paused {
+  color: #9a6700;
+  background: rgba(245, 158, 11, 0.16);
+  box-shadow: inset 0 0 0 1px rgba(245, 158, 11, 0.30);
+}
+
+.task-bar.status-finished {
+  color: #0f766e;
+  background: rgba(20, 184, 166, 0.16);
+  box-shadow: inset 0 0 0 1px rgba(20, 184, 166, 0.28);
+}
+
+.task-bar.status-abnormal {
+  color: #b42318;
+  background: rgba(239, 68, 68, 0.15);
+  box-shadow: inset 0 0 0 1px rgba(239, 68, 68, 0.28);
+}
+
+@media (max-width: 1200px) {
+  .summary-grid {
+    grid-template-columns: 1fr 1fr;
   }
-  70% {
-    box-shadow: 0 0 0 15px rgba(255, 77, 79, 0);
-    filter: brightness(1.2);
+
+  .gantt-header {
+    display: none;
   }
-  100% {
-    box-shadow: 0 0 0 0 rgba(255, 77, 79, 0);
-    filter: brightness(1);
+
+  .gantt-row {
+    grid-template-columns: 1fr;
   }
 }
 
-/* Drawer Styles */
-.drawer-content {
-  display: flex;
-  flex-direction: column;
-  gap: 24px;
-}
-
-.anomaly-summary {
-  display: flex;
-  gap: 16px;
-  align-items: flex-start;
-  padding: 16px;
-  background: #fff1f0;
-  border-radius: 12px;
-  border: 1px solid #ffa39e;
-}
-
-.defect-thumb {
-  border-radius: 8px;
-  border: 2px solid #ffffff;
-  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
-}
-
-.anomaly-label {
-  font-weight: 700;
-  color: #cf1322;
-  font-size: 15px;
-  margin-bottom: 4px;
-}
-
-.anomaly-time {
-  font-size: 12px;
-  color: #8c8c8c;
-}
-
-.order-link {
-  color: #1890ff;
-  font-weight: 600;
-  text-decoration: underline;
-}
-
-.custom-descriptions :deep(.ant-descriptions-title) {
-  font-size: 15px;
-  font-weight: 700;
-  color: #1e293b;
-  margin-bottom: 12px;
-}
-
-.drawer-actions {
-  display: flex;
-  flex-direction: column;
-  gap: 16px;
-  margin-top: 8px;
-}
-
-.action-title {
-  font-weight: 700;
-  color: #1e293b;
-  font-size: 14px;
+@media (max-width: 768px) {
+  .summary-grid {
+    grid-template-columns: 1fr;
+  }
 }
 </style>

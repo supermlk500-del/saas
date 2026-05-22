@@ -1,10 +1,8 @@
 package com.zhihuitong;
 
-import org.mybatis.spring.annotation.MapperScan;
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
 
-@MapperScan("com.zhihuitong.mapper")
 @SpringBootApplication
 public class ZhihuitongApplication {
 
@@ -12,4 +10,3 @@ public class ZhihuitongApplication {
         SpringApplication.run(ZhihuitongApplication.class, args);
     }
 }
-

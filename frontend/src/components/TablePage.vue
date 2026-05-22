@@ -36,9 +36,12 @@ defineProps<{
         :data-source="data"
         :loading="loading"
         :pagination="pagination"
-        v-slots="$slots"
         class="custom-table"
-      />
+      >
+        <template v-if="$slots.bodyCell" #bodyCell="slotProps">
+          <slot name="bodyCell" v-bind="slotProps" />
+        </template>
+      </a-table>
     </a-card>
   </div>
 </template>

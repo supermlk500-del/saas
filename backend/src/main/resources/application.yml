@@ -12,13 +12,14 @@ spring:
 
 mybatis-plus:
   mapper-locations: classpath*:mapper/**/*.xml
-  type-aliases-package: com.zhihuitong.entity
+  type-aliases-package: com.zhihuitong.modules
   configuration:
-    map-underscore-to-camel-case: true
+    map-underscore-to-camel-case: false
     log-impl: org.apache.ibatis.logging.stdout.StdOutImpl
   global-config:
     db-config:
       id-type: assign_id
+      table-underline: false
 
 management:
   endpoints:
@@ -32,4 +33,3 @@ management:
 logging:
   level:
     com.zhihuitong: info
-

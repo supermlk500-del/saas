@@ -6,7 +6,7 @@ type Field = {
   name: string
   type: string
   placeholder?: string
-  options?: { label: string; value: string }[]
+  options?: { label: string; value: string | number }[]
 }
 
 const props = defineProps<{

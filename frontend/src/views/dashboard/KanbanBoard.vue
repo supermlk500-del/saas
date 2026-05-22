@@ -1,270 +1,482 @@
 <script setup lang="ts">
-import { computed } from 'vue'
+import { computed, onMounted, ref } from 'vue'
 import {
-  InboxOutlined,
-  ExclamationCircleOutlined,
-  CheckCircleOutlined,
-  BarChartOutlined,
-  ArrowUpOutlined,
   ArrowDownOutlined,
+  ArrowUpOutlined,
+  BarChartOutlined,
+  CheckCircleOutlined,
+  ExclamationCircleOutlined,
+  InboxOutlined,
 } from '@ant-design/icons-vue'
+import { RouterLink } from 'vue-router'
+import { fetchBatches } from '@/api/batch/batch'
+import { fetchExceptionRecords } from '@/api/exception/exceptionRecord'
+import { fetchPlans } from '@/api/plan/plan'
+import { fetchQcRecords } from '@/api/quality/qcRecord'
+import {
+  batchStatusOptions,
+  exceptionLevelOptions,
+  exceptionStatusOptions,
+  planStatusOptions,
+  resultJudgeOptions,
+} from '@/constants/dictionaries'
+import type { BatchItem, ExceptionRecordItem, ProductionPlanItem, QcRecordItem } from '@/types/domain'
 
 type MetricCard = {
   title: string
   value: string
-  trend?: string
-  trendType?: 'up' | 'down'
-  icon?: any
-  iconBg?: string
-  iconColor?: string
+  trend: string
+  trendType: 'up' | 'down'
+  icon: typeof InboxOutlined
+  iconBg: string
+  iconColor: string
 }
 
-type TrendPoint = {
-  month: string
-  value: number
+const loading = ref(false)
+const pendingBatches = ref<BatchItem[]>([])
+const todayPendingCount = ref(0)
+const yesterdayPendingCount = ref(0)
+const recentQcRecords = ref<QcRecordItem[]>([])
+const currentWeekQcRecords = ref<QcRecordItem[]>([])
+const previousWeekQcRecords = ref<QcRecordItem[]>([])
+const exceptionRecords = ref<ExceptionRecordItem[]>([])
+const productionPlans = ref<ProductionPlanItem[]>([])
+
+const PENDING_BATCH_STATUSES = new Set(['NEW', 'READY'])
+const ACTIVE_EXCEPTION_STATUSES = new Set(['OPEN', 'PROCESSING'])
+
+const toApiDateTime = (date: Date) => {
+  const year = date.getFullYear()
+  const month = String(date.getMonth() + 1).padStart(2, '0')
+  const day = String(date.getDate()).padStart(2, '0')
+  const hours = String(date.getHours()).padStart(2, '0')
+  const minutes = String(date.getMinutes()).padStart(2, '0')
+  const seconds = String(date.getSeconds()).padStart(2, '0')
+  return `${year}-${month}-${day} ${hours}:${minutes}:${seconds}`
 }
 
-type EfficiencyBar = {
-  name: string
-  value: number
+const parseDate = (value?: string | null) => {
+  if (!value) {
+    return null
+  }
+
+  const normalized = value.includes('T') ? value : value.replace(' ', 'T')
+  const date = new Date(normalized)
+  return Number.isNaN(date.getTime()) ? null : date
 }
 
-type OrderStatus = {
-  id: string
-  progress: number
-  status: string
+const formatShortTime = (value?: string | null) => {
+  const date = parseDate(value)
+  if (!date) {
+    return '--'
+  }
+
+  return date.toLocaleTimeString('zh-CN', {
+    hour: '2-digit',
+    minute: '2-digit',
+  })
 }
 
-type PieSegment = {
-  label: string
-  value: number
-  color: string
+const formatDateLabel = (value?: string | null) => {
+  const date = parseDate(value)
+  if (!date) {
+    return '--'
+  }
+
+  return date.toLocaleDateString('zh-CN', {
+    month: '2-digit',
+    day: '2-digit',
+  })
 }
 
-const metricCards: MetricCard[] = [
-  {
-    title: '今日待检批次',
-    value: '12',
-    trend: '15%',
-    trendType: 'down',
-    icon: InboxOutlined,
-    iconBg: '#fff7ed',
-    iconColor: '#ff7a45',
-  },
-  {
-    title: '异常拒收数',
-    value: '3',
-    trend: '2',
-    trendType: 'down',
-    icon: ExclamationCircleOutlined,
-    iconBg: '#fef2f2',
-    iconColor: '#ef4444',
-  },
-  {
-    title: '本周放行率',
-    value: '94.2%',
-    trend: '1.2%',
-    trendType: 'up',
-    icon: CheckCircleOutlined,
-    iconBg: '#f0fdf4',
-    iconColor: '#22c55e',
-  },
-  {
-    title: '排产池负荷',
-    value: '45k',
-    trend: '米',
-    trendType: 'up',
-    icon: BarChartOutlined,
-    iconBg: '#fff7ed',
-    iconColor: '#ff7a45',
-  },
-]
+const formatRate = (value: number) => `${value.toFixed(1)}%`
 
-const trendData: TrendPoint[] = [
-  { month: '5月', value: 420 },
-  { month: '6月', value: 468 },
-  { month: '7月', value: 512 },
-  { month: '8月', value: 576 },
-  { month: '9月', value: 618 },
-  { month: '10月', value: 655 },
-  { month: '11月', value: 702 },
-  { month: '12月', value: 748 },
-  { month: '1月', value: 786 },
-  { month: '2月', value: 842 },
-  { month: '3月', value: 905 },
-  { month: '4月', value: 968 },
-]
+const formatTrend = (current: number, previous: number) => {
+  if (previous <= 0) {
+    return {
+      trend: current > 0 ? `+${current}` : '0',
+      trendType: 'up' as const,
+    }
+  }
 
-const efficiencyBars: EfficiencyBar[] = [
-  { name: '生产线A', value: 78 },
-  { name: '生产线B', value: 91 },
-  { name: '生产线C', value: 66 },
-  { name: '生产线D', value: 84 },
-  { name: '生产线E', value: 73 },
-  { name: '生产线F', value: 88 },
-  { name: '生产线G', value: 80 },
-  { name: '生产线H', value: 94 },
-]
+  const delta = ((current - previous) / previous) * 100
+  return {
+    trend: `${Math.abs(delta).toFixed(1)}%`,
+    trendType: delta >= 0 ? ('up' as const) : ('down' as const),
+  }
+}
 
-const orderStatuses: OrderStatus[] = [
-  { id: '20260407001', progress: 88, status: '生产中' },
-  { id: '20260407002', progress: 64, status: '已排产' },
-  { id: '20260407003', progress: 79, status: '待质检' },
-  { id: '20260407004', progress: 53, status: '裁剪完成' },
-  { id: '20260407005', progress: 21, status: '待投产' },
-]
+const formatWeightCompact = (totalWeight: number) => {
+  if (totalWeight >= 1000) {
+    return `${(totalWeight / 1000).toFixed(totalWeight >= 10000 ? 0 : 1)}k`
+  }
+  return `${Math.round(totalWeight)}`
+}
 
-const pieSegments: PieSegment[] = [
-  { label: '时间节省', value: 28.4, color: '#ff7a45' },
-  { label: '能耗降低', value: 21.6, color: '#ff9c6e' },
-  { label: '换线效率提升', value: 17.3, color: '#ffbb96' },
-  { label: '设备利用提升', value: 15.2, color: '#ffd8bf' },
-  { label: '延期风险降低', value: 7.5, color: '#ffe7ba' },
-  { label: '人工干预减少', value: 10, color: '#fff1e6' },
-]
+const getWeekRange = (baseDate = new Date()) => {
+  const current = new Date(baseDate)
+  current.setHours(0, 0, 0, 0)
+  const day = current.getDay()
+  const mondayOffset = day === 0 ? -6 : 1 - day
 
-const trendPoints = computed(() => {
-  const width = 520
-  const height = 220
-  const max = Math.max(...trendData.map((item) => item.value))
-  return trendData
-    .map((item, index) => {
-      const x = (index / (trendData.length - 1)) * width
-      const y = height - (item.value / max) * 180 - 20
-      return `${x},${y}`
-    })
-    .join(' ')
+  const start = new Date(current)
+  start.setDate(current.getDate() + mondayOffset)
+
+  const end = new Date(start)
+  end.setDate(start.getDate() + 6)
+  end.setHours(23, 59, 59, 999)
+
+  return { start, end }
+}
+
+const getDayRange = (offsetDays = 0) => {
+  const start = new Date()
+  start.setHours(0, 0, 0, 0)
+  start.setDate(start.getDate() + offsetDays)
+
+  const end = new Date(start)
+  end.setHours(23, 59, 59, 999)
+
+  return { start, end }
+}
+
+const getStatusMeta = (status?: string | null) =>
+  batchStatusOptions.find((item) => item.value === status)
+
+const getJudgeMeta = (judge?: string | null) =>
+  resultJudgeOptions.find((item) => item.value === judge)
+
+const getExceptionMeta = (level?: string | null) =>
+  exceptionLevelOptions.find((item) => item.value === level)
+
+const getPlanMeta = (status?: string | null) =>
+  planStatusOptions.find((item) => item.value === status)
+
+const getPendingBatchWeight = (batches: BatchItem[]) =>
+  batches.reduce((total, item) => total + Number(item.weight ?? 0), 0)
+
+const getPassRate = (records: QcRecordItem[]) => {
+  if (!records.length) {
+    return 0
+  }
+
+  const passCount = records.filter((item) => item.resultJudge === 'PASS').length
+  return (passCount / records.length) * 100
+}
+
+const schedulePoolLoad = computed(() => getPendingBatchWeight(pendingBatches.value))
+const activeExceptionCount = computed(
+  () => exceptionRecords.value.filter((item) => ACTIVE_EXCEPTION_STATUSES.has(item.status)).length,
+)
+const highSeverityExceptionCount = computed(
+  () =>
+    exceptionRecords.value.filter((item) =>
+      ACTIVE_EXCEPTION_STATUSES.has(item.status) && ['HIGH', 'CRITICAL'].includes(item.exceptionLevel),
+    ).length,
+)
+const weeklyPassRate = computed(() => getPassRate(currentWeekQcRecords.value))
+const previousWeeklyPassRate = computed(() => getPassRate(previousWeekQcRecords.value))
+const activePlanCount = computed(
+  () => productionPlans.value.filter((item) => !['COMPLETED', 'CANCELLED'].includes(item.status)).length,
+)
+
+// 第一阶段没有独立的看板统计接口，这里按文档推荐的核心资源做前端聚合。
+const metricCards = computed<MetricCard[]>(() => {
+  const todayTrend = formatTrend(todayPendingCount.value, yesterdayPendingCount.value)
+  const weeklyTrend = formatTrend(weeklyPassRate.value, previousWeeklyPassRate.value)
+
+  return [
+    {
+      title: '今日待检批次',
+      value: String(todayPendingCount.value),
+      trend: todayTrend.trend,
+      trendType: todayTrend.trendType,
+      icon: InboxOutlined,
+      iconBg: '#fff7ed',
+      iconColor: '#ff7a45',
+    },
+    {
+      title: '异常拒收数',
+      value: String(activeExceptionCount.value),
+      trend: `高危 ${highSeverityExceptionCount.value}`,
+      trendType: highSeverityExceptionCount.value > 0 ? 'up' : 'down',
+      icon: ExclamationCircleOutlined,
+      iconBg: '#fef2f2',
+      iconColor: '#ef4444',
+    },
+    {
+      title: '本周放行率',
+      value: formatRate(weeklyPassRate.value),
+      trend: weeklyTrend.trend,
+      trendType: weeklyTrend.trendType,
+      icon: CheckCircleOutlined,
+      iconBg: '#f0fdf4',
+      iconColor: '#22c55e',
+    },
+    {
+      title: '排产池负荷',
+      value: formatWeightCompact(schedulePoolLoad.value),
+      trend: `${activePlanCount.value}项`,
+      trendType: activePlanCount.value > 0 ? 'up' : 'down',
+      icon: BarChartOutlined,
+      iconBg: '#fff7ed',
+      iconColor: '#ff7a45',
+    },
+  ]
 })
 
-const trendFillPoints = computed(() => `0,220 ${trendPoints.value} 520,220`)
+const qualityActivities = computed(() =>
+  [...recentQcRecords.value]
+    .sort((left, right) => {
+      const leftTime = parseDate(left.inspectTime)?.getTime() ?? 0
+      const rightTime = parseDate(right.inspectTime)?.getTime() ?? 0
+      return rightTime - leftTime
+    })
+    .slice(0, 2),
+)
 
-const pieGradient = computed(() => {
-  let current = 0
-  const parts = pieSegments.map((item) => {
-    const start = current
-    current += item.value
-    return `${item.color} ${start}% ${current}%`
-  })
-  return `conic-gradient(${parts.join(', ')})`
+const upcomingBatches = computed(() =>
+  [...pendingBatches.value]
+    .sort((left, right) => {
+      const leftTime = parseDate(left.inDate)?.getTime() ?? 0
+      const rightTime = parseDate(right.inDate)?.getTime() ?? 0
+      return leftTime - rightTime
+    })
+    .slice(0, 2),
+)
+
+const loadDashboard = async () => {
+  loading.value = true
+
+  const todayRange = getDayRange(0)
+  const yesterdayRange = getDayRange(-1)
+  const currentWeekRange = getWeekRange(new Date())
+  const previousWeekBase = new Date(currentWeekRange.start)
+  previousWeekBase.setDate(previousWeekBase.getDate() - 7)
+  const previousWeekRange = getWeekRange(previousWeekBase)
+
+  const results = await Promise.allSettled([
+    fetchBatches({ pageNum: 1, pageSize: 200 }),
+    fetchBatches({
+      pageNum: 1,
+      pageSize: 200,
+      dateFrom: toApiDateTime(todayRange.start),
+      dateTo: toApiDateTime(todayRange.end),
+    }),
+    fetchBatches({
+      pageNum: 1,
+      pageSize: 200,
+      dateFrom: toApiDateTime(yesterdayRange.start),
+      dateTo: toApiDateTime(yesterdayRange.end),
+    }),
+    fetchQcRecords({
+      pageNum: 1,
+      pageSize: 200,
+      inspectTimeFrom: toApiDateTime(currentWeekRange.start),
+      inspectTimeTo: toApiDateTime(currentWeekRange.end),
+    }),
+    fetchQcRecords({
+      pageNum: 1,
+      pageSize: 200,
+      inspectTimeFrom: toApiDateTime(previousWeekRange.start),
+      inspectTimeTo: toApiDateTime(previousWeekRange.end),
+    }),
+    fetchQcRecords({ pageNum: 1, pageSize: 20 }),
+    fetchExceptionRecords({ pageNum: 1, pageSize: 200 }),
+    fetchPlans({ pageNum: 1, pageSize: 200 }),
+  ])
+
+  const [
+    allBatchResult,
+    todayBatchResult,
+    yesterdayBatchResult,
+    weekQcResult,
+    previousWeekQcResult,
+    recentQcResult,
+    exceptionResult,
+    planResult,
+  ] = results
+
+  if (allBatchResult.status === 'fulfilled') {
+    pendingBatches.value = allBatchResult.value.list.filter((item) =>
+      PENDING_BATCH_STATUSES.has(item.status ?? ''),
+    )
+  }
+
+  if (todayBatchResult.status === 'fulfilled') {
+    todayPendingCount.value = todayBatchResult.value.list.filter((item) =>
+      PENDING_BATCH_STATUSES.has(item.status ?? ''),
+    ).length
+  }
+
+  if (yesterdayBatchResult.status === 'fulfilled') {
+    yesterdayPendingCount.value = yesterdayBatchResult.value.list.filter((item) =>
+      PENDING_BATCH_STATUSES.has(item.status ?? ''),
+    ).length
+  }
+
+  if (weekQcResult.status === 'fulfilled') {
+    currentWeekQcRecords.value = weekQcResult.value.list
+  }
+
+  if (previousWeekQcResult.status === 'fulfilled') {
+    previousWeekQcRecords.value = previousWeekQcResult.value.list
+  }
+
+  if (recentQcResult.status === 'fulfilled') {
+    recentQcRecords.value = recentQcResult.value.list
+  }
+
+  if (exceptionResult.status === 'fulfilled') {
+    exceptionRecords.value = exceptionResult.value.list
+  }
+
+  if (planResult.status === 'fulfilled') {
+    productionPlans.value = planResult.value.list
+  }
+
+  loading.value = false
+}
+
+onMounted(() => {
+  void loadDashboard()
 })
 </script>
 
 <template>
-  <div class="dashboard-page">
-    <div class="metric-grid">
-      <a-card v-for="item in metricCards" :key="item.title" class="metric-card" :bordered="false">
-        <div class="metric-header">
-          <div class="metric-icon" :style="{ background: item.iconBg, color: item.iconColor }">
-            <component :is="item.icon" />
+  <a-spin :spinning="loading">
+    <div class="dashboard-page">
+      <div class="metric-grid">
+        <a-card v-for="item in metricCards" :key="item.title" class="metric-card" :bordered="false">
+          <div class="metric-header">
+            <div class="metric-icon" :style="{ background: item.iconBg, color: item.iconColor }">
+              <component :is="item.icon" />
+            </div>
+            <div class="metric-trend" :class="item.trendType">
+              <component :is="item.trendType === 'up' ? ArrowUpOutlined : ArrowDownOutlined" class="trend-arrow" />
+              {{ item.trend }}
+            </div>
           </div>
-          <div v-if="item.trend" class="metric-trend" :class="item.trendType">
-            <component :is="item.trendType === 'up' ? ArrowUpOutlined : ArrowDownOutlined" class="trend-arrow" />
-            {{ item.trend }}
-          </div>
-        </div>
-        <div class="metric-info">
           <div class="metric-title">{{ item.title }}</div>
           <div class="metric-value">{{ item.value }}</div>
-        </div>
-      </a-card>
-    </div>
+        </a-card>
+      </div>
 
-    <div class="panel-grid">
-      <a-card class="panel-card chart-card" :bordered="false">
-        <template #title>
-          <div class="panel-title">
-            <div class="title-dot"></div>
-            实时质检动态
-          </div>
-        </template>
-        <template #extra><a href="#" class="extra-link">查看全部</a></template>
-        <div class="quality-list">
-          <div v-for="i in 2" :key="i" class="quality-item">
-            <div class="item-left">
-              <div class="status-dot" :class="i === 1 ? 'pending' : 'inspecting'"></div>
-              <div class="item-info">
-                <div class="item-code">TSK-2405-00{{ i }}</div>
-                <div class="item-sub">批次: BAT-20240520-0{{ i }}</div>
-              </div>
+      <div class="panel-grid">
+        <a-card class="panel-card" :bordered="false">
+          <template #title>
+            <div class="panel-title">
+              <div class="title-dot"></div>
+              实时质检动态
             </div>
-            <div class="item-right">
-              <div class="item-time">10:30 AM</div>
-              <a-tag :color="i === 1 ? 'orange' : 'blue'">{{ i === 1 ? '待检验' : '检验中' }}</a-tag>
-            </div>
-          </div>
-        </div>
-      </a-card>
+          </template>
+          <template #extra>
+            <RouterLink class="panel-link" to="/quality/realtime">查看全部</RouterLink>
+          </template>
 
-      <a-card class="panel-card chart-card" :bordered="false">
-        <template #title>
-          <div class="panel-title">
-            <div class="title-dot"></div>
-            即将排产 (高优先级)
-          </div>
-        </template>
-        <template #extra><a href="#" class="extra-link">进入排产板</a></template>
-        <div class="schedule-list">
-          <div v-for="i in 2" :key="i" class="schedule-item">
-            <div class="item-left">
-              <div class="item-info">
-                <div class="item-code-row">
-                  <span class="item-code">BAT-20240518-1{{ i }}</span>
-                  <a-tag size="small" :color="i === 1 ? 'orange' : 'gold'">{{ i === 1 ? 'A级' : 'B级' }}</a-tag>
+          <div v-if="qualityActivities.length" class="activity-list">
+            <div v-for="item in qualityActivities" :key="item.inspectionId" class="activity-item">
+              <div class="activity-left">
+                <div class="activity-indicator" :class="(getJudgeMeta(item.resultJudge)?.value || '').toLowerCase()"></div>
+                <div>
+                  <div class="activity-title">质检记录 #{{ item.inspectionId }}</div>
+                  <div class="activity-subtitle">工序计划：{{ item.planStepId }}</div>
                 </div>
-                <div class="item-sub">{{ i === 1 ? '纯棉汗布' : '涤纶网眼' }}</div>
+              </div>
+
+              <div class="activity-right">
+                <div class="activity-time">{{ formatShortTime(item.inspectTime) }}</div>
+                <a-tag :color="getJudgeMeta(item.resultJudge)?.color || 'default'">
+                  {{ getJudgeMeta(item.resultJudge)?.label || item.resultJudge }}
+                </a-tag>
               </div>
             </div>
-            <div class="item-right">
-              <div class="item-qty">2,500m</div>
-              <div class="item-sub">可用余量</div>
-            </div>
           </div>
-        </div>
-      </a-card>
-    </div>
+          <a-empty v-else description="暂无质检动态" />
+        </a-card>
 
-    <div class="panel-grid">
-      <a-card title="月度产量趋势" class="panel-card" :bordered="false">
-        <div class="line-chart">
-          <div class="y-axis">
-            <span>1000</span>
-            <span>800</span>
-            <span>600</span>
-            <span>400</span>
-            <span>200</span>
-            <span>0</span>
-          </div>
-          <div class="chart-content">
-            <div class="grid-lines">
-              <span v-for="i in 6" :key="i"></span>
+        <a-card class="panel-card" :bordered="false">
+          <template #title>
+            <div class="panel-title">
+              <div class="title-dot"></div>
+              即将排产（高优先级）
             </div>
-            <svg viewBox="0 0 520 220" class="chart-svg" preserveAspectRatio="none">
-              <polygon :points="trendFillPoints" fill="rgba(255, 122, 69, 0.08)" />
-              <polyline :points="trendPoints" fill="none" stroke="#ff7a45" stroke-width="3" stroke-linecap="round" />
-            </svg>
-            <div class="x-axis">
-              <span v-for="item in trendData" :key="item.month">{{ item.month }}</span>
-            </div>
-          </div>
-        </div>
-      </a-card>
+          </template>
+          <template #extra>
+            <RouterLink class="panel-link" to="/schedule/pool">进入排产板</RouterLink>
+          </template>
 
-      <a-card title="AI 调度优化成效" class="panel-card" :bordered="false">
-        <div class="pie-layout">
-          <div class="pie-chart" :style="{ backgroundImage: pieGradient }">
-            <div class="pie-hole"></div>
-          </div>
-          <div class="pie-legend">
-            <div v-for="item in pieSegments" :key="`${item.label}-${item.value}`" class="legend-row">
-              <span class="legend-dot" :style="{ background: item.color }"></span>
-              <span class="legend-label">{{ item.label }}</span>
-              <span class="legend-value">{{ item.value }}%</span>
+          <div v-if="upcomingBatches.length" class="activity-list">
+            <div v-for="item in upcomingBatches" :key="item.batchId" class="activity-item">
+              <div class="activity-left">
+                <div>
+                  <div class="activity-title-row">
+                    <div class="activity-title">{{ item.batchNo }}</div>
+                    <a-tag :color="getStatusMeta(item.status)?.color || 'default'">
+                      {{ getStatusMeta(item.status)?.label || item.status || '待排产' }}
+                    </a-tag>
+                  </div>
+                  <div class="activity-subtitle">{{ item.composition || item.supplier || '未提供批次说明' }}</div>
+                </div>
+              </div>
+
+              <div class="activity-right">
+                <div class="schedule-weight">{{ item.weight ?? '--' }}</div>
+                <div class="schedule-caption">入厂：{{ formatDateLabel(item.inDate) }}</div>
+              </div>
             </div>
           </div>
-        </div>
-      </a-card>
+          <a-empty v-else description="暂无待排产批次" />
+        </a-card>
+      </div>
+
+      <div class="summary-grid">
+        <a-card class="summary-card" :bordered="false">
+          <div class="summary-header">异常概览</div>
+          <div class="summary-row">
+            <span>待处理异常</span>
+            <strong>{{ activeExceptionCount }}</strong>
+          </div>
+          <div class="summary-row">
+            <span>高危异常</span>
+            <strong>{{ highSeverityExceptionCount }}</strong>
+          </div>
+          <div class="summary-list">
+            <div v-for="item in exceptionRecords.slice(0, 3)" :key="item.exceptionId" class="summary-item">
+              <span>#{{ item.exceptionId }}</span>
+              <a-tag :color="getExceptionMeta(item.exceptionLevel)?.color || 'default'">
+                {{ getExceptionMeta(item.exceptionLevel)?.label || item.exceptionLevel }}
+              </a-tag>
+              <a-tag :color="exceptionStatusOptions.find((status) => status.value === item.status)?.color || 'default'">
+                {{ exceptionStatusOptions.find((status) => status.value === item.status)?.label || item.status }}
+              </a-tag>
+            </div>
+          </div>
+        </a-card>
+
+        <a-card class="summary-card" :bordered="false">
+          <div class="summary-header">计划概览</div>
+          <div class="summary-row">
+            <span>活动计划</span>
+            <strong>{{ activePlanCount }}</strong>
+          </div>
+          <div class="summary-row">
+            <span>排产池负荷</span>
+            <strong>{{ schedulePoolLoad.toFixed(0) }} kg</strong>
+          </div>
+          <div class="summary-list">
+            <div v-for="item in productionPlans.slice(0, 3)" :key="item.planId" class="summary-item">
+              <span>#{{ item.planId }}</span>
+              <span>{{ item.batchNo || `批次 ${item.batchId}` }}</span>
+              <a-tag :color="getPlanMeta(item.status)?.color || 'default'">
+                {{ getPlanMeta(item.status)?.label || item.status }}
+              </a-tag>
+            </div>
+          </div>
+        </a-card>
+      </div>
     </div>
-  </div>
+  </a-spin>
 </template>
 
 <style scoped>
@@ -280,71 +492,73 @@ const pieGradient = computed(() => {
   gap: 20px;
 }
 
-.metric-card {
-  border-radius: 16px;
-  background: #ffffff;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.03);
-  transition: all 0.3s ease;
+.metric-card,
+.panel-card,
+.summary-card {
+  border-radius: 18px;
+  border: 1px solid rgba(145, 158, 171, 0.12);
+  box-shadow: 0 16px 40px rgba(15, 23, 42, 0.05);
 }
 
-.metric-card:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.06);
+.metric-card {
+  min-height: 182px;
+  padding: 14px 8px;
 }
 
 .metric-header {
   display: flex;
-  justify-content: space-between;
   align-items: center;
-  margin-bottom: 16px;
+  justify-content: space-between;
+  margin-bottom: 34px;
 }
 
 .metric-icon {
-  width: 40px;
-  height: 40px;
-  border-radius: 12px;
+  width: 56px;
+  height: 56px;
+  border-radius: 18px;
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 20px;
+  font-size: 26px;
 }
 
 .metric-trend {
-  font-size: 13px;
-  font-weight: 600;
-  display: flex;
+  display: inline-flex;
   align-items: center;
-  gap: 4px;
-  padding: 4px 8px;
-  border-radius: 99px;
+  gap: 6px;
+  min-height: 42px;
+  padding: 0 16px;
+  border-radius: 999px;
+  font-size: 16px;
+  font-weight: 700;
 }
 
 .metric-trend.up {
+  background: rgba(34, 197, 94, 0.12);
   color: #22c55e;
-  background: #f0fdf4;
 }
 
 .metric-trend.down {
+  background: rgba(239, 68, 68, 0.10);
   color: #ef4444;
-  background: #fef2f2;
 }
 
 .trend-arrow {
-  font-size: 12px;
+  font-size: 16px;
 }
 
 .metric-title {
-  color: #64748b;
-  font-size: 14px;
-  font-weight: 500;
-  margin-bottom: 4px;
+  margin-bottom: 16px;
+  color: #536682;
+  font-size: 20px;
+  font-weight: 700;
 }
 
 .metric-value {
-  color: #1e293b;
-  font-size: 32px;
-  font-weight: 700;
-  line-height: 1.2;
+  color: #18243d;
+  font-size: 58px;
+  font-weight: 800;
+  line-height: 1;
 }
 
 .panel-grid {
@@ -353,228 +567,180 @@ const pieGradient = computed(() => {
   gap: 20px;
 }
 
-.panel-card {
-  border-radius: 16px;
-  background: #ffffff;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.03);
-}
-
 .panel-title {
   display: flex;
   align-items: center;
-  gap: 10px;
-  font-size: 16px;
-  font-weight: 700;
-  color: #1e293b;
+  gap: 12px;
+  color: #18243d;
+  font-size: 18px;
+  font-weight: 800;
 }
 
 .title-dot {
-  width: 4px;
-  height: 16px;
+  width: 6px;
+  height: 28px;
+  border-radius: 999px;
   background: #ff7a45;
-  border-radius: 2px;
 }
 
-.extra-link {
+.panel-link {
   color: #ff7a45;
-  font-size: 13px;
-  font-weight: 500;
+  font-size: 16px;
+  font-weight: 700;
 }
 
-.quality-list,
-.schedule-list {
+.activity-list {
   display: flex;
   flex-direction: column;
-  gap: 12px;
+  gap: 16px;
 }
 
-.quality-item,
-.schedule-item {
+.activity-item {
   display: flex;
+  align-items: center;
   justify-content: space-between;
-  align-items: center;
-  padding: 16px;
-  background: #f8fafc;
-  border-radius: 12px;
-  border: 1px solid #f1f5f9;
+  min-height: 136px;
+  padding: 0 28px;
+  border-radius: 22px;
+  background: #f8fbff;
+  border: 1px solid rgba(145, 158, 171, 0.10);
 }
 
-.item-left {
+.activity-left {
   display: flex;
   align-items: center;
-  gap: 12px;
+  gap: 18px;
 }
 
-.status-dot {
-  width: 8px;
-  height: 8px;
-  border-radius: 50%;
+.activity-indicator {
+  width: 18px;
+  height: 18px;
+  border-radius: 999px;
+  box-shadow: 0 0 0 8px rgba(148, 163, 184, 0.08);
 }
 
-.status-dot.pending {
-  background: #ff7a45;
-  box-shadow: 0 0 0 4px rgba(255, 122, 69, 0.1);
+.activity-indicator.pass {
+  background: #22c55e;
 }
 
-.status-dot.inspecting {
-  background: #3b82f6;
-  box-shadow: 0 0 0 4px rgba(59, 130, 246, 0.1);
+.activity-indicator.fail {
+  background: #ef4444;
 }
 
-.item-code {
-  font-weight: 700;
-  color: #1e293b;
-  font-size: 14px;
+.activity-indicator.recheck {
+  background: #f59e0b;
 }
 
-.item-code-row {
+.activity-title-row {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 10px;
+  margin-bottom: 10px;
 }
 
-.item-sub {
-  color: #64748b;
-  font-size: 12px;
-  margin-top: 2px;
+.activity-title {
+  color: #18243d;
+  font-size: 20px;
+  font-weight: 800;
 }
 
-.item-right {
+.activity-subtitle {
+  color: #6a7f9b;
+  font-size: 16px;
+}
+
+.activity-right {
   text-align: right;
 }
 
-.item-time {
-  font-size: 12px;
-  color: #94a3b8;
-  margin-bottom: 4px;
-}
-
-.item-qty {
+.activity-time {
+  margin-bottom: 12px;
+  color: #9aa9bf;
   font-size: 16px;
-  font-weight: 700;
-  color: #1e293b;
 }
 
-.line-chart {
-  display: flex;
-  gap: 12px;
-  height: 250px;
-  margin-top: 12px;
+.schedule-weight {
+  color: #18243d;
+  font-size: 22px;
+  font-weight: 800;
 }
 
-.y-axis {
-  width: 40px;
-  display: flex;
-  flex-direction: column;
-  justify-content: space-between;
-  color: #94a3b8;
-  font-size: 11px;
-}
-
-.chart-content {
-  position: relative;
-  flex: 1;
-  height: 100%;
-}
-
-.grid-lines {
-  position: absolute;
-  inset: 0 0 26px;
-  display: flex;
-  flex-direction: column;
-  justify-content: space-between;
-}
-
-.grid-lines span {
-  border-top: 1px dashed #e2e8f0;
-}
-
-.chart-svg {
-  position: absolute;
-  inset: 0 0 26px;
-  width: 100%;
-  height: calc(100% - 26px);
-}
-
-.x-axis {
-  position: absolute;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  display: grid;
-  grid-template-columns: repeat(12, 1fr);
-  color: #94a3b8;
-  font-size: 11px;
-  text-align: center;
-}
-
-.pie-layout {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 40px;
-  padding: 10px;
-}
-
-.pie-chart {
-  width: 180px;
-  height: 180px;
-  border-radius: 50%;
-  position: relative;
-  flex-shrink: 0;
-}
-
-.pie-hole {
-  position: absolute;
-  inset: 36px;
-  border-radius: 50%;
-  background: #ffffff;
-}
-
-.pie-legend {
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
-}
-
-.legend-row {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-}
-
-.legend-dot {
-  width: 8px;
-  height: 8px;
-  border-radius: 50%;
-}
-
-.legend-label {
-  flex: 1;
-  color: #64748b;
-  font-size: 13px;
-}
-
-.legend-value {
-  color: #1e293b;
-  font-weight: 700;
+.schedule-caption {
+  margin-top: 6px;
+  color: #6a7f9b;
   font-size: 14px;
 }
 
-@media (max-width: 1200px) {
+.summary-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 20px;
+}
+
+.summary-card {
+  min-height: 220px;
+}
+
+.summary-header {
+  margin-bottom: 18px;
+  color: #18243d;
+  font-size: 18px;
+  font-weight: 800;
+}
+
+.summary-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 14px 0;
+  border-bottom: 1px solid rgba(145, 158, 171, 0.12);
+  color: #536682;
+}
+
+.summary-row strong {
+  color: #18243d;
+  font-size: 22px;
+  font-weight: 800;
+}
+
+.summary-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding-top: 18px;
+}
+
+.summary-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  color: #536682;
+  font-size: 14px;
+}
+
+@media (max-width: 1400px) {
   .metric-grid {
-    grid-template-columns: repeat(2, 1fr);
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 }
 
-@media (max-width: 800px) {
-  .metric-grid,
-  .panel-grid {
+@media (max-width: 1024px) {
+  .panel-grid,
+  .summary-grid,
+  .metric-grid {
     grid-template-columns: 1fr;
   }
-  .pie-layout {
+
+  .activity-item {
+    min-height: auto;
+    padding: 20px;
+    align-items: flex-start;
     flex-direction: column;
+    gap: 14px;
+  }
+
+  .activity-right {
+    text-align: left;
   }
 }
 </style>

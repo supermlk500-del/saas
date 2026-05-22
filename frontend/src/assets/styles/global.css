@@ -1,0 +1,75 @@
+:root {
+  color-scheme: light;
+  font-family:
+    "PingFang SC",
+    "Microsoft YaHei",
+    "Segoe UI",
+    sans-serif;
+  --app-bg: #f4f7fb;
+  --app-surface: rgba(255, 255, 255, 0.92);
+  --app-text: #1f2937;
+  --app-subtext: #667085;
+  --app-border: rgba(145, 158, 171, 0.18);
+  --app-primary: #d66f22;
+  --app-primary-soft: rgba(214, 111, 34, 0.1);
+  --app-shadow: 0 14px 36px rgba(15, 23, 42, 0.06);
+  background: var(--app-bg);
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body,
+#app {
+  min-height: 100%;
+  margin: 0;
+}
+
+body {
+  color: var(--app-text);
+  background: var(--app-bg);
+}
+
+a {
+  color: inherit;
+}
+
+.page-card {
+  border-radius: 18px;
+  background: var(--app-surface);
+  border: 1px solid var(--app-border);
+  box-shadow: var(--app-shadow);
+}
+
+.section-title {
+  color: var(--app-text);
+  font-size: 18px;
+  font-weight: 700;
+}
+
+.section-subtitle {
+  color: var(--app-subtext);
+  font-size: 13px;
+  line-height: 1.6;
+}
+
+.status-dot {
+  display: inline-block;
+  width: 8px;
+  height: 8px;
+  border-radius: 999px;
+  background: currentColor;
+}
+
+.ant-btn-primary {
+  background: var(--app-primary);
+  border-color: var(--app-primary);
+}
+
+.ant-btn-primary:hover,
+.ant-btn-primary:focus {
+  background: #e08642;
+  border-color: #e08642;
+}

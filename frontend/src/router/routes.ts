@@ -1,0 +1,168 @@
+import type { Component } from 'vue'
+import type { RouteRecordRaw } from 'vue-router'
+
+export type AppMenuSectionKey = 'dashboard' | 'gray' | 'process-center' | 'schedule' | 'quality' | 'order'
+
+export interface AppRouteMeta {
+  title: string
+  section: string
+  sectionKey: AppMenuSectionKey
+  menuOrder: number
+  showInMenu?: boolean
+}
+
+export interface AppMenuItem {
+  key: string
+  title: string
+  to: string
+}
+
+export interface AppMenuSection {
+  key: AppMenuSectionKey
+  title: string
+  items: AppMenuItem[]
+}
+
+const view = (loader: () => Promise<Component>) => loader
+
+export const appRoutes: RouteRecordRaw[] = [
+  {
+    path: '/dashboard',
+    name: 'dashboard',
+    component: view(() => import('@/views/dashboard/KanbanBoard.vue')),
+    meta: { title: '看板', section: '看板', sectionKey: 'dashboard', menuOrder: 1, showInMenu: true },
+  },
+  {
+    path: '/gray/inbound',
+    name: 'gray-inbound',
+    component: view(() => import('@/views/gray/InboundBatchList.vue')),
+    meta: { title: '来料批次', section: '来料管理', sectionKey: 'gray', menuOrder: 11, showInMenu: true },
+  },
+  {
+    path: '/gray/iqc-task',
+    name: 'gray-iqc-task',
+    component: view(() => import('@/views/quality/TaskList.vue')),
+    meta: { title: 'IQC任务', section: '来料管理', sectionKey: 'gray', menuOrder: 12, showInMenu: true },
+  },
+  {
+    path: '/gray/iqc-result',
+    name: 'gray-iqc-result',
+    component: view(() => import('@/views/quality/ResultList.vue')),
+    meta: { title: 'IQC结果', section: '来料管理', sectionKey: 'gray', menuOrder: 13, showInMenu: true },
+  },
+  {
+    path: '/gray/fabric',
+    name: 'gray-fabric',
+    component: view(() => import('@/views/master/GrayFabricList.vue')),
+    meta: { title: '来料主数据', section: '来料管理', sectionKey: 'gray', menuOrder: 14, showInMenu: false },
+  },
+  {
+    path: '/gray/release',
+    name: 'gray-release',
+    component: view(() => import('@/views/gray/ReleaseDecisionList.vue')),
+    meta: { title: '放行决策', section: '来料管理', sectionKey: 'gray', menuOrder: 15, showInMenu: false },
+  },
+  {
+    path: '/process-center/process',
+    name: 'process-center-process',
+    component: view(() => import('@/views/master/ProcessList.vue')),
+    meta: { title: '工艺路线', section: '工艺中心', sectionKey: 'process-center', menuOrder: 21, showInMenu: true },
+  },
+  {
+    path: '/master/machine',
+    name: 'master-machine',
+    component: view(() => import('@/views/master/MachineList.vue')),
+    meta: { title: '设备管理', section: '工艺中心', sectionKey: 'process-center', menuOrder: 22, showInMenu: true },
+  },
+  {
+    path: '/process-center/shift',
+    name: 'process-center-shift',
+    component: view(() => import('@/views/master/ShiftList.vue')),
+    meta: { title: '班次日历', section: '工艺中心', sectionKey: 'process-center', menuOrder: 23, showInMenu: false },
+  },
+  {
+    path: '/master/fabric-process',
+    name: 'master-fabric-process',
+    component: view(() => import('@/views/master/FabricProcessList.vue')),
+    meta: { title: '工艺档案中心', section: '工艺中心', sectionKey: 'process-center', menuOrder: 24, showInMenu: false },
+  },
+  {
+    path: '/master/fabric-defect',
+    name: 'master-fabric-defect',
+    component: view(() => import('@/views/master/FabricDefectList.vue')),
+    meta: { title: '布料瑕疵种类', section: '工艺中心', sectionKey: 'process-center', menuOrder: 25, showInMenu: false },
+  },
+  {
+    path: '/schedule/pool',
+    name: 'schedule-pool',
+    component: view(() => import('@/views/schedule/SchedulePool.vue')),
+    meta: { title: '排产池', section: '排产管理', sectionKey: 'schedule', menuOrder: 31, showInMenu: true },
+  },
+  {
+    path: '/schedule/main',
+    name: 'schedule-main',
+    component: view(() => import('@/views/plan/PlanMain.vue')),
+    meta: { title: '生产计划', section: '排产管理', sectionKey: 'schedule', menuOrder: 32, showInMenu: true },
+  },
+  {
+    path: '/schedule/board',
+    name: 'schedule-board',
+    component: view(() => import('@/views/schedule/ProductionGantt.vue')),
+    meta: { title: '生产调度甘特图', section: '排产管理', sectionKey: 'schedule', menuOrder: 33, showInMenu: true },
+  },
+  {
+    path: '/schedule/reschedule-log',
+    name: 'schedule-reschedule-log',
+    component: view(() => import('@/views/plan/PlanLog.vue')),
+    meta: { title: '重排日志', section: '排产管理', sectionKey: 'schedule', menuOrder: 34, showInMenu: false },
+  },
+  {
+    path: '/quality/realtime',
+    name: 'quality-realtime',
+    component: view(() => import('@/views/quality/RealtimeInspect.vue')),
+    meta: { title: '实时质检', section: '质量管理', sectionKey: 'quality', menuOrder: 41, showInMenu: true },
+  },
+  {
+    path: '/quality/ncr',
+    name: 'quality-ncr',
+    component: view(() => import('@/views/quality/NcrList.vue')),
+    meta: { title: '异常闭环', section: '质量管理', sectionKey: 'quality', menuOrder: 42, showInMenu: true },
+  },
+  {
+    path: '/quality/rework',
+    name: 'quality-rework',
+    component: view(() => import('@/views/quality/ReworkList.vue')),
+    meta: { title: '返工处理', section: '质量管理', sectionKey: 'quality', menuOrder: 43, showInMenu: true },
+  },
+  {
+    path: '/order/list',
+    name: 'order-list',
+    component: view(() => import('@/views/order/OrderList.vue')),
+    meta: { title: '订单管理', section: '订单管理', sectionKey: 'order', menuOrder: 51, showInMenu: true },
+  },
+]
+
+const typedAppRoutes = appRoutes as Array<RouteRecordRaw & { meta: AppRouteMeta }>
+
+const menuSectionDefinitions: Omit<AppMenuSection, 'items'>[] = [
+  { key: 'dashboard', title: '看板' },
+  { key: 'gray', title: '来料管理' },
+  { key: 'process-center', title: '工艺中心' },
+  { key: 'schedule', title: '排产管理' },
+  { key: 'quality', title: '质量管理' },
+  { key: 'order', title: '订单管理' },
+]
+
+export const appMenuSections: AppMenuSection[] = menuSectionDefinitions
+  .map((section) => ({
+    ...section,
+    items: typedAppRoutes
+      .filter((route) => route.meta.sectionKey === section.key && route.meta.showInMenu)
+      .sort((left, right) => left.meta.menuOrder - right.meta.menuOrder)
+      .map((route) => ({
+        key: String(route.name),
+        title: route.meta.title,
+        to: route.path,
+      })),
+  }))
+  .filter((section) => section.items.length > 0)

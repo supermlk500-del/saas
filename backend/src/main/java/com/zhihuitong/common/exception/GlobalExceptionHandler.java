@@ -4,6 +4,7 @@ import com.zhihuitong.common.domain.AjaxResult;
 import jakarta.validation.ConstraintViolationException;
 import org.springframework.http.converter.HttpMessageNotReadableException;
 import org.springframework.validation.BindException;
+import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
@@ -37,6 +38,16 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(HttpMessageNotReadableException.class)
     public AjaxResult handleHttpMessageNotReadableException() {
         return AjaxResult.error(400, "Invalid request body");
+    }
+
+    @ExceptionHandler(MethodArgumentTypeMismatchException.class)
+    public AjaxResult handleMethodArgumentTypeMismatchException(MethodArgumentTypeMismatchException exception) {
+        return AjaxResult.error(400, "Invalid parameter: " + exception.getName());
+    }
+
+    @ExceptionHandler(BusinessException.class)
+    public AjaxResult handleBusinessException(BusinessException exception) {
+        return AjaxResult.error(exception.getCode(), exception.getMessage());
     }
 
     @ExceptionHandler(Exception.class)

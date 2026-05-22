@@ -1,302 +1,781 @@
 <script setup lang="ts">
-import { computed, reactive, ref, watch } from 'vue'
+import { computed, onMounted, reactive, ref } from 'vue'
 import { message } from 'ant-design-vue'
+import {
+  createProcessRoute,
+  createProcessStep,
+  createRouteStep,
+  deleteProcessRoute,
+  patchProcessStepStatus,
+  fetchProcesses,
+  fetchProcessSteps,
+  fetchRouteSteps,
+  getProcessRoute,
+  updateProcessRoute,
+  updateProcessStep,
+  updateRouteStep,
+  deleteRouteStep,
+  type ProcessQuery,
+  type ProcessRouteUpsertRequest,
+  type ProcessStepQuery,
+  type ProcessStepUpsertRequest,
+  type RouteStepUpsertRequest,
+} from '@/api/master/process'
+import TablePage from '@/components/TablePage.vue'
+import SearchBar from '@/components/SearchBar.vue'
+import { enabledStatusOptions } from '@/constants/dictionaries'
+import { useTable } from '@/hooks/useTable'
+import type { ProcessRouteItem, ProcessStepItem, RouteStepItem } from '@/types/domain'
 
-type NodeConfig = {
-  key: string
-  name: string
-  machineType: string
-  stitchLength: string
-  stitchType: string
-  eta: string
+type ProcessRouteFormModel = {
+  routeId?: number
+  routeName: string
+  description: string
+  isActive: number | undefined
 }
 
-const currentProduct = ref('男士衬衫-标准版')
+type RouteStepFormModel = {
+  routeStepId?: number
+  stepId: number | undefined
+  sortOrder: number | null
+  isMandatory: number | undefined
+}
 
-const products = [
-  { label: '男士衬衫-标准版', value: '男士衬衫-标准版' },
-  { label: '女士衬衫-修身版', value: '女士衬衫-修身版' },
-  { label: 'POLO衫-量产版', value: 'POLO衫-量产版' },
+type ProcessStepFormModel = {
+  stepId?: number
+  stepCode: string
+  stepName: string
+  stepType: string
+  sortOrder: number | null
+  defaultHours: number | null
+  description: string
+  isActive: number | undefined
+}
+
+const binaryStatusOptions = [
+  { label: '是', value: 1 },
+  { label: '否', value: 0 },
 ]
 
-const libraryNodes: NodeConfig[] = [
-  { key: 'inspect', name: '织物检验', machineType: '验布机', stitchLength: '-', stitchType: '来料检验', eta: '12 min' },
-  { key: 'cut', name: '裁断', machineType: '自动裁床', stitchLength: '-', stitchType: '刀模裁断', eta: '8 min' },
-  { key: 'sew', name: '缝纫', machineType: '平缝机', stitchLength: '3.5mm', stitchType: '40/2 涤纶线', eta: '15 min' },
-  { key: 'iron', name: '熨平', machineType: '蒸汽整烫台', stitchLength: '-', stitchType: '整烫定型', eta: '6 min' },
-  { key: 'quality', name: '质检', machineType: '人工检台', stitchLength: '-', stitchType: 'AQL 2.5', eta: '10 min' },
-  { key: 'pack', name: '包装', machineType: '自动包装机', stitchLength: '-', stitchType: '吊牌+装袋', eta: '7 min' },
-]
-
-const routeNodes = ref<NodeConfig[]>([])
-const activeNodeKey = ref('')
-
-const activeNode = computed(() => routeNodes.value.find((item) => item.key === activeNodeKey.value) ?? routeNodes.value[0])
-
-const draftConfig = reactive<NodeConfig>({
-  key: '',
-  name: '',
-  machineType: '',
-  stitchLength: '',
-  stitchType: '',
-  eta: '',
+const searchForm = reactive({
+  routeName: '',
+  isActive: undefined as number | undefined,
 })
 
-const storageKey = computed(() => `process_route:${currentProduct.value}`)
+const searchFields = [
+  { label: '路线名称', name: 'routeName', type: 'input' as const, placeholder: '请输入路线名称', width: '240px' },
+  {
+    label: '启用状态',
+    name: 'isActive',
+    type: 'select' as const,
+    placeholder: '全部',
+    options: enabledStatusOptions,
+    width: '160px',
+  },
+]
 
-const cloneNode = (n: NodeConfig): NodeConfig => ({ ...n })
+const columns = [
+  { title: '路线ID', dataIndex: 'routeId', key: 'routeId', width: 120 },
+  { title: '路线名称', dataIndex: 'routeName', key: 'routeName', width: 240 },
+  { title: '描述', dataIndex: 'description', key: 'description' },
+  { title: '启用状态', dataIndex: 'isActive', key: 'isActive', width: 120 },
+  { title: '创建时间', dataIndex: 'createTime', key: 'createTime', width: 180 },
+  { title: '操作', key: 'action', width: 300, fixed: 'right' as const },
+]
 
-const ensureActive = () => {
-  if (routeNodes.value.length === 0) {
-    activeNodeKey.value = ''
+const routeStepColumns = [
+  { title: '顺序号', dataIndex: 'sortOrder', key: 'sortOrder', width: 90 },
+  { title: '工序编码', dataIndex: 'stepCode', key: 'stepCode', width: 140 },
+  { title: '工序名称', dataIndex: 'stepName', key: 'stepName', width: 180 },
+  { title: '必选', dataIndex: 'isMandatory', key: 'isMandatory', width: 90 },
+  { title: '操作', key: 'action', width: 150 },
+]
+
+const processStepColumns = [
+  { title: '工序ID', dataIndex: 'stepId', key: 'stepId', width: 100 },
+  { title: '工序编码', dataIndex: 'stepCode', key: 'stepCode', width: 140 },
+  { title: '工序名称', dataIndex: 'stepName', key: 'stepName', width: 160 },
+  { title: '工序类型', dataIndex: 'stepType', key: 'stepType', width: 140 },
+  { title: '默认顺序', dataIndex: 'sortOrder', key: 'sortOrder', width: 100 },
+  { title: '默认工时', dataIndex: 'defaultHours', key: 'defaultHours', width: 100 },
+  { title: '启用状态', dataIndex: 'isActive', key: 'isActive', width: 100 },
+  { title: '操作', key: 'action', width: 180 },
+]
+
+const { data, loading, pagination } = useTable<ProcessRouteItem>()
+
+const modalOpen = ref(false)
+const submitting = ref(false)
+const modalMode = ref<'create' | 'edit'>('create')
+const formRef = ref()
+
+const routeStepDrawerOpen = ref(false)
+const routeStepLoading = ref(false)
+const currentRoute = ref<ProcessRouteItem | null>(null)
+const routeSteps = ref<RouteStepItem[]>([])
+
+const routeStepModalOpen = ref(false)
+const routeStepSubmitting = ref(false)
+const routeStepMode = ref<'create' | 'edit'>('create')
+const routeStepFormRef = ref()
+
+const processStepLibraryOpen = ref(false)
+const processStepLoading = ref(false)
+const processSteps = ref<ProcessStepItem[]>([])
+const processStepModalOpen = ref(false)
+const processStepSubmitting = ref(false)
+const processStepMode = ref<'create' | 'edit'>('create')
+const processStepFormRef = ref()
+
+const formModel = reactive<ProcessRouteFormModel>({
+  routeName: '',
+  description: '',
+  isActive: 1,
+})
+
+const routeStepForm = reactive<RouteStepFormModel>({
+  stepId: undefined,
+  sortOrder: 1,
+  isMandatory: 1,
+})
+
+const processStepForm = reactive<ProcessStepFormModel>({
+  stepCode: '',
+  stepName: '',
+  stepType: '',
+  sortOrder: 0,
+  defaultHours: null,
+  description: '',
+  isActive: 1,
+})
+
+const rules = {
+  routeName: [{ required: true, message: '请输入路线名称' }],
+  isActive: [{ required: true, message: '请选择启用状态' }],
+}
+
+const routeStepRules = {
+  stepId: [{ required: true, message: '请选择工序模板' }],
+  sortOrder: [{ required: true, message: '请输入顺序号' }],
+  isMandatory: [{ required: true, message: '请选择是否必选' }],
+}
+
+const processStepRules = {
+  stepCode: [{ required: true, message: '请输入工序编码' }],
+  stepName: [{ required: true, message: '请输入工序名称' }],
+  isActive: [{ required: true, message: '请选择启用状态' }],
+}
+
+const processStepOptions = computed(() =>
+  processSteps.value.map((item) => ({
+    label: `${item.stepCode} - ${item.stepName}`,
+    value: item.stepId,
+  })),
+)
+
+const loadData = async () => {
+  loading.value = true
+
+  try {
+    const query: ProcessQuery = {
+      pageNum: pagination.current,
+      pageSize: pagination.pageSize,
+      routeName: searchForm.routeName || undefined,
+      isActive: searchForm.isActive,
+    }
+
+    const response = await fetchProcesses(query)
+    data.value = response.list
+    pagination.total = response.total
+  } finally {
+    loading.value = false
+  }
+}
+
+const loadProcessStepLibrary = async () => {
+  processStepLoading.value = true
+
+  try {
+    const query: ProcessStepQuery = {
+      pageNum: 1,
+      pageSize: 200,
+    }
+
+    const response = await fetchProcessSteps(query)
+    processSteps.value = response.list
+  } finally {
+    processStepLoading.value = false
+  }
+}
+
+const loadRouteDetail = async (routeId: number) => {
+  routeStepLoading.value = true
+
+  try {
+    const [detail, steps] = await Promise.all([
+      getProcessRoute(routeId),
+      fetchRouteSteps(routeId),
+      loadProcessStepLibrary(),
+    ])
+
+    currentRoute.value = detail.data
+    routeSteps.value = steps
+  } finally {
+    routeStepLoading.value = false
+  }
+}
+
+pagination.onChange = (page: number, pageSize: number) => {
+  pagination.current = page
+  pagination.pageSize = pageSize
+  void loadData()
+}
+
+const resetSearch = () => {
+  searchForm.routeName = ''
+  searchForm.isActive = undefined
+  pagination.current = 1
+  void loadData()
+}
+
+const getEnabledLabel = (value: number) =>
+  enabledStatusOptions.find((item) => item.value === value)
+
+const resetFormModel = () => {
+  formModel.routeId = undefined
+  formModel.routeName = ''
+  formModel.description = ''
+  formModel.isActive = 1
+}
+
+const resetRouteStepForm = () => {
+  routeStepForm.routeStepId = undefined
+  routeStepForm.stepId = undefined
+  routeStepForm.sortOrder = routeSteps.value.length + 1
+  routeStepForm.isMandatory = 1
+}
+
+const resetProcessStepForm = () => {
+  processStepForm.stepId = undefined
+  processStepForm.stepCode = ''
+  processStepForm.stepName = ''
+  processStepForm.stepType = ''
+  processStepForm.sortOrder = 0
+  processStepForm.defaultHours = null
+  processStepForm.description = ''
+  processStepForm.isActive = 1
+}
+
+const openCreateModal = () => {
+  modalMode.value = 'create'
+  resetFormModel()
+  modalOpen.value = true
+}
+
+const openEditModal = (record: ProcessRouteItem) => {
+  modalMode.value = 'edit'
+  formModel.routeId = record.routeId
+  formModel.routeName = record.routeName
+  formModel.description = record.description || ''
+  formModel.isActive = record.isActive
+  modalOpen.value = true
+}
+
+const openRouteStepDrawer = async (record: ProcessRouteItem) => {
+  routeStepDrawerOpen.value = true
+  currentRoute.value = record
+  await loadRouteDetail(record.routeId)
+}
+
+const openRouteStepModal = async () => {
+  if (!processSteps.value.length) {
+    await loadProcessStepLibrary()
+  }
+
+  if (!processSteps.value.length) {
+    message.warning('请先在工序模板库中创建工序')
     return
   }
-  const exists = routeNodes.value.some((n) => n.key === activeNodeKey.value)
-  if (!exists) {
-    const first = routeNodes.value[0]
-    if (first) activeNodeKey.value = first.key
-  }
+
+  routeStepMode.value = 'create'
+  resetRouteStepForm()
+  routeStepModalOpen.value = true
 }
 
-const loadRoute = () => {
+const openEditRouteStepModal = async (record: RouteStepItem) => {
+  if (!processSteps.value.length) {
+    await loadProcessStepLibrary()
+  }
+
+  routeStepMode.value = 'edit'
+  routeStepForm.routeStepId = record.routeStepId
+  routeStepForm.stepId = record.stepId
+  routeStepForm.sortOrder = record.sortOrder
+  routeStepForm.isMandatory = record.isMandatory
+  routeStepModalOpen.value = true
+}
+
+const openProcessStepLibrary = async () => {
+  processStepLibraryOpen.value = true
+  await loadProcessStepLibrary()
+}
+
+const openCreateProcessStepModal = () => {
+  processStepMode.value = 'create'
+  resetProcessStepForm()
+  processStepModalOpen.value = true
+}
+
+const openEditProcessStepModal = (record: ProcessStepItem) => {
+  processStepMode.value = 'edit'
+  processStepForm.stepId = record.stepId
+  processStepForm.stepCode = record.stepCode
+  processStepForm.stepName = record.stepName
+  processStepForm.stepType = record.stepType || ''
+  processStepForm.sortOrder = record.sortOrder ?? 0
+  processStepForm.defaultHours = record.defaultHours != null ? Number(record.defaultHours) : null
+  processStepForm.description = record.description || ''
+  processStepForm.isActive = record.isActive
+  processStepModalOpen.value = true
+}
+
+const buildPayload = (): ProcessRouteUpsertRequest => ({
+  routeName: formModel.routeName.trim(),
+  description: formModel.description.trim() || undefined,
+  isActive: formModel.isActive ?? 1,
+})
+
+const buildRouteStepPayload = (): RouteStepUpsertRequest => ({
+  stepId: routeStepForm.stepId ?? 0,
+  sortOrder: routeStepForm.sortOrder ?? 1,
+  isMandatory: routeStepForm.isMandatory ?? 1,
+})
+
+const buildProcessStepPayload = (): ProcessStepUpsertRequest => ({
+  stepCode: processStepForm.stepCode.trim(),
+  stepName: processStepForm.stepName.trim(),
+  stepType: processStepForm.stepType.trim() || undefined,
+  sortOrder: processStepForm.sortOrder,
+  defaultHours: processStepForm.defaultHours,
+  description: processStepForm.description.trim() || undefined,
+  isActive: processStepForm.isActive ?? 1,
+})
+
+const handleSubmit = async () => {
+  await formRef.value?.validate()
+
+  submitting.value = true
   try {
-    const raw = localStorage.getItem(storageKey.value)
-    if (raw) {
-      const parsed = JSON.parse(raw) as NodeConfig[]
-      routeNodes.value = Array.isArray(parsed) ? parsed.map(cloneNode) : libraryNodes.map(cloneNode)
-    } else {
-      routeNodes.value = libraryNodes.map(cloneNode)
+    const payload = buildPayload()
+
+    if (modalMode.value === 'create') {
+      await createProcessRoute(payload)
+      message.success('新增工艺路线成功')
+    } else if (formModel.routeId) {
+      await updateProcessRoute(formModel.routeId, payload)
+      message.success('编辑工艺路线成功')
     }
-  } catch {
-    routeNodes.value = libraryNodes.map(cloneNode)
+
+    modalOpen.value = false
+    await loadData()
+  } finally {
+    submitting.value = false
   }
-  ensureActive()
 }
 
-watch(
-  () => currentProduct.value,
-  () => {
-    loadRoute()
-  },
-  { immediate: true },
-)
-
-watch(
-  () => activeNode.value,
-  (n) => {
-    if (!n) return
-    draftConfig.key = n.key
-    draftConfig.name = n.name
-    draftConfig.machineType = n.machineType
-    draftConfig.stitchLength = n.stitchLength
-    draftConfig.stitchType = n.stitchType
-    draftConfig.eta = n.eta
-  },
-  { immediate: true },
-)
-
-const upsertFromLibrary = (key: string) => {
-  const lib = libraryNodes.find((n) => n.key === key)
-  if (!lib) return
-  const existing = routeNodes.value.find((n) => n.key === key)
-  if (!existing) routeNodes.value.push(cloneNode(lib))
-  activeNodeKey.value = key
-}
-
-const applyConfig = () => {
-  if (!draftConfig.key) return
-  const idx = routeNodes.value.findIndex((n) => n.key === draftConfig.key)
-  if (idx < 0) return
-  const current = routeNodes.value[idx]
-  if (!current) return
-  routeNodes.value[idx] = {
-    key: draftConfig.key,
-    name: current.name,
-    machineType: draftConfig.machineType,
-    stitchLength: draftConfig.stitchLength,
-    stitchType: draftConfig.stitchType,
-    eta: draftConfig.eta,
+const handleRouteStepSubmit = async () => {
+  if (!currentRoute.value) {
+    return
   }
-  message.success('已应用节点参数')
+
+  await routeStepFormRef.value?.validate()
+
+  routeStepSubmitting.value = true
+  try {
+    const payload = buildRouteStepPayload()
+
+    if (routeStepMode.value === 'create') {
+      await createRouteStep(currentRoute.value.routeId, payload)
+      message.success('新增路线工序成功')
+    } else if (routeStepForm.routeStepId) {
+      await updateRouteStep(currentRoute.value.routeId, routeStepForm.routeStepId, payload)
+      message.success('编辑路线工序成功')
+    }
+
+    routeStepModalOpen.value = false
+    await loadRouteDetail(currentRoute.value.routeId)
+  } finally {
+    routeStepSubmitting.value = false
+  }
 }
 
-const saveRoute = () => {
-  localStorage.setItem(storageKey.value, JSON.stringify(routeNodes.value))
-  message.success('已保存工艺路线')
+const handleDeleteRouteStep = async (record: RouteStepItem) => {
+  if (!currentRoute.value) {
+    return
+  }
+
+  await deleteRouteStep(currentRoute.value.routeId, record.routeStepId)
+  message.success('删除路线工序成功')
+  await loadRouteDetail(currentRoute.value.routeId)
 }
 
-const clearCanvas = () => {
-  routeNodes.value = []
-  activeNodeKey.value = ''
-  message.info('已清空画布')
+const handleDeleteProcessRoute = async (record: ProcessRouteItem) => {
+  await deleteProcessRoute(record.routeId)
+  message.success('删除工艺路线成功')
+  await loadData()
 }
+
+const handleProcessStepSubmit = async () => {
+  await processStepFormRef.value?.validate()
+
+  processStepSubmitting.value = true
+  try {
+    const payload = buildProcessStepPayload()
+
+    if (processStepMode.value === 'create') {
+      await createProcessStep(payload)
+      message.success('新增工序模板成功')
+    } else if (processStepForm.stepId) {
+      await updateProcessStep(processStepForm.stepId, payload)
+      message.success('编辑工序模板成功')
+    }
+
+    processStepModalOpen.value = false
+    await loadProcessStepLibrary()
+  } finally {
+    processStepSubmitting.value = false
+  }
+}
+
+const handlePatchProcessStepStatus = async (record: ProcessStepItem) => {
+  const nextStatus = record.isActive === 1 ? 0 : 1
+  await patchProcessStepStatus(record.stepId, nextStatus)
+  message.success(nextStatus === 1 ? '启用工序模板成功' : '停用工序模板成功')
+  await loadProcessStepLibrary()
+}
+
+onMounted(() => {
+  void loadData()
+})
 </script>
 
 <template>
-  <div class="process-page">
-    <div class="page-header">
-      <a-typography-title :level="2" style="margin: 0">工艺路线</a-typography-title>
-      <div class="right-actions">
-        <a-button type="primary" style="background:#17b36b;border-color:#17b36b" @click="saveRoute">保存工艺路线</a-button>
-        <a-button type="primary" @click="clearCanvas">清空画布</a-button>
-      </div>
-    </div>
+  <TablePage title="工艺路线" :columns="columns" :data="data" :loading="loading" :pagination="pagination">
+    <template #search>
+      <SearchBar :model="searchForm" :fields="searchFields" @search="loadData" @reset="resetSearch" />
+    </template>
 
-    <div class="product-row">
-      <div class="label">当前款式：</div>
-      <a-select v-model:value="currentProduct" :options="products" style="width: 300px" />
-    </div>
+    <template #actions>
+      <a-space>
+        <a-button @click="openProcessStepLibrary">工序模板库</a-button>
+        <a-button type="primary" @click="openCreateModal">新增路线</a-button>
+      </a-space>
+    </template>
 
-    <div class="board">
-      <div class="node-library">
-        <div class="panel-title">工艺节点库</div>
-        <a-button
-          v-for="item in libraryNodes"
-          :key="item.key"
-          block
-          class="node-btn"
-          :type="activeNodeKey === item.key ? 'primary' : 'default'"
-          @click="upsertFromLibrary(item.key)"
-        >
-          {{ item.name }}
-        </a-button>
-      </div>
+    <template #bodyCell="{ column, record }">
+      <template v-if="column.key === 'description'">
+        {{ record.description || '-' }}
+      </template>
+      <template v-else-if="column.key === 'isActive'">
+        <a-tag :color="getEnabledLabel(record.isActive)?.color">
+          {{ getEnabledLabel(record.isActive)?.label || record.isActive }}
+        </a-tag>
+      </template>
+      <template v-else-if="column.key === 'createTime'">
+        {{ record.createTime || '-' }}
+      </template>
+      <template v-else-if="column.key === 'action'">
+        <a-space>
+          <a-button type="link" @click="openRouteStepDrawer(record)">工序配置</a-button>
+          <a-button type="link" @click="openEditModal(record)">编辑</a-button>
+          <a-popconfirm title="确认删除该工艺路线吗？" @confirm="handleDeleteProcessRoute(record)">
+            <a-button type="link" danger>删除</a-button>
+          </a-popconfirm>
+        </a-space>
+      </template>
+    </template>
+  </TablePage>
 
-      <div class="canvas">
-        <div class="panel-title">工艺路线配置画布</div>
-        <div class="grid-area">
-          <div class="flow-row" v-if="routeNodes.length > 0">
-            <div
-              v-for="item in routeNodes"
-              :key="item.key"
-              class="flow-node"
-              :class="{ active: activeNodeKey === item.key }"
-              @click="activeNodeKey = item.key"
-            >
-              {{ item.name }}
-            </div>
+  <a-modal
+    v-model:open="modalOpen"
+    :title="modalMode === 'create' ? '新增工艺路线' : '编辑工艺路线'"
+    ok-text="保存"
+    cancel-text="取消"
+    :confirm-loading="submitting"
+    width="640px"
+    @ok="handleSubmit"
+  >
+    <a-form ref="formRef" :model="formModel" :rules="rules" layout="vertical">
+      <a-form-item label="路线名称" name="routeName">
+        <a-input v-model:value="formModel.routeName" placeholder="请输入路线名称" />
+      </a-form-item>
+
+      <a-form-item label="描述" name="description">
+        <a-textarea v-model:value="formModel.description" :rows="4" placeholder="请输入路线描述" />
+      </a-form-item>
+
+      <a-form-item label="启用状态" name="isActive">
+        <a-select
+          v-model:value="formModel.isActive"
+          :options="enabledStatusOptions"
+          placeholder="请选择启用状态"
+        />
+      </a-form-item>
+    </a-form>
+  </a-modal>
+
+  <a-drawer
+    v-model:open="routeStepDrawerOpen"
+    width="920px"
+    title="路线工序配置"
+    :destroy-on-close="true"
+  >
+    <a-spin :spinning="routeStepLoading">
+      <div v-if="currentRoute" class="route-detail">
+        <div class="route-detail-header">
+          <div>
+            <div class="route-title">{{ currentRoute.routeName }}</div>
+            <div class="route-subtitle">{{ currentRoute.description || '暂无路线描述' }}</div>
           </div>
-          <div v-else class="empty-tip">点击左侧节点库，将工艺节点加入画布</div>
+          <a-space>
+            <a-button @click="openProcessStepLibrary">工序模板库</a-button>
+            <a-button type="primary" @click="openRouteStepModal">新增路线工序</a-button>
+          </a-space>
         </div>
+
+        <a-descriptions :column="3" bordered size="small" class="route-summary">
+          <a-descriptions-item label="路线ID">{{ currentRoute.routeId }}</a-descriptions-item>
+          <a-descriptions-item label="启用状态">
+            {{ getEnabledLabel(currentRoute.isActive)?.label || currentRoute.isActive }}
+          </a-descriptions-item>
+          <a-descriptions-item label="创建时间">{{ currentRoute.createTime || '-' }}</a-descriptions-item>
+        </a-descriptions>
+
+        <a-table
+          :columns="routeStepColumns"
+          :data-source="routeSteps"
+          :pagination="false"
+          row-key="routeStepId"
+          class="route-step-table"
+        >
+          <template #bodyCell="{ column, record }">
+            <template v-if="column.key === 'isMandatory'">
+              <a-tag :color="record.isMandatory === 1 ? 'success' : 'default'">
+                {{ record.isMandatory === 1 ? '是' : '否' }}
+              </a-tag>
+            </template>
+            <template v-else-if="column.key === 'action'">
+              <a-space>
+                <a-button type="link" @click="openEditRouteStepModal(record)">编辑</a-button>
+                <a-popconfirm title="确认删除该路线工序吗？" @confirm="handleDeleteRouteStep(record)">
+                  <a-button type="link" danger>删除</a-button>
+                </a-popconfirm>
+              </a-space>
+            </template>
+          </template>
+        </a-table>
+      </div>
+    </a-spin>
+  </a-drawer>
+
+  <a-modal
+    v-model:open="routeStepModalOpen"
+    :title="routeStepMode === 'create' ? '新增路线工序' : '编辑路线工序'"
+    ok-text="保存"
+    cancel-text="取消"
+    :confirm-loading="routeStepSubmitting"
+    width="560px"
+    @ok="handleRouteStepSubmit"
+  >
+    <a-form ref="routeStepFormRef" :model="routeStepForm" :rules="routeStepRules" layout="vertical">
+      <a-form-item label="工序模板" name="stepId">
+        <a-select
+          v-model:value="routeStepForm.stepId"
+          :options="processStepOptions"
+          placeholder="请选择工序模板"
+          show-search
+          option-filter-prop="label"
+        />
+      </a-form-item>
+
+      <a-form-item label="顺序号" name="sortOrder">
+        <a-input-number v-model:value="routeStepForm.sortOrder" :min="1" style="width: 100%" />
+      </a-form-item>
+
+      <a-form-item label="是否必选" name="isMandatory">
+        <a-select
+          v-model:value="routeStepForm.isMandatory"
+          :options="binaryStatusOptions"
+          placeholder="请选择是否必选"
+        />
+      </a-form-item>
+    </a-form>
+  </a-modal>
+
+  <a-modal
+    v-model:open="processStepLibraryOpen"
+    title="工序模板库"
+    width="1080px"
+    :footer="null"
+    destroy-on-close
+  >
+    <div class="process-step-toolbar">
+      <div class="process-step-hint">当前页面用于维护工艺路线依赖的工序模板资源。</div>
+      <a-button type="primary" @click="openCreateProcessStepModal">新增工序模板</a-button>
+    </div>
+
+    <a-table
+      :columns="processStepColumns"
+      :data-source="processSteps"
+      :loading="processStepLoading"
+      :pagination="{ pageSize: 8, showSizeChanger: false }"
+      row-key="stepId"
+    >
+      <template #bodyCell="{ column, record }">
+        <template v-if="column.key === 'stepType'">
+          {{ record.stepType || '-' }}
+        </template>
+        <template v-else-if="column.key === 'sortOrder'">
+          {{ record.sortOrder ?? '-' }}
+        </template>
+        <template v-else-if="column.key === 'defaultHours'">
+          {{ record.defaultHours ?? '-' }}
+        </template>
+        <template v-else-if="column.key === 'isActive'">
+          <a-tag :color="getEnabledLabel(record.isActive)?.color">
+            {{ getEnabledLabel(record.isActive)?.label || record.isActive }}
+          </a-tag>
+        </template>
+        <template v-else-if="column.key === 'action'">
+          <a-space>
+            <a-button type="link" @click="openEditProcessStepModal(record)">编辑</a-button>
+            <a-popconfirm
+              :title="record.isActive === 1 ? '确认停用该工序模板吗？' : '确认启用该工序模板吗？'"
+              @confirm="handlePatchProcessStepStatus(record)"
+            >
+              <a-button type="link">
+                {{ record.isActive === 1 ? '停用' : '启用' }}
+              </a-button>
+            </a-popconfirm>
+          </a-space>
+        </template>
+      </template>
+    </a-table>
+  </a-modal>
+
+  <a-modal
+    v-model:open="processStepModalOpen"
+    :title="processStepMode === 'create' ? '新增工序模板' : '编辑工序模板'"
+    ok-text="保存"
+    cancel-text="取消"
+    :confirm-loading="processStepSubmitting"
+    width="720px"
+    @ok="handleProcessStepSubmit"
+  >
+    <a-form ref="processStepFormRef" :model="processStepForm" :rules="processStepRules" layout="vertical">
+      <div class="form-grid">
+        <a-form-item label="工序编码" name="stepCode">
+          <a-input v-model:value="processStepForm.stepCode" placeholder="请输入工序编码" />
+        </a-form-item>
+
+        <a-form-item label="工序名称" name="stepName">
+          <a-input v-model:value="processStepForm.stepName" placeholder="请输入工序名称" />
+        </a-form-item>
+
+        <a-form-item label="工序类型" name="stepType">
+          <a-input v-model:value="processStepForm.stepType" placeholder="请输入工序类型" />
+        </a-form-item>
+
+        <a-form-item label="默认顺序" name="sortOrder">
+          <a-input-number v-model:value="processStepForm.sortOrder" :min="0" style="width: 100%" />
+        </a-form-item>
+
+        <a-form-item label="默认工时" name="defaultHours">
+          <a-input-number
+            v-model:value="processStepForm.defaultHours"
+            :min="0"
+            :precision="2"
+            style="width: 100%"
+          />
+        </a-form-item>
+
+        <a-form-item label="启用状态" name="isActive">
+          <a-select
+            v-model:value="processStepForm.isActive"
+            :options="enabledStatusOptions"
+            placeholder="请选择启用状态"
+          />
+        </a-form-item>
       </div>
 
-      <div class="config-panel">
-        <div class="panel-title">节点参数配置（{{ activeNode?.name ?? '-' }}）</div>
-        <div class="field-label">机台类型</div>
-        <a-input v-model:value="draftConfig.machineType" :disabled="!activeNode" />
-        <div class="field-label">缝纫长度</div>
-        <a-input v-model:value="draftConfig.stitchLength" :disabled="!activeNode" />
-        <div class="field-label">线材类型</div>
-        <a-input v-model:value="draftConfig.stitchType" :disabled="!activeNode" />
-        <div class="field-label">预计时间</div>
-        <a-input v-model:value="draftConfig.eta" :disabled="!activeNode" />
-        <a-button type="primary" block style="margin-top: 16px" :disabled="!activeNode" @click="applyConfig">
-          应用参数
-        </a-button>
-      </div>
-    </div>
-  </div>
+      <a-form-item label="描述" name="description">
+        <a-textarea v-model:value="processStepForm.description" :rows="4" placeholder="请输入工序描述" />
+      </a-form-item>
+    </a-form>
+  </a-modal>
 </template>
 
 <style scoped>
-.process-page {
-  padding: 0;
+.route-detail {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
 }
 
-.page-header {
+.route-detail-header {
   display: flex;
+  align-items: flex-start;
   justify-content: space-between;
-  align-items: center;
-  margin-bottom: 12px;
+  gap: 16px;
 }
 
-.right-actions {
-  display: flex;
-  gap: 8px;
-}
-
-.product-row {
-  display: flex;
-  align-items: center;
-  margin-bottom: 12px;
-  gap: 8px;
-}
-
-.label {
-  font-size: 22px;
+.route-title {
+  color: #1e293b;
+  font-size: 20px;
   font-weight: 700;
-  color: #0f172a;
 }
 
-.board {
-  display: grid;
-  grid-template-columns: 190px 1fr 250px;
-  gap: 12px;
-}
-
-.node-library,
-.canvas,
-.config-panel {
-  border: 1px solid #e5e7eb;
-  background: #ffffff;
-  border-radius: 8px;
-  padding: 12px;
-}
-
-.panel-title {
-  font-size: 18px;
-  font-weight: 700;
-  color: #0f172a;
-  margin-bottom: 12px;
-}
-
-.node-btn {
-  margin-bottom: 8px;
-  text-align: left;
-}
-
-.grid-area {
-  height: 420px;
-  border: 1px solid #e5e7eb;
-  border-radius: 6px;
-  background-image: linear-gradient(#eef2f7 1px, transparent 1px), linear-gradient(90deg, #eef2f7 1px, transparent 1px);
-  background-size: 24px 24px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-
-.flow-row {
-  display: flex;
-  gap: 14px;
-  flex-wrap: wrap;
-  justify-content: center;
-}
-
-.flow-node {
-  min-width: 120px;
-  text-align: center;
-  padding: 12px 14px;
-  border-radius: 6px;
-  border: 1px solid #cbd5e1;
-  background: #f8fafc;
-  color: #0f172a;
-  cursor: pointer;
-}
-
-.flow-node.active {
-  background: #1677ff;
-  border-color: #1677ff;
-  color: #ffffff;
-}
-
-.field-label {
-  margin: 10px 0 6px;
-  color: #475569;
-}
-
-.empty-tip {
+.route-subtitle {
+  margin-top: 6px;
   color: #64748b;
-  font-weight: 600;
+}
+
+.route-summary {
+  margin-bottom: 6px;
+}
+
+.route-step-table {
+  margin-top: 4px;
+}
+
+.process-step-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 16px;
+}
+
+.process-step-hint {
+  color: #64748b;
+  line-height: 1.6;
+}
+
+.form-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0 16px;
+}
+
+@media (max-width: 900px) {
+  .form-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .route-detail-header,
+  .process-step-toolbar {
+    flex-direction: column;
+    align-items: stretch;
+  }
 }
 </style>
