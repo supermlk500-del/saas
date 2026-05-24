@@ -7,11 +7,11 @@
 - 架构：单体分层（api / service / model / schema / solver）
 - 前端：独立项目，通过 `/api/v1` 对接（详见 `开发过程/前端对接_API清单.md`）
 
-## 2. 固定数据库连接
+## 2. 数据库连接配置
 - host: 127.0.0.1
 - port: 3306
 - user: root
-- password: 123456
+- password: 通过 `.env` 中的 `DB_PASSWORD` / `db_password` 或系统环境变量配置
 - db: zhihuitong_schedule_v1
 
 配置文件：`app/core/config.py`

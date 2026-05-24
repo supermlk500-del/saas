@@ -12,7 +12,7 @@ class Settings(BaseSettings):
     db_host: str = "127.0.0.1"
     db_port: int = 3306
     db_user: str = "root"
-    db_password: str = "yuanshen438"
+    db_password: str = ""
     db_name: str = "zhihuitong_schedule_v1"
     llm_enabled: bool = False
     llm_api_key: str = ""
