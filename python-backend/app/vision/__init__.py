@@ -1,1 +1,0 @@
-"""Vision inference adapters."""
