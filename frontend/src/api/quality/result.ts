@@ -1,21 +1,10 @@
-// 接口暂时停用：/business/result/list
+import { fetchQcRecords, type QcRecordQuery } from '@/api/quality/qcRecord'
+import type { QcRecordItem } from '@/types/domain'
+import type { PageResult } from '@/types/http'
 
-export type ResultItem = {
-  key: string
-  resultNo: string
-  taskNo: string
-  woNo: string
-  inspector: string
-  result: string
-  defectCount: number
-  time: string
-}
+export type ResultItem = QcRecordItem
+export type ResultQuery = QcRecordQuery
 
-export type ResultQuery = {
-  keyword?: string
-  result?: string
-}
-
-export const fetchResults = async (_query?: ResultQuery): Promise<ResultItem[]> => {
-  return []
+export const fetchResults = async (query?: ResultQuery): Promise<PageResult<ResultItem>> => {
+  return fetchQcRecords(query)
 }

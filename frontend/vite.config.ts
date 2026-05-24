@@ -20,6 +20,7 @@ export default defineConfig({
       '/prod-api': {
         target: 'http://localhost:8080',
         changeOrigin: true,
+        ws: true,
         rewrite: (path) => path.replace(/^\/prod-api/, ''),
       },
     },

@@ -3,6 +3,7 @@ package com.zhihuitong.modules.plan.service;
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.zhihuitong.common.domain.TableDataInfo;
+import com.zhihuitong.common.enums.DeviceStatus;
 import com.zhihuitong.common.exception.BusinessException;
 import com.zhihuitong.common.util.AuditRemarkUtils;
 import com.zhihuitong.common.util.TableDataInfoBuilder;
@@ -37,6 +38,7 @@ import org.springframework.util.StringUtils;
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
@@ -274,8 +276,8 @@ public class ProductionPlanService {
         LocalDateTime cursor = plan.getPlanStartTime();
         for (RouteStep routeStep : routeSteps) {
             ProcessStep step = processStepService.requireStep(routeStep.getStepId());
-            BigDecimal planHours = step.getDefaultHours() == null ? BigDecimal.ONE : step.getDefaultHours();
-            LocalDateTime endTime = cursor.plusMinutes(planHours.multiply(BigDecimal.valueOf(60)).longValue());
+            BigDecimal planHours = resolvePlanHours(step);
+            LocalDateTime endTime = calculateEndTime(cursor, planHours);
 
             PlanStep planStep = new PlanStep();
             planStep.setPlanId(plan.getPlanId());
@@ -300,12 +302,43 @@ public class ProductionPlanService {
     }
 
     private Long pickRecommendedMachine(Long stepId, BatchInfo batch) {
-        List<StepMachineCapability> capabilities = capabilityService.findActiveCapabilities(stepId);
-        return capabilities.stream()
-                .filter(item -> capabilityService.supportsBatch(stepId, item.getMachineId(), batch.getWidth(), batch.getWeight()))
+        return capabilityService.findActiveCapabilities(stepId).stream()
+                .filter(item -> capabilityService.supportsCapability(item, batch.getWidth(), batch.getWeight()))
+                .sorted(Comparator
+                        .comparingInt((StepMachineCapability item) -> machineAvailabilityRank(item.getMachineId()))
+                        .thenComparing(StepMachineCapability::getMaxSpeed, Comparator.nullsLast(Comparator.reverseOrder()))
+                        .thenComparing(StepMachineCapability::getMaxBatchWeight, Comparator.nullsLast(Comparator.reverseOrder())))
                 .map(StepMachineCapability::getMachineId)
                 .findFirst()
                 .orElse(null);
+    }
+
+    private BigDecimal resolvePlanHours(ProcessStep step) {
+        return step.getDefaultHours() == null ? BigDecimal.ONE : step.getDefaultHours();
+    }
+
+    private LocalDateTime calculateEndTime(LocalDateTime startTime, BigDecimal planHours) {
+        return startTime.plusMinutes(planHours.multiply(BigDecimal.valueOf(60)).longValue());
+    }
+
+    private int machineAvailabilityRank(Long machineId) {
+        if (machineId == null) {
+            return Integer.MAX_VALUE;
+        }
+        Machine machine = machineService.requireMachine(machineId);
+        if (machine.getStatus() == null) {
+            return 10;
+        }
+        if (machine.getStatus() == DeviceStatus.IDLE.getCode()) {
+            return 0;
+        }
+        if (machine.getStatus() == DeviceStatus.RUNNING.getCode()) {
+            return 1;
+        }
+        if (machine.getStatus() == DeviceStatus.MAINTENANCE.getCode()) {
+            return 2;
+        }
+        return 3;
     }
 
     private Map<Long, BatchInfo> fetchBatchMap(List<Long> ids) {

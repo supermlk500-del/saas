@@ -2,14 +2,19 @@ package com.zhihuitong.modules.quality.controller;
 
 import com.zhihuitong.common.domain.AjaxResult;
 import com.zhihuitong.common.domain.TableDataInfo;
+import com.zhihuitong.modules.quality.dto.QcDetectFrameRequest;
+import com.zhihuitong.modules.quality.dto.QcDetectImageRequest;
 import com.zhihuitong.modules.quality.dto.QcRecordCloseRequest;
 import com.zhihuitong.modules.quality.dto.QcRecordQuery;
 import com.zhihuitong.modules.quality.dto.QcRecordReviewRequest;
 import com.zhihuitong.modules.quality.dto.QcRecordUpsertRequest;
 import com.zhihuitong.modules.quality.entity.QcRecord;
+import com.zhihuitong.modules.quality.service.InspectionIntegrationService;
 import com.zhihuitong.modules.quality.service.QcRecordService;
+import com.zhihuitong.modules.quality.vo.InspectionIntegrationResultVo;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.Min;
+import org.springframework.http.MediaType;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.ModelAttribute;
@@ -27,9 +32,12 @@ import org.springframework.web.bind.annotation.RestController;
 public class QcRecordController {
 
     private final QcRecordService qcRecordService;
+    private final InspectionIntegrationService inspectionIntegrationService;
 
-    public QcRecordController(QcRecordService qcRecordService) {
+    public QcRecordController(QcRecordService qcRecordService,
+                              InspectionIntegrationService inspectionIntegrationService) {
         this.qcRecordService = qcRecordService;
+        this.inspectionIntegrationService = inspectionIntegrationService;
     }
 
     @GetMapping
@@ -45,6 +53,18 @@ public class QcRecordController {
     @PostMapping
     public AjaxResult create(@Valid @RequestBody QcRecordUpsertRequest request) {
         return AjaxResult.success(qcRecordService.create(request));
+    }
+
+    @PostMapping(value = "/detect-image", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    public AjaxResult detectImage(@Valid @ModelAttribute QcDetectImageRequest request) {
+        InspectionIntegrationResultVo result = inspectionIntegrationService.detectImage(request);
+        return AjaxResult.success(result);
+    }
+
+    @PostMapping(value = "/detect-frame", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    public AjaxResult detectFrame(@Valid @ModelAttribute QcDetectFrameRequest request) {
+        InspectionIntegrationResultVo result = inspectionIntegrationService.detectFrame(request);
+        return AjaxResult.success(result);
     }
 
     @PutMapping("/{inspectionId}")

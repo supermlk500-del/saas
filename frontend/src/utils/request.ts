@@ -10,6 +10,13 @@ const service = axios.create({
   },
 })
 
+service.interceptors.request.use((config) => {
+  if (config.data instanceof FormData) {
+    delete config.headers?.['Content-Type']
+  }
+  return config
+})
+
 service.interceptors.response.use(
   (response) => {
     const data = response.data

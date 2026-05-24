@@ -1,63 +1,100 @@
 <script setup lang="ts">
-import { onMounted, reactive, ref } from 'vue'
+import { onMounted, reactive } from 'vue'
 import TablePage from '@/components/TablePage.vue'
-import { fetchDefects, type DefectItem } from '@/api/quality/defect'
-import { useTable } from '@/hooks/useTable'
-import ActionBar from '@/components/ActionBar.vue'
-import FormModal from '@/components/FormModal.vue'
 import SearchBar from '@/components/SearchBar.vue'
+import { fetchDefects, type DefectQuery, type DefectItem } from '@/api/quality/defect'
+import { enabledStatusOptions } from '@/constants/dictionaries'
+import { useTable } from '@/hooks/useTable'
 
-const formFields = [
-  { label: '缺陷编码', name: 'defectCode', type: 'input' as const, placeholder: '请输入缺陷编码' },
-  { label: '缺陷名称', name: 'defectName', type: 'input' as const, placeholder: '请输入缺陷名称' },
-  { label: '分类', name: 'category', type: 'input' as const, placeholder: '请输入分类' },
-  { label: '严重等级', name: 'level', type: 'input' as const, placeholder: '请输入严重等级' },
-]
-
-const formModel = reactive({ defectCode: '', defectName: '', category: '', level: '' })
-
-const rules = {
-  defectCode: [{ required: true, message: '请输入缺陷编码' }],
-  defectName: [{ required: true, message: '请输入缺陷名称' }],
-  category: [{ required: true, message: '请输入分类' }],
-  level: [{ required: true, message: '请输入严重等级' }],
-}
-
-const searchForm = reactive({ keyword: '', category: undefined as string | undefined })
+const searchForm = reactive({
+  qcItemCode: '',
+  qcItemName: '',
+  qcType: '',
+})
 
 const searchFields = [
-  { label: '关键字', name: 'keyword', type: 'input', placeholder: '编码/名称', width: '200px' },
-  { label: '分类', name: 'category', type: 'select', placeholder: '全部', options: [{ label: '外观', value: '外观' }, { label: '尺寸', value: '尺寸' }, { label: '功能', value: '功能' }] },
+  { label: '缺陷编码', name: 'qcItemCode', type: 'input' as const, width: '160px' },
+  { label: '缺陷名称', name: 'qcItemName', type: 'input' as const, width: '180px' },
+  { label: '分类/类型', name: 'qcType', type: 'input' as const, width: '160px' },
 ]
 
 const columns = [
-  { title: '缺陷编码', dataIndex: 'defectCode', key: 'defectCode' },
-  { title: '缺陷名称', dataIndex: 'defectName', key: 'defectName' },
-  { title: '分类', dataIndex: 'category', key: 'category' },
-  { title: '严重等级', dataIndex: 'level', key: 'level' },
-  { title: '状态', dataIndex: 'status', key: 'status' },
+  { title: '缺陷编码', dataIndex: 'qcItemCode', key: 'qcItemCode', width: 140 },
+  { title: '缺陷名称', dataIndex: 'qcItemName', key: 'qcItemName', width: 180 },
+  { title: '分类/类型', dataIndex: 'qcType', key: 'qcType', width: 160 },
+  { title: '单位', dataIndex: 'unit', key: 'unit', width: 100 },
+  { title: '标准下限', dataIndex: 'standardMin', key: 'standardMin', width: 100 },
+  { title: '标准上限', dataIndex: 'standardMax', key: 'standardMax', width: 100 },
+  { title: '状态', dataIndex: 'isActive', key: 'isActive', width: 100 },
+  { title: '说明', dataIndex: 'description', key: 'description' },
 ]
 
 const { data, loading, pagination } = useTable<DefectItem>()
-const modalOpen = ref(false)
-const actionBar = [{ key: 'new', label: '新增缺陷代码', type: 'primary' }]
-const handlePageAction = (key: string) => { if (key === 'new') openModal() }
-const openModal = () => { modalOpen.value = true }
-const handleOk = () => { modalOpen.value = false }
+
 const loadData = async () => {
   loading.value = true
-  data.value = await fetchDefects({ keyword: searchForm.keyword, category: searchForm.category })
-  pagination.total = data.value.length
-  loading.value = false
+  try {
+    const query: DefectQuery = {
+      pageNum: pagination.current,
+      pageSize: pagination.pageSize,
+      qcItemCode: searchForm.qcItemCode || undefined,
+      qcItemName: searchForm.qcItemName || undefined,
+      qcType: searchForm.qcType || undefined,
+    }
+    const response = await fetchDefects(query)
+    data.value = response.list
+    pagination.total = response.total
+  } finally {
+    loading.value = false
+  }
 }
-const resetSearch = () => { searchForm.keyword = ''; searchForm.category = undefined; loadData() }
-onMounted(loadData)
+
+pagination.onChange = (page: number, pageSize: number) => {
+  pagination.current = page
+  pagination.pageSize = pageSize
+  void loadData()
+}
+
+const resetSearch = () => {
+  searchForm.qcItemCode = ''
+  searchForm.qcItemName = ''
+  searchForm.qcType = ''
+  pagination.current = 1
+  void loadData()
+}
+
+const getStatusMeta = (value: number) =>
+  enabledStatusOptions.find((item) => item.value === value)
+
+onMounted(() => {
+  void loadData()
+})
 </script>
 
 <template>
   <TablePage title="缺陷代码" :columns="columns" :data="data" :loading="loading" :pagination="pagination">
-    <template #search><SearchBar :model="searchForm" :fields="searchFields" @search="loadData" @reset="resetSearch" /></template>
-    <template #actions><ActionBar :actions="actionBar" @action="handlePageAction" /></template>
+    <template #search>
+      <SearchBar :model="searchForm" :fields="searchFields" @search="loadData" @reset="resetSearch" />
+    </template>
+    <template #bodyCell="{ column, record }">
+      <template v-if="column.key === 'qcType'">
+        {{ record.qcType || '-' }}
+      </template>
+      <template v-else-if="column.key === 'unit'">
+        {{ record.unit || '-' }}
+      </template>
+      <template v-else-if="column.key === 'standardMin'">
+        {{ record.standardMin ?? '-' }}
+      </template>
+      <template v-else-if="column.key === 'standardMax'">
+        {{ record.standardMax ?? '-' }}
+      </template>
+      <template v-else-if="column.key === 'isActive'">
+        <a-tag :color="getStatusMeta(record.isActive)?.color">{{ getStatusMeta(record.isActive)?.label || record.isActive }}</a-tag>
+      </template>
+      <template v-else-if="column.key === 'description'">
+        {{ record.description || '-' }}
+      </template>
+    </template>
   </TablePage>
-  <FormModal v-model:open="modalOpen" title="新增缺陷代码" :model="formModel" :rules="rules" :fields="formFields" @ok="handleOk" />
 </template>

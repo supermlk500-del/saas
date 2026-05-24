@@ -1,66 +1,120 @@
 <script setup lang="ts">
-import { onMounted, reactive, ref } from 'vue'
+import { onMounted, reactive } from 'vue'
+import { useRouter } from 'vue-router'
 import TablePage from '@/components/TablePage.vue'
-import { fetchTasks, type TaskItem } from '@/api/quality/task'
-import { useTable } from '@/hooks/useTable'
-import ActionBar from '@/components/ActionBar.vue'
-import FormModal from '@/components/FormModal.vue'
 import SearchBar from '@/components/SearchBar.vue'
+import { fetchTasks, type TaskItem, type TaskQuery } from '@/api/quality/task'
+import { useTable } from '@/hooks/useTable'
 
-const formFields = [
-  { label: '检验任务号', name: 'taskNo', type: 'input' as const, placeholder: '请输入检验任务号' },
-  { label: '工单号', name: 'woNo', type: 'input' as const, placeholder: '请输入工单号' },
-  { label: '检验模板', name: 'templateName', type: 'input' as const, placeholder: '请输入检验模板' },
-  { label: '检验员', name: 'inspector', type: 'input' as const, placeholder: '请输入检验员' },
-  { label: '截止日期', name: 'deadline', type: 'date' as const },
-]
+const router = useRouter()
 
-const formModel = reactive({ taskNo: '', woNo: '', templateName: '', inspector: '', deadline: undefined })
-
-const rules = {
-  taskNo: [{ required: true, message: '请输入检验任务号' }],
-  woNo: [{ required: true, message: '请输入工单号' }],
-  templateName: [{ required: true, message: '请输入检验模板' }],
-  inspector: [{ required: true, message: '请输入检验员' }],
-  deadline: [{ required: true, message: '请选择截止日期' }],
-}
-
-const searchForm = reactive({ keyword: '', status: undefined as string | undefined })
+const searchForm = reactive({
+  keyword: '',
+  status: undefined as string | undefined,
+})
 
 const searchFields = [
-  { label: '关键字', name: 'keyword', type: 'input', placeholder: '任务号/工单号', width: '200px' },
-  { label: '状态', name: 'status', type: 'select', placeholder: '全部', options: [{ label: '待检验', value: '待检验' }, { label: '检验中', value: '检验中' }, { label: '已完成', value: '已完成' }] },
+  { label: '关键字', name: 'keyword', type: 'input' as const, placeholder: '任务号 / 工序名称 / 工序计划ID', width: '240px' },
+  {
+    label: '任务状态',
+    name: 'status',
+    type: 'select' as const,
+    placeholder: '全部',
+    options: [
+      { label: '待检验', value: '待检验' },
+      { label: '待处理', value: '待处理' },
+      { label: '已检验', value: '已检验' },
+    ],
+    width: '150px',
+  },
 ]
 
 const columns = [
-  { title: '检验任务号', dataIndex: 'taskNo', key: 'taskNo' },
-  { title: '工单号', dataIndex: 'woNo', key: 'woNo' },
-  { title: '检验模板', dataIndex: 'templateName', key: 'templateName' },
-  { title: '检验员', dataIndex: 'inspector', key: 'inspector' },
-  { title: '截止日期', dataIndex: 'deadline', key: 'deadline' },
-  { title: '状态', dataIndex: 'status', key: 'status' },
+  { title: '任务号', dataIndex: 'taskNo', key: 'taskNo', width: 140 },
+  { title: '工序计划ID', dataIndex: 'planStepId', key: 'planStepId', width: 110 },
+  { title: '所属计划ID', dataIndex: 'planId', key: 'planId', width: 110 },
+  { title: '工序名称', dataIndex: 'stepName', key: 'stepName', width: 160 },
+  { title: '设备', dataIndex: 'machineName', key: 'machineName', width: 160 },
+  { title: '最近检验时间', dataIndex: 'latestInspectTime', key: 'latestInspectTime', width: 180 },
+  { title: '最近判定', dataIndex: 'latestJudge', key: 'latestJudge', width: 120 },
+  { title: '任务状态', dataIndex: 'status', key: 'status', width: 120 },
+  { title: '操作', key: 'action', width: 180, fixed: 'right' as const },
 ]
 
 const { data, loading, pagination } = useTable<TaskItem>()
-const modalOpen = ref(false)
-const actionBar = [{ key: 'new', label: '新增任务', type: 'primary' }]
-const handlePageAction = (key: string) => { if (key === 'new') openModal() }
-const openModal = () => { modalOpen.value = true }
-const handleOk = () => { modalOpen.value = false }
+
 const loadData = async () => {
   loading.value = true
-  data.value = await fetchTasks({ keyword: searchForm.keyword, status: searchForm.status })
-  pagination.total = data.value.length
-  loading.value = false
+  try {
+    const query: TaskQuery = {
+      keyword: searchForm.keyword || undefined,
+      status: searchForm.status,
+    }
+    const response = await fetchTasks(query)
+    data.value = response.list
+    pagination.total = response.total
+  } finally {
+    loading.value = false
+  }
 }
-const resetSearch = () => { searchForm.keyword = ''; searchForm.status = undefined; loadData() }
-onMounted(loadData)
+
+const resetSearch = () => {
+  searchForm.keyword = ''
+  searchForm.status = undefined
+  void loadData()
+}
+
+const getStatusColor = (status: TaskItem['status']) => {
+  switch (status) {
+    case '待检验':
+      return 'blue'
+    case '待处理':
+      return 'orange'
+    default:
+      return 'green'
+  }
+}
+
+const jumpToInspect = (planStepId: number) => {
+  void router.push({
+    path: '/quality/realtime',
+    query: { planStepId: String(planStepId) },
+  })
+}
+
+onMounted(() => {
+  void loadData()
+})
 </script>
 
 <template>
-  <TablePage title="检验任务" :columns="columns" :data="data" :loading="loading" :pagination="pagination">
-    <template #search><SearchBar :model="searchForm" :fields="searchFields" @search="loadData" @reset="resetSearch" /></template>
-    <template #actions><ActionBar :actions="actionBar" @action="handlePageAction" /></template>
+  <TablePage title="IQC任务" :columns="columns" :data="data" :loading="loading" :pagination="pagination">
+    <template #search>
+      <SearchBar :model="searchForm" :fields="searchFields" @search="loadData" @reset="resetSearch" />
+    </template>
+
+    <template #bodyCell="{ column, record }">
+      <template v-if="column.key === 'stepName'">
+        {{ record.stepName || '-' }}
+      </template>
+      <template v-else-if="column.key === 'machineName'">
+        {{ record.machineName || '-' }}
+      </template>
+      <template v-else-if="column.key === 'latestInspectTime'">
+        {{ record.latestInspectTime || '-' }}
+      </template>
+      <template v-else-if="column.key === 'latestJudge'">
+        {{ record.latestJudge || '-' }}
+      </template>
+      <template v-else-if="column.key === 'status'">
+        <a-tag :color="getStatusColor(record.status)">{{ record.status }}</a-tag>
+      </template>
+      <template v-else-if="column.key === 'action'">
+        <a-space>
+          <a-button type="link" @click="jumpToInspect(record.planStepId)">去检验</a-button>
+          <a-button type="link" @click="jumpToInspect(record.planStepId)">查看工作台</a-button>
+        </a-space>
+      </template>
+    </template>
   </TablePage>
-  <FormModal v-model:open="modalOpen" title="新增检验任务" :model="formModel" :rules="rules" :fields="formFields" @ok="handleOk" />
 </template>

@@ -1,28 +1,10 @@
-﻿import request, { type RuoYiListResponse } from '@/utils/request'
+import { fetchQcItems, type QcItemQuery } from '@/api/quality/qcItem'
+import type { QcItem } from '@/types/domain'
+import type { PageResult } from '@/types/http'
 
-export type TemplateItem = {
-  key: string
-  templateCode: string
-  templateName: string
-  productName: string
-  version: string
-  status: string
-}
+export type TemplateItem = QcItem
+export type TemplateQuery = QcItemQuery
 
-export type TemplateQuery = {
-  keyword?: string
-  status?: string
-}
-
-export function listTemplates(query?: TemplateQuery) {
-  return request<RuoYiListResponse<TemplateItem>>({
-    url: '/business/template/list',
-    method: 'get',
-    params: query,
-  })
-}
-
-export const fetchTemplates = async (query?: TemplateQuery): Promise<TemplateItem[]> => {
-  const res = await listTemplates(query)
-  return res.rows ?? []
+export const fetchTemplates = async (query?: TemplateQuery): Promise<PageResult<TemplateItem>> => {
+  return fetchQcItems(query)
 }

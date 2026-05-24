@@ -1,72 +1,94 @@
 <script setup lang="ts">
-import { onMounted, reactive, ref } from 'vue'
+import { onMounted, reactive } from 'vue'
+import { fetchCapas, type CapaItem, type CapaQuery } from '@/api/quality/capa'
 import TablePage from '@/components/TablePage.vue'
-import { fetchCapas, type CapaItem } from '@/api/quality/capa'
-import { useTable } from '@/hooks/useTable'
-import ActionBar from '@/components/ActionBar.vue'
-import FormModal from '@/components/FormModal.vue'
 import SearchBar from '@/components/SearchBar.vue'
+import { exceptionLevelOptions, exceptionStatusOptions } from '@/constants/dictionaries'
+import { useTable } from '@/hooks/useTable'
+import { formatDateTime } from '@/utils/date'
 
-const formFields = [
-  { label: 'CAPA编号', name: 'capaNo', type: 'input' as const, placeholder: '请输入CAPA编号' },
-  { label: 'NCR编号', name: 'ncrNo', type: 'input' as const, placeholder: '请输入NCR编号' },
-  { label: '标题', name: 'title', type: 'input' as const, placeholder: '请输入标题' },
-  { label: '根因分析', name: 'rootCause', type: 'input' as const, placeholder: '请输入根因' },
-  { label: '纠正措施', name: 'correctiveAction', type: 'input' as const, placeholder: '请输入纠正措施' },
-  { label: '负责人', name: 'owner', type: 'input' as const, placeholder: '请输入负责人' },
-  { label: '完成期限', name: 'deadline', type: 'date' as const },
-]
-
-const formModel = reactive({ capaNo: '', ncrNo: '', title: '', rootCause: '', correctiveAction: '', owner: '', deadline: undefined })
-
-const rules = {
-  capaNo: [{ required: true, message: '请输入CAPA编号' }],
-  ncrNo: [{ required: true, message: '请输入NCR编号' }],
-  title: [{ required: true, message: '请输入标题' }],
-  rootCause: [{ required: true, message: '请输入根因分析' }],
-  correctiveAction: [{ required: true, message: '请输入纠正措施' }],
-  owner: [{ required: true, message: '请输入负责人' }],
-  deadline: [{ required: true, message: '请选择完成期限' }],
-}
-
-const searchForm = reactive({ keyword: '', status: undefined as string | undefined })
+const searchForm = reactive({
+  status: undefined as string | undefined,
+})
 
 const searchFields = [
-  { label: '关键字', name: 'keyword', type: 'input', placeholder: 'CAPA编号/标题', width: '200px' },
-  { label: '状态', name: 'status', type: 'select', placeholder: '全部', options: [{ label: '执行中', value: '执行中' }, { label: '待确认', value: '待确认' }, { label: '已关闭', value: '已关闭' }] },
+  { label: '状态', name: 'status', type: 'select' as const, placeholder: '全部', options: exceptionStatusOptions, width: '160px' },
 ]
 
 const columns = [
-  { title: 'CAPA编号', dataIndex: 'capaNo', key: 'capaNo' },
-  { title: 'NCR编号', dataIndex: 'ncrNo', key: 'ncrNo' },
-  { title: '标题', dataIndex: 'title', key: 'title' },
-  { title: '根因分析', dataIndex: 'rootCause', key: 'rootCause' },
-  { title: '纠正措施', dataIndex: 'correctiveAction', key: 'correctiveAction' },
-  { title: '负责人', dataIndex: 'owner', key: 'owner' },
-  { title: '完成期限', dataIndex: 'deadline', key: 'deadline' },
-  { title: '状态', dataIndex: 'status', key: 'status' },
+  { title: '异常ID', dataIndex: 'exceptionId', key: 'exceptionId', width: 100 },
+  { title: '工序计划ID', dataIndex: 'planStepId', key: 'planStepId', width: 120 },
+  { title: '异常等级', dataIndex: 'exceptionLevel', key: 'exceptionLevel', width: 120 },
+  { title: '异常描述', dataIndex: 'description', key: 'description' },
+  { title: '处理结果', dataIndex: 'handleResult', key: 'handleResult' },
+  { title: '创建时间', dataIndex: 'createTime', key: 'createTime', width: 180 },
+  { title: '状态', dataIndex: 'status', key: 'status', width: 120 },
 ]
 
 const { data, loading, pagination } = useTable<CapaItem>()
-const modalOpen = ref(false)
-const actionBar = [{ key: 'new', label: '新建CAPA', type: 'primary' }]
-const handlePageAction = (key: string) => { if (key === 'new') openModal() }
-const openModal = () => { modalOpen.value = true }
-const handleOk = () => { modalOpen.value = false }
+
+const getLevelMeta = (value?: string) =>
+  exceptionLevelOptions.find((item) => item.value === value)
+
+const getStatusMeta = (value?: string) =>
+  exceptionStatusOptions.find((item) => item.value === value)
+
 const loadData = async () => {
   loading.value = true
-  data.value = await fetchCapas({ keyword: searchForm.keyword, status: searchForm.status })
-  pagination.total = data.value.length
-  loading.value = false
+  try {
+    const query: CapaQuery = {
+      pageNum: pagination.current,
+      pageSize: pagination.pageSize,
+      status: searchForm.status,
+    }
+    const response = await fetchCapas(query)
+    data.value = response.list
+    pagination.total = response.total
+  } finally {
+    loading.value = false
+  }
 }
-const resetSearch = () => { searchForm.keyword = ''; searchForm.status = undefined; loadData() }
-onMounted(loadData)
+
+pagination.onChange = (page: number, pageSize: number) => {
+  pagination.current = page
+  pagination.pageSize = pageSize
+  void loadData()
+}
+
+const resetSearch = () => {
+  searchForm.status = undefined
+  pagination.current = 1
+  void loadData()
+}
+
+onMounted(() => {
+  void loadData()
+})
 </script>
 
 <template>
   <TablePage title="CAPA管理" :columns="columns" :data="data" :loading="loading" :pagination="pagination">
-    <template #search><SearchBar :model="searchForm" :fields="searchFields" @search="loadData" @reset="resetSearch" /></template>
-    <template #actions><ActionBar :actions="actionBar" @action="handlePageAction" /></template>
+    <template #search>
+      <SearchBar :model="searchForm" :fields="searchFields" @search="loadData" @reset="resetSearch" />
+    </template>
+
+    <template #bodyCell="{ column, record }">
+      <template v-if="column.key === 'exceptionLevel'">
+        <a-tag :color="getLevelMeta(record.exceptionLevel)?.color">
+          {{ getLevelMeta(record.exceptionLevel)?.label || record.exceptionLevel }}
+        </a-tag>
+      </template>
+      <template v-else-if="column.key === 'handleResult'">
+        {{ record.handleResult || '-' }}
+      </template>
+      <template v-else-if="column.key === 'createTime'">
+        {{ formatDateTime(record.createTime) }}
+      </template>
+      <template v-else-if="column.key === 'status'">
+        <a-tag :color="getStatusMeta(record.status)?.color">
+          {{ getStatusMeta(record.status)?.label || record.status }}
+        </a-tag>
+      </template>
+    </template>
   </TablePage>
-  <FormModal v-model:open="modalOpen" title="新建CAPA" :model="formModel" :rules="rules" :fields="formFields" @ok="handleOk" />
 </template>

@@ -6,6 +6,10 @@ spring:
     name: zhihuitong-backend
   profiles:
     active: dev
+  servlet:
+    multipart:
+      max-file-size: 50MB
+      max-request-size: 60MB
   jackson:
     time-zone: Asia/Shanghai
     date-format: yyyy-MM-dd HH:mm:ss
@@ -33,3 +37,24 @@ management:
 logging:
   level:
     com.zhihuitong: info
+
+inspection:
+  storage:
+    upload-root: C:/Users/lhr/Desktop/saas/photo/upload
+    result-root: C:/Users/lhr/Desktop/saas/photo/results
+
+ai:
+  yolo:
+    enabled: true
+    model-path: C:/Users/lhr/Desktop/saas/docs/best.onnx
+    conf-threshold: 0.5
+    iou-threshold: 0.45
+    video-conf-threshold: 0.25
+    video-fallback-conf-threshold: 0.12
+    video-iou-threshold: 0.40
+
+qc:
+  stream:
+    frame-sample-interval-ms: 250
+    session-idle-timeout-ms: 300000
+    max-frame-size-bytes: 5242880

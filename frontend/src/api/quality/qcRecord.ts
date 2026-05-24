@@ -1,14 +1,84 @@
 import request, { type ApiListResponse, type ApiSuccessResponse } from '@/utils/request'
-import type { QcRecordItem } from '@/types/domain'
+import type { InspectType } from '@/types/dictionary'
+import type { InspectionDataItem, QcDetectionResult, QcRecordItem } from '@/types/domain'
 import type { PageQuery, PageResult } from '@/types/http'
 
 export type QcRecordQuery = PageQuery & {
-  planStepId?: number
-  qcItemId?: number
+  planStepId?: number | string
+  qcItemId?: number | string
   inspectType?: string
   resultJudge?: string
   inspectTimeFrom?: string
   inspectTimeTo?: string
+}
+
+export type QcRecordUpsertRequest = {
+  planStepId: number | string
+  qcItemId: number | string
+  inspectTime: string
+  inspectType: string
+  cameraId?: number | string | null
+  frameTime?: string | null
+  imageUrl?: string | null
+  confidenceScore?: number | null
+  resultValue?: string | null
+  resultJudge: string
+  inspector?: string
+  remark?: string
+}
+
+export type QcRecordReviewRequest = {
+  reviewResult: string
+  reviewer?: string
+  reviewRemark?: string
+}
+
+export type QcRecordCloseRequest = {
+  closeRemark?: string
+}
+
+export type QcDetectRequest = {
+  file: File
+  planStepId: number | string
+  qcItemId: number | string
+  cameraId?: number | string | null
+  inspectType?: InspectType
+  frameTime?: string | null
+  inspector?: string
+  remark?: string
+}
+
+type RawDetectResponse = QcDetectionResult & {
+  algorithmResult?: QcDetectionResult
+  qcRecord?: QcRecordItem
+  inspectionDataList?: InspectionDataItem[]
+}
+
+const appendFormValue = (formData: FormData, key: string, value?: string | number | null) => {
+  if (value !== undefined && value !== null && value !== '') {
+    formData.append(key, String(value))
+  }
+}
+
+const normalizeDetectResponse = (raw: RawDetectResponse): QcDetectionResult => {
+  const algorithmResult = raw.algorithmResult ?? raw
+  const qcRecord = raw.qcRecord
+
+  return {
+    inspectionId: raw.inspectionId ?? qcRecord?.inspectionId,
+    planStepId: raw.planStepId ?? qcRecord?.planStepId,
+    qcItemId: raw.qcItemId ?? qcRecord?.qcItemId,
+    inspectType: raw.inspectType ?? qcRecord?.inspectType ?? algorithmResult.inspectType,
+    resultJudge: raw.resultJudge ?? qcRecord?.resultJudge ?? algorithmResult.resultJudge,
+    confidenceScore: raw.confidenceScore ?? qcRecord?.confidenceScore ?? algorithmResult.confidenceScore,
+    defectType: raw.defectType ?? qcRecord?.defectType ?? algorithmResult.defectType,
+    resultValue: raw.resultValue ?? qcRecord?.resultValue ?? algorithmResult.resultValue,
+    imageUrl: raw.imageUrl ?? qcRecord?.imageUrl ?? algorithmResult.imageUrl,
+    sourceImageUrl: raw.sourceImageUrl ?? qcRecord?.sourceImageUrl ?? algorithmResult.sourceImageUrl,
+    boxes: raw.boxes ?? algorithmResult.boxes ?? [],
+    qcRecord,
+    inspectionDataList: raw.inspectionDataList ?? [],
+  }
 }
 
 export const listQcRecords = (query?: QcRecordQuery) =>
@@ -18,10 +88,74 @@ export const listQcRecords = (query?: QcRecordQuery) =>
     params: query,
   })
 
-export const getQcRecord = (inspectionId: number) =>
+export const getQcRecord = (inspectionId: number | string) =>
   request<ApiSuccessResponse<QcRecordItem>>({
     url: `/api/qc-records/${inspectionId}`,
     method: 'get',
+  })
+
+export const createQcRecord = (payload: QcRecordUpsertRequest) =>
+  request<ApiSuccessResponse<QcRecordItem>>({
+    url: '/api/qc-records',
+    method: 'post',
+    data: payload,
+  })
+
+export const updateQcRecord = (inspectionId: number | string, payload: QcRecordUpsertRequest) =>
+  request<ApiSuccessResponse<QcRecordItem>>({
+    url: `/api/qc-records/${inspectionId}`,
+    method: 'put',
+    data: payload,
+  })
+
+export const reviewQcRecord = (inspectionId: number | string, payload: QcRecordReviewRequest) =>
+  request<ApiSuccessResponse<QcRecordItem>>({
+    url: `/api/qc-records/${inspectionId}/review`,
+    method: 'patch',
+    data: payload,
+  })
+
+export const closeQcRecord = (inspectionId: number | string, payload: QcRecordCloseRequest) =>
+  request<ApiSuccessResponse<QcRecordItem>>({
+    url: `/api/qc-records/${inspectionId}/close`,
+    method: 'patch',
+    data: payload,
+  })
+
+const buildDetectFormData = (payload: QcDetectRequest) => {
+  const formData = new FormData()
+  formData.append('file', payload.file)
+  appendFormValue(formData, 'planStepId', payload.planStepId)
+  appendFormValue(formData, 'qcItemId', payload.qcItemId)
+  appendFormValue(formData, 'cameraId', payload.cameraId)
+  appendFormValue(formData, 'inspectType', payload.inspectType)
+  appendFormValue(formData, 'frameTime', payload.frameTime)
+  appendFormValue(formData, 'inspector', payload.inspector?.trim())
+  appendFormValue(formData, 'remark', payload.remark?.trim())
+  return formData
+}
+
+const postDetect = async (url: string, payload: QcDetectRequest): Promise<QcDetectionResult> => {
+  const response = await request<ApiSuccessResponse<RawDetectResponse>>({
+    url,
+    method: 'post',
+    data: buildDetectFormData(payload),
+  })
+
+  return normalizeDetectResponse(response.data)
+}
+
+export const detectImageQcRecord = (payload: QcDetectRequest) =>
+  postDetect('/api/qc-records/detect-image', {
+    ...payload,
+    inspectType: 'offline',
+    cameraId: payload.cameraId ?? undefined,
+  })
+
+export const detectFrameQcRecord = (payload: QcDetectRequest) =>
+  postDetect('/api/qc-records/detect-frame', {
+    ...payload,
+    inspectType: 'video',
   })
 
 export const fetchQcRecords = async (query?: QcRecordQuery): Promise<PageResult<QcRecordItem>> => {

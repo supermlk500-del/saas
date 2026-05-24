@@ -38,6 +38,11 @@ const modalOpen = computed({
             v-model:value="model[field.name]"
             :placeholder="field.placeholder"
           />
+          <a-input-number
+            v-else-if="field.type === 'number'"
+            v-model:value="model[field.name]"
+            style="width: 100%"
+          />
           <a-select
             v-else-if="field.type === 'select'"
             v-model:value="model[field.name]"
@@ -55,6 +60,20 @@ const modalOpen = computed({
             v-else-if="field.type === 'date'"
             v-model:value="model[field.name]"
             style="width: 100%"
+          />
+          <a-date-picker
+            v-else-if="field.type === 'datetime'"
+            v-model:value="model[field.name]"
+            show-time
+            value-format="YYYY-MM-DD HH:mm:ss"
+            format="YYYY-MM-DD HH:mm:ss"
+            style="width: 100%"
+          />
+          <a-textarea
+            v-else-if="field.type === 'textarea'"
+            v-model:value="model[field.name]"
+            :rows="3"
+            :placeholder="field.placeholder"
           />
         </a-form-item>
       </template>

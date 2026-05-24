@@ -1,21 +1,14 @@
-// 接口暂时停用：/business/ncr/list
+import { fetchExceptionRecords, type ExceptionRecordQuery } from '@/api/exception/exceptionRecord'
+import type { ExceptionRecordItem } from '@/types/domain'
+import type { PageResult } from '@/types/http'
 
-export type NcrItem = {
-  key: string
-  ncrNo: string
-  resultNo: string
-  woNo: string
-  defectName: string
-  qty: number
-  disposition: string
-  status: string
-}
+export type NcrItem = ExceptionRecordItem
+export type NcrQuery = ExceptionRecordQuery
 
-export type NcrQuery = {
-  keyword?: string
-  status?: string
-}
-
-export const fetchNcrs = async (_query?: NcrQuery): Promise<NcrItem[]> => {
-  return []
+export const fetchNcrs = async (query?: NcrQuery): Promise<PageResult<NcrItem>> => {
+  const response = await fetchExceptionRecords({
+    ...query,
+    exceptionType: query?.exceptionType || 'QUALITY',
+  })
+  return response
 }

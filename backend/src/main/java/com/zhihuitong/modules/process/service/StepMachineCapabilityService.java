@@ -85,6 +85,12 @@ public class StepMachineCapabilityService {
         return capabilities.stream().anyMatch(item -> matches(item, width, batchWeight));
     }
 
+    public boolean supportsCapability(StepMachineCapability capability, BigDecimal width, BigDecimal batchWeight) {
+        return capability != null
+                && Integer.valueOf(1).equals(capability.getIsActive())
+                && matches(capability, width, batchWeight);
+    }
+
     private void validateRequest(CapabilityUpsertRequest request) {
         processStepService.requireStep(request.getStepId());
         machineService.requireMachine(request.getMachineId());

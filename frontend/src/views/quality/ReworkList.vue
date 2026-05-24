@@ -1,69 +1,234 @@
 <script setup lang="ts">
 import { onMounted, reactive, ref } from 'vue'
+import { message } from 'ant-design-vue'
+import { closeExceptionRecord, fetchExceptionRecords, reworkExceptionRecord, type ExceptionCloseRequest, type ExceptionRecordQuery, type ExceptionReworkRequest } from '@/api/exception/exceptionRecord'
 import TablePage from '@/components/TablePage.vue'
-import { fetchReworks, type ReworkItem } from '@/api/quality/rework'
-import { useTable } from '@/hooks/useTable'
-import ActionBar from '@/components/ActionBar.vue'
-import FormModal from '@/components/FormModal.vue'
 import SearchBar from '@/components/SearchBar.vue'
+import { exceptionLevelOptions, exceptionStatusOptions } from '@/constants/dictionaries'
+import { useTable } from '@/hooks/useTable'
+import type { ExceptionRecordItem } from '@/types/domain'
+import { formatDateTime } from '@/utils/date'
 
-const formFields = [
-  { label: '返工单号', name: 'reworkNo', type: 'input' as const, placeholder: '请输入返工单号' },
-  { label: 'NCR编号', name: 'ncrNo', type: 'input' as const, placeholder: '请输入NCR编号' },
-  { label: '工单号', name: 'woNo', type: 'input' as const, placeholder: '请输入工单号' },
-  { label: '产品名称', name: 'productName', type: 'input' as const, placeholder: '请输入产品名称' },
-  { label: '数量', name: 'qty', type: 'input' as const, placeholder: '请输入数量' },
-  { label: '原因', name: 'reason', type: 'input' as const, placeholder: '请输入返工原因' },
-]
-
-const formModel = reactive({ reworkNo: '', ncrNo: '', woNo: '', productName: '', qty: '', reason: '' })
-
-const rules = {
-  reworkNo: [{ required: true, message: '请输入返工单号' }],
-  ncrNo: [{ required: true, message: '请输入NCR编号' }],
-  woNo: [{ required: true, message: '请输入工单号' }],
-  productName: [{ required: true, message: '请输入产品名称' }],
-  qty: [{ required: true, message: '请输入数量' }],
-  reason: [{ required: true, message: '请输入返工原因' }],
-}
-
-const searchForm = reactive({ keyword: '', status: undefined as string | undefined })
+const searchForm = reactive({
+  planStepId: undefined as number | undefined,
+  exceptionLevel: undefined as string | undefined,
+  status: undefined as string | undefined,
+})
 
 const searchFields = [
-  { label: '关键字', name: 'keyword', type: 'input', placeholder: '返工单号/工单号', width: '200px' },
-  { label: '状态', name: 'status', type: 'select', placeholder: '全部', options: [{ label: '待返工', value: '待返工' }, { label: '返工中', value: '返工中' }, { label: '已完成', value: '已完成' }] },
+  { label: '工序计划ID', name: 'planStepId', type: 'number' as const, width: '180px' },
+  { label: '异常等级', name: 'exceptionLevel', type: 'select' as const, placeholder: '全部', options: exceptionLevelOptions, width: '150px' },
+  { label: '异常状态', name: 'status', type: 'select' as const, placeholder: '全部', options: exceptionStatusOptions, width: '150px' },
 ]
 
 const columns = [
-  { title: '返工单号', dataIndex: 'reworkNo', key: 'reworkNo' },
-  { title: 'NCR编号', dataIndex: 'ncrNo', key: 'ncrNo' },
-  { title: '工单号', dataIndex: 'woNo', key: 'woNo' },
-  { title: '产品名称', dataIndex: 'productName', key: 'productName' },
-  { title: '数量', dataIndex: 'qty', key: 'qty' },
-  { title: '原因', dataIndex: 'reason', key: 'reason' },
-  { title: '状态', dataIndex: 'status', key: 'status' },
+  { title: '异常ID', dataIndex: 'exceptionId', key: 'exceptionId', width: 100 },
+  { title: '工序计划ID', dataIndex: 'planStepId', key: 'planStepId', width: 120 },
+  { title: '异常等级', dataIndex: 'exceptionLevel', key: 'exceptionLevel', width: 120 },
+  { title: '异常描述', dataIndex: 'description', key: 'description' },
+  { title: '处理结果', dataIndex: 'handleResult', key: 'handleResult' },
+  { title: '创建时间', dataIndex: 'createTime', key: 'createTime', width: 180 },
+  { title: '状态', dataIndex: 'status', key: 'status', width: 120 },
+  { title: '操作', key: 'action', width: 220, fixed: 'right' as const },
 ]
 
-const { data, loading, pagination } = useTable<ReworkItem>()
-const modalOpen = ref(false)
-const actionBar = [{ key: 'new', label: '新建返工单', type: 'primary' }]
-const handlePageAction = (key: string) => { if (key === 'new') openModal() }
-const openModal = () => { modalOpen.value = true }
-const handleOk = () => { modalOpen.value = false }
+const { data, loading, pagination } = useTable<ExceptionRecordItem>()
+
+const reworkModalOpen = ref(false)
+const reworkSubmitting = ref(false)
+const reworkFormRef = ref()
+const reworkForm = reactive({
+  exceptionId: undefined as number | undefined,
+  reworkPlan: '',
+  reworkOwner: '',
+  expectedFinishTime: '',
+})
+
+const closeModalOpen = ref(false)
+const closeSubmitting = ref(false)
+const closeForm = reactive({
+  exceptionId: undefined as number | undefined,
+  handleResult: '',
+  closeRemark: '',
+})
+
+const reworkRules = {
+  reworkPlan: [{ required: true, message: '请输入返工方案' }],
+}
+
+const closeRules = {
+  handleResult: [{ required: true, message: '请输入处理结果' }],
+}
+
+const getLevelMeta = (value?: string) =>
+  exceptionLevelOptions.find((item) => item.value === value)
+
+const getStatusMeta = (value?: string) =>
+  exceptionStatusOptions.find((item) => item.value === value)
+
 const loadData = async () => {
   loading.value = true
-  data.value = await fetchReworks({ keyword: searchForm.keyword, status: searchForm.status })
-  pagination.total = data.value.length
-  loading.value = false
+  try {
+    const query: ExceptionRecordQuery = {
+      pageNum: pagination.current,
+      pageSize: pagination.pageSize,
+      planStepId: searchForm.planStepId,
+      exceptionType: 'QUALITY',
+      exceptionLevel: searchForm.exceptionLevel,
+      status: searchForm.status,
+    }
+    const response = await fetchExceptionRecords(query)
+    data.value = response.list
+    pagination.total = response.total
+  } finally {
+    loading.value = false
+  }
 }
-const resetSearch = () => { searchForm.keyword = ''; searchForm.status = undefined; loadData() }
-onMounted(loadData)
+
+pagination.onChange = (page: number, pageSize: number) => {
+  pagination.current = page
+  pagination.pageSize = pageSize
+  void loadData()
+}
+
+const resetSearch = () => {
+  searchForm.planStepId = undefined
+  searchForm.exceptionLevel = undefined
+  searchForm.status = undefined
+  pagination.current = 1
+  void loadData()
+}
+
+const openReworkModal = (record: ExceptionRecordItem) => {
+  reworkForm.exceptionId = record.exceptionId
+  reworkForm.reworkPlan = ''
+  reworkForm.reworkOwner = ''
+  reworkForm.expectedFinishTime = ''
+  reworkModalOpen.value = true
+}
+
+const handleReworkSubmit = async () => {
+  await reworkFormRef.value?.validate()
+  reworkSubmitting.value = true
+  try {
+    const payload: ExceptionReworkRequest = {
+      reworkPlan: reworkForm.reworkPlan.trim(),
+      reworkOwner: reworkForm.reworkOwner.trim() || undefined,
+      expectedFinishTime: reworkForm.expectedFinishTime || undefined,
+    }
+    await reworkExceptionRecord(reworkForm.exceptionId ?? 0, payload)
+    reworkModalOpen.value = false
+    message.success('返工处理已发起')
+    await loadData()
+  } finally {
+    reworkSubmitting.value = false
+  }
+}
+
+const openCloseModal = (record: ExceptionRecordItem) => {
+  closeForm.exceptionId = record.exceptionId
+  closeForm.handleResult = record.handleResult || ''
+  closeForm.closeRemark = ''
+  closeModalOpen.value = true
+}
+
+const handleCloseSubmit = async () => {
+  closeSubmitting.value = true
+  try {
+    const payload: ExceptionCloseRequest = {
+      handleResult: closeForm.handleResult.trim(),
+      closeRemark: closeForm.closeRemark.trim() || undefined,
+    }
+    await closeExceptionRecord(closeForm.exceptionId ?? 0, payload)
+    closeModalOpen.value = false
+    message.success('返工异常已关闭')
+    await loadData()
+  } finally {
+    closeSubmitting.value = false
+  }
+}
+
+onMounted(() => {
+  void loadData()
+})
 </script>
 
 <template>
-  <TablePage title="返工单" :columns="columns" :data="data" :loading="loading" :pagination="pagination">
-    <template #search><SearchBar :model="searchForm" :fields="searchFields" @search="loadData" @reset="resetSearch" /></template>
-    <template #actions><ActionBar :actions="actionBar" @action="handlePageAction" /></template>
+  <TablePage title="返工处理" :columns="columns" :data="data" :loading="loading" :pagination="pagination">
+    <template #search>
+      <SearchBar :model="searchForm" :fields="searchFields" @search="loadData" @reset="resetSearch" />
+    </template>
+
+    <template #bodyCell="{ column, record }">
+      <template v-if="column.key === 'exceptionLevel'">
+        <a-tag :color="getLevelMeta(record.exceptionLevel)?.color">
+          {{ getLevelMeta(record.exceptionLevel)?.label || record.exceptionLevel }}
+        </a-tag>
+      </template>
+      <template v-else-if="column.key === 'handleResult'">
+        {{ record.handleResult || '-' }}
+      </template>
+      <template v-else-if="column.key === 'createTime'">
+        {{ formatDateTime(record.createTime) }}
+      </template>
+      <template v-else-if="column.key === 'status'">
+        <a-tag :color="getStatusMeta(record.status)?.color">
+          {{ getStatusMeta(record.status)?.label || record.status }}
+        </a-tag>
+      </template>
+      <template v-else-if="column.key === 'action'">
+        <a-space>
+          <a-button type="link" @click="openReworkModal(record)">发起返工</a-button>
+          <a-button type="link" @click="openCloseModal(record)">关闭</a-button>
+        </a-space>
+      </template>
+    </template>
   </TablePage>
-  <FormModal v-model:open="modalOpen" title="新建返工单" :model="formModel" :rules="rules" :fields="formFields" @ok="handleOk" />
+
+  <a-modal
+    v-model:open="reworkModalOpen"
+    title="发起返工处理"
+    ok-text="保存"
+    cancel-text="取消"
+    :confirm-loading="reworkSubmitting"
+    width="560px"
+    @ok="handleReworkSubmit"
+  >
+    <a-form ref="reworkFormRef" :model="reworkForm" :rules="reworkRules" layout="vertical">
+      <a-form-item label="返工方案" name="reworkPlan">
+        <a-textarea v-model:value="reworkForm.reworkPlan" :rows="3" />
+      </a-form-item>
+      <a-form-item label="责任人" name="reworkOwner">
+        <a-input v-model:value="reworkForm.reworkOwner" />
+      </a-form-item>
+      <a-form-item label="预计完成时间" name="expectedFinishTime">
+        <a-date-picker
+          v-model:value="reworkForm.expectedFinishTime"
+          show-time
+          value-format="YYYY-MM-DD HH:mm:ss"
+          format="YYYY-MM-DD HH:mm:ss"
+          style="width: 100%"
+        />
+      </a-form-item>
+    </a-form>
+  </a-modal>
+
+  <a-modal
+    v-model:open="closeModalOpen"
+    title="关闭返工异常"
+    ok-text="关闭"
+    cancel-text="取消"
+    :confirm-loading="closeSubmitting"
+    width="560px"
+    @ok="handleCloseSubmit"
+  >
+    <a-form :model="closeForm" :rules="closeRules" layout="vertical">
+      <a-form-item label="处理结果" name="handleResult">
+        <a-textarea v-model:value="closeForm.handleResult" :rows="3" />
+      </a-form-item>
+      <a-form-item label="关闭说明" name="closeRemark">
+        <a-textarea v-model:value="closeForm.closeRemark" :rows="3" />
+      </a-form-item>
+    </a-form>
+  </a-modal>
 </template>

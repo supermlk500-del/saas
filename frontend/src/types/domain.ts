@@ -132,7 +132,7 @@ export interface ProcessParameterItem {
 }
 
 export interface QcItem {
-  qcItemId: number
+  qcItemId: number | string
   qcItemCode: string
   qcItemName: string
   qcType?: string
@@ -144,25 +144,63 @@ export interface QcItem {
 }
 
 export interface QcRecordItem {
-  inspectionId: number
-  planStepId: number
-  qcItemId: number
+  inspectionId: number | string
+  planStepId: number | string
+  qcItemId: number | string
   inspectTime: string
   inspectType: InspectType
-  cameraId?: number | null
+  cameraId?: number | string | null
   frameTime?: string | null
   imageUrl?: string | null
+  sourceImageUrl?: string | null
   confidenceScore?: number | null
+  defectType?: string | null
   resultValue?: string | null
   resultJudge: ResultJudge
   inspector?: string
   remark?: string
 }
 
+export interface QcDetectionBox {
+  label?: string
+  score?: number
+  x1?: number
+  y1?: number
+  x2?: number
+  y2?: number
+}
+
+export interface QcDetectionResult {
+  inspectionId?: number | string
+  planStepId?: number | string
+  qcItemId?: number | string
+  inspectType?: InspectType
+  resultJudge?: ResultJudge
+  confidenceScore?: number | null
+  defectType?: string | null
+  resultValue?: string | null
+  imageUrl?: string | null
+  sourceImageUrl?: string | null
+  boxes?: QcDetectionBox[]
+  qcRecord?: QcRecordItem
+  inspectionDataList?: InspectionDataItem[]
+}
+
+export interface QcCameraItem {
+  cameraId?: number | string | null
+  cameraCode: string
+  cameraName: string
+  cameraType: 'local_webcam' | 'ip_camera' | 'industrial_camera' | string
+  ipAddress?: string | null
+  location?: string | null
+  status?: number | string
+  remark?: string | null
+}
+
 export interface InspectionDataItem {
-  dataId: number
-  qcRecordId: number
-  cameraId?: number
+  dataId: number | string
+  qcRecordId: number | string
+  cameraId?: number | string
   fileType: string
   filePath: string
   fileName: string

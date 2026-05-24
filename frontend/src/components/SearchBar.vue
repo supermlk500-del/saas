@@ -2,7 +2,7 @@
 type Field = {
   label: string
   name: string
-  type: 'input' | 'select' | 'date' | string
+  type: 'input' | 'select' | 'date' | 'datetime' | 'number' | string
   placeholder?: string
   options?: { label: string; value: string | number }[]
   width?: string
@@ -29,6 +29,12 @@ const emit = defineEmits<{
           :placeholder="field.placeholder"
           :style="{ width: field.width || '180px' }"
         />
+        <a-input-number
+          v-else-if="field.type === 'number'"
+          v-model:value="model[field.name]"
+          :placeholder="field.placeholder"
+          :style="{ width: field.width || '180px' }"
+        />
         <a-select
           v-else-if="field.type === 'select'"
           v-model:value="model[field.name]"
@@ -47,6 +53,14 @@ const emit = defineEmits<{
           v-else-if="field.type === 'date'"
           v-model:value="model[field.name]"
           :style="{ width: field.width || '180px' }"
+        />
+        <a-date-picker
+          v-else-if="field.type === 'datetime'"
+          v-model:value="model[field.name]"
+          show-time
+          value-format="YYYY-MM-DD HH:mm:ss"
+          format="YYYY-MM-DD HH:mm:ss"
+          :style="{ width: field.width || '220px' }"
         />
       </a-form-item>
     </template>

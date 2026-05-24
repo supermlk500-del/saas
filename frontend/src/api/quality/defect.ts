@@ -1,28 +1,10 @@
-﻿import request, { type RuoYiListResponse } from '@/utils/request'
+import { fetchQcItems, type QcItemQuery } from '@/api/quality/qcItem'
+import type { QcItem } from '@/types/domain'
+import type { PageResult } from '@/types/http'
 
-export type DefectItem = {
-  key: string
-  defectCode: string
-  defectName: string
-  category: string
-  level: string
-  status: string
-}
+export type DefectItem = QcItem
+export type DefectQuery = QcItemQuery
 
-export type DefectQuery = {
-  keyword?: string
-  category?: string
-}
-
-export function listDefects(query?: DefectQuery) {
-  return request<RuoYiListResponse<DefectItem>>({
-    url: '/business/defect/list',
-    method: 'get',
-    params: query,
-  })
-}
-
-export const fetchDefects = async (query?: DefectQuery): Promise<DefectItem[]> => {
-  const res = await listDefects(query)
-  return res.rows ?? []
+export const fetchDefects = async (query?: DefectQuery): Promise<PageResult<DefectItem>> => {
+  return fetchQcItems(query)
 }
