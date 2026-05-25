@@ -1,168 +1,141 @@
-# 胚布排产质检系统 Python 质检后端
+﻿# 织慧通排产系统 v1（开发中）
 
-这是一个独立的 FastAPI 质检服务，只负责图片/视频帧质检推理能力。
+## 1. 技术方案（v1）
+- 后端：FastAPI + SQLAlchemy
+- 数据库：MySQL（固定连接，单元测试可用 in-memory SQLite）
+- 模式：纯后端 REST API（JSON）
+- 架构：单体分层（api / service / model / schema / solver）
+- 前端：独立项目，通过 `/api/v1` 对接（详见 `开发过程/前端对接_API清单.md`）
 
-- Java 是主业务后端，负责认证、权限、业务校验、落库、异常闭环和前端接口聚合
-- Python 只负责质检算法推理、结果结构化输出、原图与结果图保存
-- Python 不直接写 `zhihuitong` 主业务表，不接管排产逻辑
+## 2. 数据库连接配置
+- host: 127.0.0.1
+- port: 3306
+- user: root
+- password: 通过 `.env` 中的 `DB_PASSWORD` / `db_password` 或系统环境变量配置
+- db: zhihuitong_schedule_v1
 
-## 目录结构
+配置文件：`app/core/config.py`
 
-```text
-python-backend/
-  app/
-    api/
-    core/
-    schemas/
-    services/
-    utils/
-    vision/
-  models/
-  main.py
-  requirements.txt
-  README.md
-```
+## 3. 当前已完成
+- 项目骨架初始化与数据库初始化脚本（自动建库 + 建表）
+- 黑盒机台模型模块（机台、能力参数、班次、快照、日志）
+- 约束配置模块（规则 CRUD + 规则项 + 版本保存 / 发布 + 健康度检查）
+- 订单管理模块（CRUD + CSV 导入 / 导出 + 模板下载 + 仪表盘聚合）
+- 基准排产模块（多策略 solver + 计划版本 + 计划明细 + 未排入任务 + 发布）
+- 实时插单重排（freeze_minutes 冻结窗口）与产线补单调度
+- 排产甘特图 JSON 数据接口（按机台泳道 + 交期超期标记 + 跨版本变更标记）
+- 多策略 KPI benchmark 脚本（greedy_eft / edd / cr / changeover_first / composite 5 策略对比）
+- 染色换色规则 v2（固定专用缸 + 循环缸 + 同色族 / 跨色族 / 跨色系三档换色成本 + wash_count）
+- LLM 排产解释助手（DeepSeek 接入，离线缓存 + 规则 fallback，仅做解释 / 总结，**不参与排产决策**）
+- 阶段 A/B：纯后端化重构（移除 Jinja2 模板 / 静态资源 / pages.py，新增 17 个 REST 端点，输出 1149 行前端对接文档）
 
-实际图片落盘目录遵循项目约定：
+## 4. 已建表（全部 v1 表已补齐）
+- machine
+- machine_capability_param
+- machine_shift_availability
+- machine_capability_snapshot
+- schedule_run_log
+- constraint_rule
+- constraint_rule_item
+- constraint_version
+- schedule_task
+- schedule_plan_version
+- schedule_plan_item
+- schedule_unassigned_task
 
-- 原图目录：`C:\Users\lhr\Desktop\saas\photo\upload`
-- 结果图目录：`C:\Users\lhr\Desktop\saas\photo\results`
-
-## 已实现接口
-
-### 1. 健康检查
-
-- `GET /api/health`
-
-响应示例：
-
-```json
-{
-  "code": 200,
-  "msg": "success",
-  "data": {
-    "status": "UP",
-    "service": "python-inspection-service",
-    "modelReady": false,
-    "modelBackend": "fallback-heuristic"
-  }
-}
-```
-
-### 2. 图片质检
-
-- `POST /api/inspection/image`
-- `Content-Type: multipart/form-data`
-
-表单字段：
-
-- `file`：必填，图片文件
-- `planStepId`：必填，工序计划 ID
-- `qcItemCode`：可选，质检项编码
-- `cameraId`：可选，摄像头 ID
-- `sourceType`：可选，来源类型，如 `manual`、`camera`
-
-### 3. 视频帧质检
-
-- `POST /api/inspection/frame`
-- `Content-Type: multipart/form-data`
-
-表单字段：
-
-- `file`：必填，视频帧图片
-- `planStepId`：必填，工序计划 ID
-- `cameraId`：可选，摄像头 ID
-- `frameTime`：可选，帧时间，格式建议 `yyyy-MM-dd HH:mm:ss`
-
-第一版直接复用图片推理流程，但返回 `inspectType=video`。
-
-## 输出字段说明
-
-接口统一返回：
-
-```json
-{
-  "code": 200,
-  "msg": "success",
-  "data": {}
-}
-```
-
-质检结果字段尽量贴合 `qcrecord / inspectiondata` 语义：
-
-- `inspectType`：`offline` 或 `video`
-- `resultJudge`：`PASS`、`FAIL`、`RECHECK`
-- `confidenceScore`：识别置信度
-- `defectType`：缺陷类型
-- `resultValue`：结果摘要，供 Java 写入 `qcrecord.resultValue`
-- `imageUrl`：结果图相对路径，如 `photo/results/20260523/result_xxx.jpg`
-- `sourceImageUrl`：原图相对路径，如 `photo/upload/20260523/source_xxx.jpg`
-- `boxes`：检测框列表
-
-## 文件落盘规则
-
-- 原图保存到 `C:\Users\lhr\Desktop\saas\photo\upload\YYYYMMDD\`
-- 结果图保存到 `C:\Users\lhr\Desktop\saas\photo\results\YYYYMMDD\`
-- 原图文件名格式：`source_HHMMSS_<unique>.jpg`
-- 结果图文件名格式：`result_HHMMSS_<unique>.jpg`
-- 返回给 Java 的字段始终使用相对路径，不返回 Windows 绝对路径
-
-服务同时暴露静态访问路径：
-
-- `/photo/upload/**`
-- `/photo/results/**`
-
-## 模型加载策略
-
-当前服务已实现可替换推理适配层：
-
-1. 优先尝试加载 `python-backend/models/best.pt`
-2. 如果未找到，再尝试 `frontend/best.pt`
-3. 若运行环境未安装 `ultralytics` 或模型加载失败，则自动切换到回退推理适配器
-
-默认模型查找顺序：
-
-1. `C:\Users\lhr\Desktop\saas\python-backend\models\best.pt`
-2. `C:\Users\lhr\Desktop\saas\frontend\best.pt`
-
-## 启动方式
-
-### 1. 安装依赖
-
+## 5. 初始化与运行
+1. 安装依赖
 ```bash
-cd C:\Users\lhr\Desktop\saas\python-backend
-pip install -r requirements.txt
+python -m pip install -r requirements.txt
 ```
 
-如需启用 `best.pt` 的 YOLO 推理，请额外安装：
-
+2. 初始化数据库
 ```bash
-pip install ultralytics
+python scripts/init_db.py
 ```
 
-### 2. 启动服务
-
+3. 启动服务
 ```bash
-cd C:\Users\lhr\Desktop\saas\python-backend
-uvicorn main:app --host 0.0.0.0 --port 8001 --reload
+python -m uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
 ```
 
-启动后可访问：
+4. 访问 API
+- 接口清单速览（自动枚举所有路由）：`http://127.0.0.1:8000/`
+- 健康检查：`http://127.0.0.1:8000/health`
+- Swagger UI：`http://127.0.0.1:8000/docs`
+- OpenAPI JSON：`http://127.0.0.1:8000/openapi.json`
+- 前端对接文档：`开发过程/前端对接_API清单.md`
 
-- 健康检查：[http://127.0.0.1:8001/api/health](http://127.0.0.1:8001/api/health)
-- Swagger：[http://127.0.0.1:8001/docs](http://127.0.0.1:8001/docs)
+## 6. API 模块概览（50 个端点，6 个模块）
+| Tag | 前缀 | 用途 |
+|---|---|---|
+| `order-management` | `/api/v1/orders` | 订单 CRUD + CSV 导入导出 + 仪表盘 + 一键清空 |
+| `baseline-schedule` | `/api/v1/schedules` | 基线 / 实时 / 补单排产、计划查询、甘特图 JSON、计划对比、软约束警告 |
+| `blackbox-machine` | `/api/v1/machines` | 机台 CRUD、能力参数、班次、快照、一键重置 |
+| `constraint-config` | `/api/v1/constraints` | 约束规则 CRUD、版本保存 / 发布、运行时规则、健康度检查 |
+| `ai-assistant` | `/api/v1/ai` | LLM 解释未排订单、LLM 总结 benchmark（仅解释层） |
+| `timeline-replay` | `/api/v1/timeline` | 时间线回放 CSV / Summary 读取 |
 
-## Java 对接建议
+## 7. 黑盒机台模块业务规则（已实现）
+- 非 `active` 机台不进候选集
+- 机台必须存在启用能力参数
+- 机台必须存在"当天可用班次"
+- 快照号不可重复
+- 快照失败时写日志并返回明确失败原因
 
-- Java 调 Python 时使用 `multipart/form-data`
-- Java 负责校验 `planStepId / cameraId / qcItemCode`
-- Java 负责将返回结果写入 `qcrecord`、`inspectiondata`
-- Java 负责根据 `resultJudge=FAIL` 决定是否走现有 `exceptionrecord` 闭环
-- Java 侧建议增加超时、重试和降级提示
-- 建议将 Python 返回的 `sourceImageUrl` 和 `imageUrl` 原样持久化，避免再次拼接错误
+## 8. 染色换色规则 v2（已实现）
+- **固定专用缸**：黑缸 / 白缸 / 藏蓝缸 / 大红缸**只染专属颜色**，硬约束阻拦非专属颜色
+- **循环缸**：通用染缸，遵循深 → 浅 → 深色序约束
+- **三档换色成本**：同色族 / 跨色族 / 跨色系（含 undertone 维度，例如青光黑 vs 红光黑）
+- **同色连续上限**：避免单缸连续染同色太多导致色准漂移
+- **强制洗缸对**（mandatory_wash_pairs）：特定颜色切换必须洗缸，自动累加 `wash_count` KPI
 
-## 当前第一版说明
+## 9. LLM 排产解释助手（已实现）
+- 默认接入 DeepSeek（兼容 OpenAI API 协议），可通过 `.env` 切换
+- 内置**离线缓存**与**规则 fallback**，无网时仍可演示
+- 严格定位为"解释层 / 辅助决策层"，**不写入** SchedulePlan、**不进** solver 主循环
+- 两个端点：`POST /api/v1/ai/explain-unassigned`、`POST /api/v1/ai/summarize-benchmark`
 
-- 已可运行：健康检查、图片质检、视频帧质检、文件保存、结果图输出、统一异常响应
-- 已实现：`best.pt` 路径加载逻辑、`ultralytics` 推理适配层、回退启发式推理适配层
-- 已回退：当模型不可用时使用启发式检测器，保证接口联调不阻塞
+## 10. 单元测试
+执行：
+```bash
+python -m unittest discover -s 测试 -v
+```
+共 **35 个测试**，覆盖：
+- solver KPI 回归（`test_solver_kpi.py`）
+- 染色规则与三档换色（`test_color_rules.py`）
+- 实时重排与补单（`test_realtime_reschedule.py` / `test_line_compensation.py`）
+- LLM 客户端 + 解释 / 总结服务（`test_ai_assistant.py`）
+- 时间线回放工具（`test_timeline_service.py`）
+- 中文机台名展示（`test_machine_alias_display.py`）
+- API 接口（`test_api_order.py` / `test_api_schedule_extra.py` / `test_api_misc.py`）
+
+## 11. 一键模拟排产
+执行：
+```bash
+python scripts/run_demo_simulation.py
+```
+
+脚本会自动写入一组演示数据并跑一轮基准排产。
+
+如需更完整的演示数据（含 BASE / RT / COMP 三组、染色固定缸 + 循环缸、13 种颜色），执行：
+```bash
+python scripts/reset_and_seed_live_demo.py
+```
+
+## 12. 多策略 KPI 对比
+执行：
+```bash
+python scripts/benchmark_strategies.py
+```
+
+会跑 5 种策略（greedy_eft / edd / cr / changeover_first / composite），生成报告：
+`开发过程/演示数据/strategy_benchmark_报告.md`
+
+报告底部包含 LLM 自动总结（如已配置 DeepSeek key），无网时回退到规则总结。
+
+## 13. 后续可推进方向
+- OR-Tools / CP-SAT 接入，把"色序"建模为 SDST 调度问题求最优
+- 多目标优化（交期满足率 vs 换型成本 vs 机台利用率）
+- 与外部 ERP / MES 对接
+- 前端独立项目持续完善（甘特图交互、AI 解释面板等）

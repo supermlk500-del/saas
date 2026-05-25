@@ -1,8 +1,33 @@
+# ---------- 敏感信息（绝不进 git） ----------
+.env
+.env.local
+.env.*.local
+*.key
+*.pem
+
+# ---------- AI 缓存（可选，含真实 LLM 输出） ----------
+数据/ai_cache.json
+
+# ---------- Python ----------
 __pycache__/
-*.pyc
-models/*
-!models/.gitignore
-uploads/*
-!uploads/.gitignore
-results/*
-!results/.gitignore
+*.py[cod]
+*$py.class
+*.egg-info/
+.pytest_cache/
+.venv/
+venv/
+.ipynb_checkpoints/
+
+# ---------- IDE ----------
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# ---------- OS ----------
+.DS_Store
+Thumbs.db
+
+# ---------- 项目临时文件 ----------
+output/
+*.log

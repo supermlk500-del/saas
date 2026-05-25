@@ -1,65 +1,37 @@
-from __future__ import annotations
-
-from functools import lru_cache
-from pathlib import Path
-
-from pydantic import Field
-from pydantic_settings import BaseSettings, SettingsConfigDict
+from pydantic import ConfigDict
+from pydantic_settings import BaseSettings
 
 
 class Settings(BaseSettings):
-    service_name: str = "python-inspection-service"
-    host: str = "0.0.0.0"
-    port: int = 8001
-    log_level: str = "INFO"
-    image_max_size_mb: int = 20
-    confidence_threshold: float = 0.5
-    workspace_root: Path = Field(default_factory=lambda: Path(__file__).resolve().parents[3])
-    upload_dir: Path = Field(default_factory=lambda: Path(__file__).resolve().parents[3] / "photo" / "upload")
-    result_dir: Path = Field(default_factory=lambda: Path(__file__).resolve().parents[3] / "photo" / "results")
-    model_dir: Path = Field(default_factory=lambda: Path(__file__).resolve().parents[2] / "models")
-    model_path: Path | None = None
-    frontend_model_path: Path = Field(
-        default_factory=lambda: Path(__file__).resolve().parents[3] / "frontend" / "best.pt"
-    )
+    model_config = ConfigDict(env_file=".env", env_file_encoding="utf-8", extra="ignore")
 
-    model_config = SettingsConfigDict(
-        env_prefix="INSPECTION_",
-        env_file=".env",
-        env_file_encoding="utf-8",
-        extra="ignore",
-    )
-
-    def ensure_directories(self) -> None:
-        self.upload_dir.mkdir(parents=True, exist_ok=True)
-        self.result_dir.mkdir(parents=True, exist_ok=True)
-        self.model_dir.mkdir(parents=True, exist_ok=True)
+    app_name: str = "织慧通排产系统 v1"
+    app_env: str = "dev"
+    api_prefix: str = "/api/v1"
+    cors_allow_origins: str = "http://localhost:3000,http://127.0.0.1:3000,http://localhost:5173,http://127.0.0.1:5173"
+    db_host: str = "127.0.0.1"
+    db_port: int = 3306
+    db_user: str = "root"
+    db_password: str = ""
+    db_name: str = "zhihuitong_schedule_v1"
+    llm_enabled: bool = False
+    llm_api_key: str = ""
+    llm_base_url: str = "https://api.deepseek.com/v1"
+    llm_model: str = "deepseek-chat"
+    llm_timeout_seconds: float = 3.0
+    llm_max_retries: int = 1
+    llm_offline_cache_path: str = "数据/ai_cache.json"
 
     @property
-    def upload_relative_root(self) -> str:
-        return "photo/upload"
+    def sqlalchemy_database_uri(self) -> str:
+        return (
+            f"mysql+pymysql://{self.db_user}:{self.db_password}"
+            f"@{self.db_host}:{self.db_port}/{self.db_name}?charset=utf8mb4"
+        )
 
     @property
-    def result_relative_root(self) -> str:
-        return "photo/results"
-
-    @property
-    def resolved_model_path(self) -> Path | None:
-        if self.model_path:
-            candidate = Path(self.model_path)
-            if candidate.exists():
-                return candidate
-
-        local_model = self.model_dir / "best.pt"
-        if local_model.exists():
-            return local_model
-
-        if self.frontend_model_path.exists():
-            return self.frontend_model_path
-
-        return None
+    def cors_origins(self) -> list[str]:
+        return [origin.strip() for origin in self.cors_allow_origins.split(",") if origin.strip()]
 
 
-@lru_cache(maxsize=1)
-def get_settings() -> Settings:
-    return Settings()
+settings = Settings()
