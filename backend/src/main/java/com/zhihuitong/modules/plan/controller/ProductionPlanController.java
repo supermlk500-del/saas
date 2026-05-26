@@ -45,31 +45,31 @@ public class ProductionPlanController {
     }
 
     @GetMapping("/{planId}")
-    public AjaxResult detail(@PathVariable @Min(value = 1, message = "planId must be greater than 0") Long planId) {
+    public AjaxResult detail(@PathVariable @Min(value = 1, message = "planId 必须大于 0") Long planId) {
         ProductionPlanDetailVo detail = productionPlanService.getDetail(planId);
         return AjaxResult.success(detail);
     }
 
     @PutMapping("/{planId}")
-    public AjaxResult update(@PathVariable @Min(value = 1, message = "planId must be greater than 0") Long planId,
+    public AjaxResult update(@PathVariable @Min(value = 1, message = "planId 必须大于 0") Long planId,
                              @Valid @RequestBody ProductionPlanUpdateRequest request) {
         return AjaxResult.success(productionPlanService.update(planId, request));
     }
 
     @PatchMapping("/{planId}/status")
-    public AjaxResult patchStatus(@PathVariable @Min(value = 1, message = "planId must be greater than 0") Long planId,
+    public AjaxResult patchStatus(@PathVariable @Min(value = 1, message = "planId 必须大于 0") Long planId,
                                   @Valid @RequestBody StatusPatchRequest request) {
         return AjaxResult.success(productionPlanService.patchStatus(planId, request));
     }
 
     @PostMapping("/{planId}/reschedule")
-    public AjaxResult reschedule(@PathVariable @Min(value = 1, message = "planId must be greater than 0") Long planId,
+    public AjaxResult reschedule(@PathVariable @Min(value = 1, message = "planId 必须大于 0") Long planId,
                                  @Valid @RequestBody PlanRescheduleRequest request) {
         return AjaxResult.success(productionPlanService.reschedule(planId, request));
     }
 
     @GetMapping("/{planId}/gantt")
-    public AjaxResult gantt(@PathVariable @Min(value = 1, message = "planId must be greater than 0") Long planId) {
+    public AjaxResult gantt(@PathVariable @Min(value = 1, message = "planId 必须大于 0") Long planId) {
         return AjaxResult.success(productionPlanService.getGantt(planId));
     }
 }

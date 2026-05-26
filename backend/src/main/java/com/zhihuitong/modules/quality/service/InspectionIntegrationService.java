@@ -10,7 +10,6 @@ import com.zhihuitong.modules.quality.dto.QcDetectImageRequest;
 import com.zhihuitong.modules.quality.dto.QcRecordUpsertRequest;
 import com.zhihuitong.modules.quality.dto.QcStreamSnapshotRequest;
 import com.zhihuitong.modules.quality.entity.InspectionData;
-import com.zhihuitong.modules.quality.entity.QcItem;
 import com.zhihuitong.modules.quality.entity.QcRecord;
 import com.zhihuitong.modules.quality.model.QcStreamSessionContext;
 import com.zhihuitong.modules.quality.vo.InspectionIntegrationResultVo;
@@ -62,7 +61,7 @@ public class InspectionIntegrationService {
         if (request.getCameraId() != null) {
             qcCameraService.requireCamera(request.getCameraId());
         }
-        QcItem qcItem = qcItemService.requireQcItem(request.getQcItemId());
+        qcItemService.requireQcItem(request.getQcItemId());
         StoredInspectionFile storedSourceFile = inspectionFileStorageService.storeSourceImage(file);
         log.info("detect-image request: planStepId={}, qcItemId={}, cameraId={}, originalFileName={}, sizeBytes={}, storedSourcePath={}",
                 request.getPlanStepId(),
@@ -105,7 +104,7 @@ public class InspectionIntegrationService {
         MultipartFile file = requireFile(request.getFile());
         planStepService.requirePlanStep(request.getPlanStepId());
         qcCameraService.requireCamera(request.getCameraId());
-        QcItem qcItem = qcItemService.requireQcItem(request.getQcItemId());
+        qcItemService.requireQcItem(request.getQcItemId());
         StoredInspectionFile storedSourceFile = inspectionFileStorageService.storeSourceImage(file);
         log.info("detect-frame request: planStepId={}, qcItemId={}, cameraId={}, frameTime={}, originalFileName={}, sizeBytes={}, storedSourcePath={}",
                 request.getPlanStepId(),

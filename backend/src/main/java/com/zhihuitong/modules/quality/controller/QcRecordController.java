@@ -46,7 +46,7 @@ public class QcRecordController {
     }
 
     @GetMapping("/{inspectionId}")
-    public AjaxResult detail(@PathVariable @Min(value = 1, message = "inspectionId must be greater than 0") Long inspectionId) {
+    public AjaxResult detail(@PathVariable @Min(value = 1, message = "inspectionId 必须大于 0") Long inspectionId) {
         return AjaxResult.success(qcRecordService.getDetail(inspectionId));
     }
 
@@ -68,19 +68,19 @@ public class QcRecordController {
     }
 
     @PutMapping("/{inspectionId}")
-    public AjaxResult update(@PathVariable @Min(value = 1, message = "inspectionId must be greater than 0") Long inspectionId,
+    public AjaxResult update(@PathVariable @Min(value = 1, message = "inspectionId 必须大于 0") Long inspectionId,
                              @Valid @RequestBody QcRecordUpsertRequest request) {
         return AjaxResult.success(qcRecordService.update(inspectionId, request));
     }
 
     @PatchMapping("/{inspectionId}/review")
-    public AjaxResult review(@PathVariable @Min(value = 1, message = "inspectionId must be greater than 0") Long inspectionId,
+    public AjaxResult review(@PathVariable @Min(value = 1, message = "inspectionId 必须大于 0") Long inspectionId,
                              @Valid @RequestBody QcRecordReviewRequest request) {
         return AjaxResult.success(qcRecordService.review(inspectionId, request));
     }
 
     @PatchMapping("/{inspectionId}/close")
-    public AjaxResult close(@PathVariable @Min(value = 1, message = "inspectionId must be greater than 0") Long inspectionId,
+    public AjaxResult close(@PathVariable @Min(value = 1, message = "inspectionId 必须大于 0") Long inspectionId,
                             @Valid @RequestBody QcRecordCloseRequest request) {
         return AjaxResult.success(qcRecordService.close(inspectionId, request));
     }

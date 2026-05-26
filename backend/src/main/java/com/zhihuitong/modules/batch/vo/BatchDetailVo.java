@@ -27,6 +27,34 @@ public class BatchDetailVo {
 
     private String status;
 
+    private String resourceStatus;
+
+    private String resourceStatusLabel;
+
+    private long linkedOrderCount;
+
+    private List<BatchLinkedOrderVo> linkedOrders;
+
+    private BigDecimal allocatedWeight;
+
+    private BigDecimal allocatedQuantity;
+
+    private BigDecimal remainingWeight;
+
+    private BigDecimal remainingQuantity;
+
+    private Long currentPlanId;
+
+    private String currentPlanStatus;
+
+    private Long currentOrderId;
+
+    private String currentOrderNo;
+
+    private boolean lockedByPlan;
+
+    private boolean readyForSchedule;
+
     private List<BatchPlanSummaryVo> planSummary;
 
     private List<BatchQcSummaryVo> qcSummary;

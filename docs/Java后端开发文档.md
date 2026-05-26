@@ -8,13 +8,14 @@
 
 当前最终决策如下：
 
+- 排产主链路升级为“订单驱动、批次执行”
 - 排产算法模块继续留在 Java 后端实现
 - 质检算法模块不再使用独立 Python 后端
 - 质检推理能力改为 Java 后端内部集成 ONNX Runtime 本地推理
 
 因此，Java 后端后续重点有两部分：
 
-1. 持续完善排产算法与排产业务
+1. 持续完善订单驱动排产算法与排产业务
 2. 在 Java 后端内部集成 ONNX 模型推理，完成质检检测、结果落库与异常闭环
 
 ## 2. 当前系统现状
@@ -36,18 +37,22 @@ Java 后端目录：
 当前已实现模块：
 
 - `batch`
+- `order`
 - `process`
 - `plan`
 - `quality`
 - `exception`
+- `ai`
 
 当前状态判断：
 
 - 排产主链路已经在 Java 中真实存在，不是空壳
+- `OrderService` 已具备订单、订单明细、订单批次分配、订单详情聚合、订单排产池等能力
 - `ProductionPlanService` 已具备计划创建、计划重排、工序展开、设备推荐等基础能力
 - `PlanStepService` 已具备设备调整、状态流转、计划时间调整等能力
-- 质检模块已经具备 `qc-records`、`inspection-data`、异常自动创建能力
-- 实时质检前端尚未真正联动本地模型推理结果
+- 质检模块已经具备 `qc-records`、`inspection-data`、`qc-stream-sessions`、异常自动创建能力
+- 实时质检页面已经联动本地 ONNX 推理链路，支持会话创建、WebSocket 推帧与快照落库
+- 当前系统的业务主入口已经切到“订单驱动、批次执行”，批次保留为执行层资源对象
 
 质检图片存储约定：
 
@@ -65,6 +70,9 @@ Java 后端目录：
 
 Java 后端继续承担以下职责：
 
+- 订单主数据管理
+- 订单明细管理
+- 订单与批次分配管理
 - 业务主流程控制
 - 用户与权限
 - 前端 REST 接口
@@ -82,9 +90,9 @@ Java 后端继续承担以下职责：
 
 更细分的职责为：
 
-- 前端：发起计划、质检、追溯等业务请求
+- 前端：发起订单、计划、质检、追溯等业务请求
 - Java Controller：提供统一业务接口
-- Java Service：组织业务流程、调用排产逻辑、调用 ONNX 推理、完成落库
+- Java Service：组织订单驱动排产逻辑、调用 ONNX 推理、完成落库
 - Java AI 模块：加载 `.onnx` 模型、执行图片推理、输出结构化检测结果
 - MySQL：存储计划、质检记录、附件、异常等业务数据
 
@@ -96,22 +104,26 @@ Java 后端继续承担以下职责：
 
 建议原则：
 
-1. 保持现有前端接口不变
-2. 保持当前数据库结构不大改
-3. 优先优化 `ProductionPlanService`
-4. 先提升“可用解质量”，再考虑复杂优化算法
+1. 订单成为排产业务主入口
+2. 批次继续作为执行资源对象
+3. 优先在现有排产逻辑之上补充订单驱动层，而不是推翻 `batch -> plan` 主链路
+4. 先提升“订单能驱动生成计划”的能力，再考虑复杂优化算法
 
 ### 5.2 推荐演进方向
 
 #### 第一阶段
 
+- 继续完善现有订单模块
+- 建立订单与批次分配关系
+- 让计划可关联 `orderId / orderItemId`
+- 打通订单排产池与批次资源池的统一查询口径
 - 提升当前规则排产质量
 - 完善设备推荐策略
 - 补充更多业务校验
 
 #### 第二阶段
 
-- 引入更细粒度约束
+- 引入交期、优先级、客户需求等订单维度约束
 - 增加计划评分机制
 - 增加推荐说明字段
 
@@ -119,6 +131,115 @@ Java 后端继续承担以下职责：
 
 - 若需要，可在 Java 内部引入更复杂算法实现
 - 但仍保持主系统和落库逻辑在 Java 中
+
+### 5.3 订单驱动改造建议
+
+当前 Java 后端已落地：
+
+```text
+com.zhihuitong.modules.order
+```
+
+当前分层：
+
+- `controller`
+- `service`
+- `mapper`
+- `entity`
+- `dto`
+- `vo`
+
+当前核心对象：
+
+- `OrderInfo`
+- `OrderItem`
+- `OrderBatchLink`
+
+当前核心接口：
+
+- `GET /api/orders`
+- `GET /api/orders/{orderId}`
+- `POST /api/orders`
+- `PUT /api/orders/{orderId}`
+- `PATCH /api/orders/{orderId}/status`
+- `GET /api/orders/{orderId}/items`
+- `POST /api/orders/{orderId}/items`
+- `PUT /api/orders/{orderId}/items/{orderItemId}`
+- `DELETE /api/orders/{orderId}/items/{orderItemId}`
+- `GET /api/orders/{orderId}/batches`
+- `POST /api/orders/{orderId}/batches`
+- `DELETE /api/orders/{orderId}/batches/{linkId}`
+
+建议改造 `ProductionPlanService`：
+
+- 创建计划时支持传入 `orderId`
+- 创建计划时支持传入 `orderItemId`
+- 计划详情返回订单信息
+- 计划列表支持订单维度查询
+- 订单详情聚合接口支持返回工艺路线、机器、时间段、质检与异常摘要
+- 继续补充订单排产池、批次资源池、计划摘要之间的统一口径
+
+### 5.4 订单履约聚合视图建议
+
+订单详情页不应只是订单主表详情，而应是“订单履约聚合视图”。
+
+建议后端至少支撑以下聚合内容：
+
+1. 订单基本信息
+2. 订单明细
+3. 关联批次
+4. 关联工艺路线
+5. 关联生产计划
+6. 关联工序计划
+7. 涉及设备/机器
+8. 机器运行时间段
+9. 质检摘要
+10. 异常摘要
+
+建议两种实现方式：
+
+#### 方式 A：单一聚合接口
+
+- `GET /api/orders/{orderId}`
+
+直接返回：
+
+- `orderId`
+- `orderNo`
+- `customerName`
+- `items`
+- `linkedBatches`
+- `routeSummary`
+- `planSummary`
+- `planSteps`
+- `machineSummary`
+- `qcRecordCount`
+- `exceptionCount`
+- `qcSummary`
+- `latestQcRecord`
+- `exceptionSummary`
+- `latestException`
+
+说明：
+
+- 当前前端设备时间段摘要主要由 `planSteps + machineSummary` 在页面侧计算得到，后端尚未单独返回 `machineTimeRanges`
+
+#### 方式 B：主详情 + 聚合子接口
+
+- `GET /api/orders/{orderId}`
+- `GET /api/orders/{orderId}/items`
+- `GET /api/orders/{orderId}/batches`
+- `GET /api/orders/{orderId}/plans`
+- `GET /api/orders/{orderId}/routes`
+- `GET /api/orders/{orderId}/machines`
+- `GET /api/orders/{orderId}/qc-records`
+- `GET /api/orders/{orderId}/exceptions`
+
+当前阶段更推荐：
+
+- 主详情接口 + 若干聚合子接口
+
+这样既能支撑前端订单履约详情页，又不会让单一接口过重。
 
 ## 6. 质检 ONNX 推理模块设计
 
@@ -133,13 +254,13 @@ Java 后端继续承担以下职责：
 
 ### 6.2 推荐模块
 
-建议在 Java 后端新增：
+当前 Java 后端已落地：
 
 ```text
 com.zhihuitong.modules.ai
 ```
 
-建议类如下：
+当前核心类如下：
 
 - `OnnxYoloService`
 - `YoloDetectResult`
@@ -202,7 +323,7 @@ backend/models/fabric_defect.onnx
 
 ### 7.2 配置文件建议
 
-建议在 Java 配置文件中新增：
+当前已在 Java 配置文件中落地：
 
 ```yaml
 ai:
@@ -215,7 +336,7 @@ ai:
 
 ### 7.3 Maven 依赖建议
 
-建议新增 ONNX Runtime 依赖：
+当前已引入 ONNX Runtime 依赖：
 
 ```xml
 <dependency>

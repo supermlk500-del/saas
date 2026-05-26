@@ -1,15 +1,15 @@
 <script setup lang="ts">
-import { onMounted, reactive, ref } from 'vue'
+import { computed, onMounted, reactive, ref } from 'vue'
 import { message } from 'ant-design-vue'
-import { createBatch, fetchBatches, updateBatch, type BatchQuery, type BatchUpsertRequest } from '@/api/batch/batch'
+import { useRouter } from 'vue-router'
+import { createBatch, fetchBatchResourcePool, updateBatch, type BatchQuery, type BatchUpsertRequest } from '@/api/batch/batch'
 import TablePage from '@/components/TablePage.vue'
 import SearchBar from '@/components/SearchBar.vue'
-import { batchStatusOptions } from '@/constants/dictionaries'
 import { useTable } from '@/hooks/useTable'
-import type { BatchItem } from '@/types/domain'
+import type { BatchItem, IdValue } from '@/types/domain'
 
 type BatchFormModel = {
-  batchId?: number
+  batchId?: IdValue
   batchNo: string
   supplier: string
   inDate: string
@@ -25,7 +25,7 @@ const searchForm = reactive({
 })
 
 const searchFields = [
-  { label: '批次编号', name: 'batchNo', type: 'input' as const, placeholder: '请输入批次编号', width: '220px' },
+  { label: '资源批次编号', name: 'batchNo', type: 'input' as const, placeholder: '请输入批次编号', width: '220px' },
   { label: '供应商', name: 'supplier', type: 'input' as const, placeholder: '请输入供应商', width: '220px' },
 ]
 
@@ -35,12 +35,17 @@ const columns = [
   { title: '入厂时间', dataIndex: 'inDate', key: 'inDate', width: 180 },
   { title: '重量(kg)', dataIndex: 'weight', key: 'weight', width: 120 },
   { title: '门幅(cm)', dataIndex: 'width', key: 'width', width: 120 },
-  { title: '成分', dataIndex: 'composition', key: 'composition' },
-  { title: '状态', dataIndex: 'status', key: 'status', width: 120 },
-  { title: '操作', key: 'action', width: 140, fixed: 'right' as const },
+  { title: '成分', dataIndex: 'composition', key: 'composition', width: 180 },
+  { title: '关联订单', dataIndex: 'linkedOrders', key: 'linkedOrders', width: 260 },
+  { title: '已分配', dataIndex: 'allocatedWeight', key: 'allocatedWeight', width: 150 },
+  { title: '剩余可用', dataIndex: 'remainingWeight', key: 'remainingWeight', width: 150 },
+  { title: '计划占用', dataIndex: 'lockedByPlan', key: 'lockedByPlan', width: 120 },
+  { title: '资源状态', dataIndex: 'resourceStatus', key: 'resourceStatus', width: 130 },
+  { title: '操作', key: 'action', width: 220, fixed: 'right' as const },
 ]
 
 const { data, loading, pagination } = useTable<BatchItem>()
+const router = useRouter()
 
 const modalOpen = ref(false)
 const submitting = ref(false)
@@ -81,6 +86,17 @@ const rules = {
   ],
 }
 
+const resourceStatusMap: Record<string, { label: string; color: string }> = {
+  UNALLOCATED: { label: '待分配', color: 'blue' },
+  PARTIALLY_ALLOCATED: { label: '部分分配', color: 'gold' },
+  ALLOCATED: { label: '已分配', color: 'cyan' },
+  IN_EXECUTION: { label: '执行中', color: 'processing' },
+  CONSUMED: { label: '已消耗', color: 'success' },
+  CLOSED: { label: '已关闭', color: 'error' },
+}
+
+const resourceRows = computed(() => data.value)
+
 const loadData = async () => {
   loading.value = true
 
@@ -92,7 +108,7 @@ const loadData = async () => {
       supplier: searchForm.supplier || undefined,
     }
 
-    const response = await fetchBatches(query)
+    const response = await fetchBatchResourcePool(query)
     data.value = response.list
     pagination.total = response.total
   } finally {
@@ -113,8 +129,30 @@ const resetSearch = () => {
   void loadData()
 }
 
-const getStatusOption = (status?: string) =>
-  batchStatusOptions.find((item) => item.value === status)
+const getStatusOption = (status?: string, label?: string) => {
+  if (!status) {
+    return undefined
+  }
+  const local = resourceStatusMap[status]
+  return local ? { ...local, label: label || local.label } : { label: label || status, color: 'default' }
+}
+
+const formatWeight = (value?: number | null) => (value != null ? `${Number(value).toFixed(2)} kg` : '未记录重量')
+
+const formatQuantity = (value?: number | null) => (value != null ? `${Number(value).toFixed(2)}` : '未记录数量')
+
+const formatAllocation = (weight?: number | null, quantity?: number | null) => {
+  if (weight != null && quantity != null) {
+    return `${formatWeight(weight)} / ${formatQuantity(quantity)}`
+  }
+  if (weight != null) {
+    return formatWeight(weight)
+  }
+  if (quantity != null) {
+    return formatQuantity(quantity)
+  }
+  return '未分配'
+}
 
 const resetFormModel = () => {
   formModel.batchId = undefined
@@ -131,6 +169,10 @@ const openCreateModal = () => {
   modalMode.value = 'create'
   resetFormModel()
   modalOpen.value = true
+}
+
+const jumpToOrderSchedulePool = () => {
+  void router.push({ name: 'schedule-order-pool' })
 }
 
 const openEditModal = (record: BatchItem) => {
@@ -165,10 +207,10 @@ const handleSubmit = async () => {
 
     if (modalMode.value === 'create') {
       await createBatch(payload)
-      message.success('新增来料成功')
+      message.success('新增资源成功')
     } else if (formModel.batchId) {
       await updateBatch(formModel.batchId, payload)
-      message.success('编辑来料成功')
+      message.success('编辑资源成功')
     }
 
     modalOpen.value = false
@@ -188,13 +230,32 @@ onMounted(() => {
 </script>
 
 <template>
-  <TablePage title="来料批次" :columns="columns" :data="data" :loading="loading" :pagination="pagination">
+  <TablePage
+    title="来料资源池"
+    :columns="columns"
+    :data="resourceRows"
+    :loading="loading"
+    :pagination="pagination"
+    row-key="batchId"
+    :scroll="{ x: 1750 }"
+  >
     <template #search>
-      <SearchBar :model="searchForm" :fields="searchFields" @search="loadData" @reset="resetSearch" />
+      <div class="search-stack">
+        <SearchBar :model="searchForm" :fields="searchFields" @search="loadData" @reset="resetSearch" />
+        <a-alert
+          type="info"
+          show-icon
+          class="resource-alert"
+          message="本页维护来料资源池。批次在这里是订单执行的资源对象，不是独立排产主体；真正的排产入口请前往“订单排产池”。"
+        />
+      </div>
     </template>
 
     <template #actions>
-      <a-button type="primary" @click="openCreateModal">新增来料</a-button>
+      <a-space>
+        <a-button @click="jumpToOrderSchedulePool">去订单排产池</a-button>
+        <a-button type="primary" @click="openCreateModal">新增来料资源</a-button>
+      </a-space>
     </template>
 
     <template #bodyCell="{ column, record }">
@@ -207,21 +268,43 @@ onMounted(() => {
       <template v-else-if="column.key === 'composition'">
         {{ record.composition || '-' }}
       </template>
-      <template v-else-if="column.key === 'status'">
-        <a-tag v-if="getStatusOption(record.status)" :color="getStatusOption(record.status)?.color">
-          {{ getStatusOption(record.status)?.label }}
+      <template v-else-if="column.key === 'linkedOrders'">
+        <a-space v-if="record.linkedOrders?.length" wrap size="small">
+          <a-tag v-for="item in record.linkedOrders" :key="String(item.linkId || item.orderId)" color="blue">
+            {{ item.orderNo || `订单 ${item.orderId}` }}
+          </a-tag>
+        </a-space>
+        <span v-else class="muted-text">未分配订单</span>
+      </template>
+      <template v-else-if="column.key === 'allocatedWeight'">
+        {{ formatAllocation(record.allocatedWeight, record.allocatedQuantity) }}
+      </template>
+      <template v-else-if="column.key === 'remainingWeight'">
+        {{ formatAllocation(record.remainingWeight, record.remainingQuantity) }}
+      </template>
+      <template v-else-if="column.key === 'lockedByPlan'">
+        <a-tag :color="record.lockedByPlan ? 'processing' : 'success'">
+          {{ record.lockedByPlan ? `计划 ${record.currentPlanId || ''} 占用` : '可用于排产' }}
         </a-tag>
-        <span v-else>{{ record.status || '-' }}</span>
+      </template>
+      <template v-else-if="column.key === 'resourceStatus'">
+        <a-tag v-if="getStatusOption(record.resourceStatus, record.resourceStatusLabel)" :color="getStatusOption(record.resourceStatus, record.resourceStatusLabel)?.color">
+          {{ getStatusOption(record.resourceStatus, record.resourceStatusLabel)?.label }}
+        </a-tag>
+        <span v-else>{{ record.resourceStatusLabel || record.resourceStatus || '-' }}</span>
       </template>
       <template v-else-if="column.key === 'action'">
-        <a-button type="link" @click="openEditModal(record)">编辑</a-button>
+        <a-space>
+          <a-button type="link" @click="openEditModal(record)">编辑资源</a-button>
+          <a-button type="link" @click="jumpToOrderSchedulePool">去订单排产</a-button>
+        </a-space>
       </template>
     </template>
   </TablePage>
 
   <a-modal
     v-model:open="modalOpen"
-    :title="modalMode === 'create' ? '新增来料' : '编辑来料'"
+    :title="modalMode === 'create' ? '新增来料资源' : '编辑来料资源'"
     ok-text="保存"
     cancel-text="取消"
     :confirm-loading="submitting"
@@ -287,6 +370,19 @@ onMounted(() => {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 0 16px;
+}
+
+.resource-alert {
+  margin-top: 12px;
+}
+
+.muted-text {
+  color: #94a3b8;
+}
+
+.search-stack {
+  display: flex;
+  flex-direction: column;
 }
 
 @media (max-width: 900px) {

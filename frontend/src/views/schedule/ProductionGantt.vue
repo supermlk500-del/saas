@@ -1,9 +1,9 @@
 <script setup lang="ts">
 import { computed, nextTick, onBeforeUnmount, onMounted, reactive, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import { fetchPlans, getPlanGantt, type GanttResponse } from '@/api/plan/plan'
+import { fetchPlans, getPlan, getPlanGantt, type GanttResponse } from '@/api/plan/plan'
 import { planStepStatusOptions } from '@/constants/dictionaries'
-import type { GanttTaskItem, ProductionPlanItem } from '@/types/domain'
+import type { GanttTaskItem, IdValue, ProductionPlanDetailItem, ProductionPlanItem } from '@/types/domain'
 
 const route = useRoute()
 const router = useRouter()
@@ -12,6 +12,7 @@ const loading = ref(false)
 const planLoading = ref(false)
 const planOptions = ref<ProductionPlanItem[]>([])
 const gantt = ref<GanttResponse | null>(null)
+const currentPlanDetail = ref<ProductionPlanDetailItem | null>(null)
 const ganttCardRef = ref<HTMLElement | null>(null)
 const trackWidth = ref(0)
 let resizeObserver: ResizeObserver | null = null
@@ -24,8 +25,23 @@ type GanttRow = GanttTaskItem & {
 }
 
 const filterForm = reactive({
-  planId: undefined as number | undefined,
+  planId: undefined as IdValue | undefined,
 })
+
+const hasIdValue = (value: unknown): value is IdValue =>
+  value !== undefined && value !== null && String(value).trim() !== ''
+
+const normalizeQueryId = (value: unknown): IdValue | undefined => {
+  if (Array.isArray(value)) {
+    return normalizeQueryId(value[0])
+  }
+
+  if (typeof value === 'string' || typeof value === 'number') {
+    return value
+  }
+
+  return undefined
+}
 
 const loadPlanOptions = async () => {
   planLoading.value = true
@@ -157,19 +173,24 @@ const updateTrackWidth = () => {
   trackWidth.value = firstTrack?.clientWidth ?? 0
 }
 
-const fetchGanttData = async (planId: number) => {
+const fetchGanttData = async (planId: IdValue) => {
   loading.value = true
   try {
-    const response = await getPlanGantt(planId)
-    gantt.value = response.data
+    const [ganttResponse, detailResponse] = await Promise.all([
+      getPlanGantt(planId),
+      getPlan(planId),
+    ])
+    gantt.value = ganttResponse.data
+    currentPlanDetail.value = detailResponse.data
   } finally {
     loading.value = false
   }
 }
 
 const handleSearch = async () => {
-  if (!filterForm.planId) {
+  if (!hasIdValue(filterForm.planId)) {
     gantt.value = null
+    currentPlanDetail.value = null
     return
   }
 
@@ -184,6 +205,7 @@ const handleSearch = async () => {
 const resetSearch = async () => {
   filterForm.planId = undefined
   gantt.value = null
+  currentPlanDetail.value = null
   await router.replace({
     path: '/schedule/board',
     query: {},
@@ -193,15 +215,13 @@ const resetSearch = async () => {
 watch(
   () => route.query.planId,
   async (planId) => {
-    if (!planId) {
+    const normalizedPlanId = normalizeQueryId(planId)
+    if (!hasIdValue(normalizedPlanId)) {
       return
     }
 
-    const numericId = Number(planId)
-    if (!Number.isNaN(numericId) && numericId > 0) {
-      filterForm.planId = numericId
-      await fetchGanttData(numericId)
-    }
+    filterForm.planId = normalizedPlanId
+    await fetchGanttData(normalizedPlanId)
   },
   { immediate: true },
 )
@@ -250,7 +270,7 @@ onBeforeUnmount(() => {
         <a-form-item label="生产计划">
           <a-select
             v-model:value="filterForm.planId"
-            :options="planOptions.map((item) => ({ label: `#${item.planId} / ${item.batchNo || item.batchId}`, value: item.planId }))"
+            :options="planOptions.map((item) => ({ label: `#${item.planId} / ${item.orderNo || '未绑定订单'} / ${item.batchNo || item.batchId}`, value: item.planId }))"
             :loading="planLoading"
             placeholder="请选择生产计划"
             show-search
@@ -263,6 +283,21 @@ onBeforeUnmount(() => {
           <a-button style="margin-left: 8px" @click="resetSearch">重置</a-button>
         </a-form-item>
       </a-form>
+    </a-card>
+
+    <a-card v-if="currentPlanDetail" class="page-card" :bordered="false">
+      <a-descriptions :column="4" bordered size="small">
+        <a-descriptions-item label="订单号">{{ currentPlanDetail.orderInfo?.orderNo || '-' }}</a-descriptions-item>
+        <a-descriptions-item label="客户">{{ currentPlanDetail.orderInfo?.customerName || '-' }}</a-descriptions-item>
+        <a-descriptions-item label="订单明细">
+          {{ [currentPlanDetail.orderItemInfo?.productCode || currentPlanDetail.orderItemInfo?.productName, currentPlanDetail.orderItemInfo?.specification, currentPlanDetail.orderItemInfo?.color].filter(Boolean).join(' / ') || '-' }}
+        </a-descriptions-item>
+        <a-descriptions-item label="批次">{{ currentPlanDetail.batchInfo?.batchNo || '-' }}</a-descriptions-item>
+        <a-descriptions-item label="工艺路线">{{ currentPlanDetail.routeInfo?.routeName || '-' }}</a-descriptions-item>
+        <a-descriptions-item label="计划开始">{{ currentPlanDetail.planStartTime || '-' }}</a-descriptions-item>
+        <a-descriptions-item label="计划结束">{{ currentPlanDetail.planEndTime || '-' }}</a-descriptions-item>
+        <a-descriptions-item label="计划状态">{{ currentPlanDetail.status || '-' }}</a-descriptions-item>
+      </a-descriptions>
     </a-card>
 
     <div class="summary-grid">

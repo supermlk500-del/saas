@@ -2,6 +2,10 @@ import axios, { type AxiosError, type AxiosRequestConfig } from 'axios'
 import { message } from 'ant-design-vue'
 import type { ApiErrorResponse } from '@/types/http'
 
+export type RequestConfig = AxiosRequestConfig & {
+  silentError?: boolean
+}
+
 const service = axios.create({
   baseURL: import.meta.env.VITE_APP_BASE_API ?? '/prod-api',
   timeout: 10000,
@@ -24,7 +28,10 @@ service.interceptors.response.use(
 
     if (code !== 200) {
       const errorMessage = data?.msg || 'Request failed'
-      message.error(errorMessage)
+      const config = response.config as RequestConfig
+      if (!config.silentError) {
+        message.error(errorMessage)
+      }
       return Promise.reject(new Error(errorMessage))
     }
 
@@ -36,16 +43,19 @@ service.interceptors.response.use(
         ? String((error.response.data as ApiErrorResponse).msg)
         : error.message || 'Network request error'
 
-    message.error(errorMessage)
+    const config = error.config as RequestConfig | undefined
+    if (!config?.silentError) {
+      message.error(errorMessage)
+    }
     return Promise.reject(error)
   },
 )
 
-const request = <T = unknown>(config: AxiosRequestConfig): Promise<T> => {
+const request = <T = unknown>(config: RequestConfig): Promise<T> => {
   return service.request<unknown, T>(config)
 }
 
-export const download = <T = Blob>(config: AxiosRequestConfig) =>
+export const download = <T = Blob>(config: RequestConfig) =>
   service.request<unknown, T>({
     responseType: 'blob',
     ...config,

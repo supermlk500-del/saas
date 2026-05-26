@@ -1,11 +1,11 @@
 import request, { type ApiListResponse, type ApiSuccessResponse } from '@/utils/request'
 import type { InspectType } from '@/types/dictionary'
-import type { InspectionDataItem, QcDetectionResult, QcRecordItem } from '@/types/domain'
+import type { IdValue, InspectionDataItem, QcDetectionResult, QcRecordItem } from '@/types/domain'
 import type { PageQuery, PageResult } from '@/types/http'
 
 export type QcRecordQuery = PageQuery & {
-  planStepId?: number | string
-  qcItemId?: number | string
+  planStepId?: IdValue
+  qcItemId?: IdValue
   inspectType?: string
   resultJudge?: string
   inspectTimeFrom?: string
@@ -13,11 +13,11 @@ export type QcRecordQuery = PageQuery & {
 }
 
 export type QcRecordUpsertRequest = {
-  planStepId: number | string
-  qcItemId: number | string
+  planStepId: IdValue
+  qcItemId: IdValue
   inspectTime: string
   inspectType: string
-  cameraId?: number | string | null
+  cameraId?: IdValue | null
   frameTime?: string | null
   imageUrl?: string | null
   confidenceScore?: number | null
@@ -39,9 +39,9 @@ export type QcRecordCloseRequest = {
 
 export type QcDetectRequest = {
   file: File
-  planStepId: number | string
-  qcItemId: number | string
-  cameraId?: number | string | null
+  planStepId: IdValue
+  qcItemId: IdValue
+  cameraId?: IdValue | null
   inspectType?: InspectType
   frameTime?: string | null
   inspector?: string
@@ -88,7 +88,7 @@ export const listQcRecords = (query?: QcRecordQuery) =>
     params: query,
   })
 
-export const getQcRecord = (inspectionId: number | string) =>
+export const getQcRecord = (inspectionId: IdValue) =>
   request<ApiSuccessResponse<QcRecordItem>>({
     url: `/api/qc-records/${inspectionId}`,
     method: 'get',
@@ -101,21 +101,21 @@ export const createQcRecord = (payload: QcRecordUpsertRequest) =>
     data: payload,
   })
 
-export const updateQcRecord = (inspectionId: number | string, payload: QcRecordUpsertRequest) =>
+export const updateQcRecord = (inspectionId: IdValue, payload: QcRecordUpsertRequest) =>
   request<ApiSuccessResponse<QcRecordItem>>({
     url: `/api/qc-records/${inspectionId}`,
     method: 'put',
     data: payload,
   })
 
-export const reviewQcRecord = (inspectionId: number | string, payload: QcRecordReviewRequest) =>
+export const reviewQcRecord = (inspectionId: IdValue, payload: QcRecordReviewRequest) =>
   request<ApiSuccessResponse<QcRecordItem>>({
     url: `/api/qc-records/${inspectionId}/review`,
     method: 'patch',
     data: payload,
   })
 
-export const closeQcRecord = (inspectionId: number | string, payload: QcRecordCloseRequest) =>
+export const closeQcRecord = (inspectionId: IdValue, payload: QcRecordCloseRequest) =>
   request<ApiSuccessResponse<QcRecordItem>>({
     url: `/api/qc-records/${inspectionId}/close`,
     method: 'patch',

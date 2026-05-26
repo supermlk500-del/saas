@@ -1,12 +1,12 @@
 import { fetchPlanSteps } from '@/api/plan/planStep'
 import { fetchQcRecords } from '@/api/quality/qcRecord'
-import type { PlanStepItem } from '@/types/domain'
+import type { IdValue, PlanStepItem } from '@/types/domain'
 import type { PageResult } from '@/types/http'
 
 export type TaskItem = {
   taskNo: string
-  planStepId: number | string
-  planId: number
+  planStepId: IdValue
+  planId: IdValue
   stepName?: string
   machineName?: string
   latestInspectTime?: string
@@ -31,8 +31,8 @@ const buildTaskStatus = (planStep: PlanStepItem, latestJudge?: string) => {
 
 export const fetchTasks = async (query?: TaskQuery): Promise<PageResult<TaskItem>> => {
   const [planStepRes, qcRecordRes] = await Promise.all([
-    fetchPlanSteps({ pageNum: 1, pageSize: 500 }),
-    fetchQcRecords({ pageNum: 1, pageSize: 500 }),
+    fetchPlanSteps({ pageNum: 1, pageSize: 200 }),
+    fetchQcRecords({ pageNum: 1, pageSize: 200}),
   ])
 
   const qcMap = new Map<string, { inspectTime?: string; resultJudge?: string }>()

@@ -109,7 +109,7 @@ public class QcRecordService {
     public QcRecord requireRecord(Long inspectionId) {
         QcRecord entity = qcRecordMapper.selectById(inspectionId);
         if (entity == null) {
-            throw new BusinessException(404, "QC record not found");
+            throw new BusinessException(404, "质检记录不存在");
         }
         return entity;
     }
@@ -118,14 +118,14 @@ public class QcRecordService {
         planStepService.requirePlanStep(request.getPlanStepId());
         qcItemService.requireQcItem(request.getQcItemId());
         if (!INSPECT_TYPES.contains(request.getInspectType())) {
-            throw new BusinessException(422, "inspectType must be one of offline or video");
+            throw new BusinessException(422, "inspectType 仅支持 offline 或 video");
         }
         assertResultJudge(request.getResultJudge());
         if ("video".equals(request.getInspectType()) && request.getCameraId() != null) {
             qcCameraService.requireCamera(request.getCameraId());
         }
         if ("video".equals(request.getInspectType()) && request.getCameraId() == null) {
-            throw new BusinessException(422, "cameraId is recommended and required by this implementation for video inspections");
+            throw new BusinessException(422, "视频质检必须传入 cameraId");
         }
         if (request.getCameraId() != null) {
             qcCameraService.requireCamera(request.getCameraId());
@@ -149,7 +149,7 @@ public class QcRecordService {
 
     private void assertResultJudge(String resultJudge) {
         if (!RESULT_JUDGES.contains(resultJudge)) {
-            throw new BusinessException(422, "Unsupported resultJudge: " + resultJudge);
+            throw new BusinessException(422, "不支持的质检结论: " + resultJudge);
         }
     }
 

@@ -168,7 +168,7 @@ public class ProcessRouteService {
     public ProcessRoute requireRoute(Long routeId) {
         ProcessRoute route = processRouteMapper.selectById(routeId);
         if (route == null) {
-            throw new BusinessException(404, "Process route not found");
+            throw new BusinessException(404, "工艺路线不存在");
         }
         return route;
     }
@@ -194,7 +194,7 @@ public class ProcessRouteService {
                 .eq(RouteStep::getRouteId, routeId)
                 .orderByAsc(RouteStep::getSortOrder));
         if (routeSteps.isEmpty()) {
-            throw new BusinessException(422, "Process route must contain at least one route step");
+            throw new BusinessException(422, "工艺路线至少需要配置一个工序");
         }
         return routeSteps;
     }

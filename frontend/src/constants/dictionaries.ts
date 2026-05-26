@@ -6,10 +6,20 @@ import type {
   ExceptionStatus,
   InspectType,
   MachineStatus,
+  OrderStatus,
   PlanStatus,
   PlanStepStatus,
   ResultJudge,
 } from '@/types/dictionary'
+
+export const orderStatusOptions: DictionaryOption<OrderStatus>[] = [
+  { label: '新建', value: 'NEW', color: 'default' },
+  { label: '待排产', value: 'READY', color: 'blue' },
+  { label: '排产中', value: 'PLANNING', color: 'gold' },
+  { label: '执行中', value: 'IN_PROGRESS', color: 'processing' },
+  { label: '已完成', value: 'DONE', color: 'success' },
+  { label: '已取消', value: 'CANCELLED', color: 'error' },
+]
 
 export const batchStatusOptions: DictionaryOption<BatchStatus>[] = [
   { label: '新建', value: 'NEW', color: 'default' },

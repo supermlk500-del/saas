@@ -4,10 +4,12 @@ import com.zhihuitong.common.domain.AjaxResult;
 import com.zhihuitong.common.domain.TableDataInfo;
 import com.zhihuitong.modules.batch.dto.BatchQuery;
 import com.zhihuitong.modules.batch.dto.BatchUpsertRequest;
+import com.zhihuitong.modules.batch.service.BatchResourcePoolService;
 import com.zhihuitong.modules.batch.service.BatchService;
 import com.zhihuitong.modules.batch.vo.BatchDetailVo;
 import com.zhihuitong.modules.batch.vo.BatchImportResultVo;
 import com.zhihuitong.modules.batch.vo.BatchListVo;
+import com.zhihuitong.modules.batch.vo.BatchResourcePoolVo;
 import jakarta.servlet.http.HttpServletResponse;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.Min;
@@ -32,14 +34,21 @@ import java.io.IOException;
 public class BatchController {
 
     private final BatchService batchService;
+    private final BatchResourcePoolService batchResourcePoolService;
 
-    public BatchController(BatchService batchService) {
+    public BatchController(BatchService batchService, BatchResourcePoolService batchResourcePoolService) {
         this.batchService = batchService;
+        this.batchResourcePoolService = batchResourcePoolService;
     }
 
     @GetMapping
     public TableDataInfo<BatchListVo> list(@Valid @ModelAttribute BatchQuery query) {
         return batchService.list(query);
+    }
+
+    @GetMapping("/resource-pool")
+    public TableDataInfo<BatchResourcePoolVo> resourcePool(@Valid @ModelAttribute BatchQuery query) {
+        return batchResourcePoolService.list(query);
     }
 
     @GetMapping("/{batchId}")

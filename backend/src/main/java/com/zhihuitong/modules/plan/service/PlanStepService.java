@@ -124,7 +124,7 @@ public class PlanStepService {
     public PlanStep requirePlanStep(Long planStepId) {
         PlanStep step = planStepMapper.selectById(planStepId);
         if (step == null) {
-            throw new BusinessException(404, "Plan step not found");
+            throw new BusinessException(404, "计划工序不存在");
         }
         return step;
     }

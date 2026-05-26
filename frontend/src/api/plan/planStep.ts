@@ -1,11 +1,11 @@
 import request, { type ApiListResponse, type ApiSuccessResponse } from '@/utils/request'
-import type { PlanStepItem } from '@/types/domain'
+import type { IdValue, PlanStepItem } from '@/types/domain'
 import type { PageQuery, PageResult } from '@/types/http'
 
 export type PlanStepQuery = PageQuery & {
-  planId?: number
-  stepId?: number
-  machineId?: number
+  planId?: IdValue
+  stepId?: IdValue
+  machineId?: IdValue
   status?: string
   dateFrom?: string
   dateTo?: string
@@ -21,7 +21,7 @@ export type PlanStepUpdateRequest = {
 }
 
 export type PlanStepMachinePatchRequest = {
-  machineId: number
+  machineId: IdValue
 }
 
 export type StatusPatchRequest = {
@@ -36,27 +36,27 @@ export const listPlanSteps = (query?: PlanStepQuery) =>
     params: query,
   })
 
-export const getPlanStep = (planStepId: number) =>
+export const getPlanStep = (planStepId: IdValue) =>
   request<ApiSuccessResponse<PlanStepItem>>({
     url: `/api/plan-steps/${planStepId}`,
     method: 'get',
   })
 
-export const updatePlanStep = (planStepId: number, payload: PlanStepUpdateRequest) =>
+export const updatePlanStep = (planStepId: IdValue, payload: PlanStepUpdateRequest) =>
   request<ApiSuccessResponse<PlanStepItem>>({
     url: `/api/plan-steps/${planStepId}`,
     method: 'put',
     data: payload,
   })
 
-export const patchPlanStepMachine = (planStepId: number, payload: PlanStepMachinePatchRequest) =>
+export const patchPlanStepMachine = (planStepId: IdValue, payload: PlanStepMachinePatchRequest) =>
   request<ApiSuccessResponse<PlanStepItem>>({
     url: `/api/plan-steps/${planStepId}/machine`,
     method: 'patch',
     data: payload,
   })
 
-export const patchPlanStepStatus = (planStepId: number, payload: StatusPatchRequest) =>
+export const patchPlanStepStatus = (planStepId: IdValue, payload: StatusPatchRequest) =>
   request<ApiSuccessResponse<PlanStepItem>>({
     url: `/api/plan-steps/${planStepId}/status`,
     method: 'patch',

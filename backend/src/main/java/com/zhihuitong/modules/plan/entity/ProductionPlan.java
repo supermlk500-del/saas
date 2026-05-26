@@ -14,6 +14,10 @@ public class ProductionPlan {
     @TableId(value = "planId", type = IdType.ASSIGN_ID)
     private Long planId;
 
+    private Long orderId;
+
+    private Long orderItemId;
+
     private Long batchId;
 
     private Long routeId;

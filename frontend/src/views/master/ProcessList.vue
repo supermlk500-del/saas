@@ -25,24 +25,24 @@ import TablePage from '@/components/TablePage.vue'
 import SearchBar from '@/components/SearchBar.vue'
 import { enabledStatusOptions } from '@/constants/dictionaries'
 import { useTable } from '@/hooks/useTable'
-import type { ProcessRouteItem, ProcessStepItem, RouteStepItem } from '@/types/domain'
+import type { IdValue, ProcessRouteItem, ProcessStepItem, RouteStepItem } from '@/types/domain'
 
 type ProcessRouteFormModel = {
-  routeId?: number
+  routeId?: IdValue
   routeName: string
   description: string
   isActive: number | undefined
 }
 
 type RouteStepFormModel = {
-  routeStepId?: number
-  stepId: number | undefined
+  routeStepId?: IdValue
+  stepId: IdValue | undefined
   sortOrder: number | null
   isMandatory: number | undefined
 }
 
 type ProcessStepFormModel = {
-  stepId?: number
+  stepId?: IdValue
   stepCode: string
   stepName: string
   stepType: string
@@ -208,7 +208,7 @@ const loadProcessStepLibrary = async () => {
   }
 }
 
-const loadRouteDetail = async (routeId: number) => {
+const loadRouteDetail = async (routeId: IdValue) => {
   routeStepLoading.value = true
 
   try {

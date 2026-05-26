@@ -17,11 +17,11 @@ import TablePage from '@/components/TablePage.vue'
 import SearchBar from '@/components/SearchBar.vue'
 import { exceptionLevelOptions, exceptionStatusOptions } from '@/constants/dictionaries'
 import { useTable } from '@/hooks/useTable'
-import type { ExceptionRecordItem, PlanStepItem } from '@/types/domain'
+import type { ExceptionRecordItem, IdValue, PlanStepItem } from '@/types/domain'
 import { formatDateTime } from '@/utils/date'
 
 const searchForm = reactive({
-  planStepId: undefined as number | undefined,
+  planStepId: undefined as IdValue | undefined,
   exceptionLevel: undefined as string | undefined,
   status: undefined as string | undefined,
 })
@@ -52,7 +52,7 @@ const createFormRef = ref()
 const planSteps = ref<PlanStepItem[]>([])
 
 const createForm = reactive({
-  planStepId: undefined as number | undefined,
+  planStepId: undefined as IdValue | undefined,
   exceptionLevel: 'MEDIUM',
   description: '',
   createTime: formatDateTime(new Date().toISOString()),
@@ -69,7 +69,7 @@ const statusModalOpen = ref(false)
 const statusSubmitting = ref(false)
 const statusFormRef = ref()
 const statusForm = reactive({
-  exceptionId: undefined as number | undefined,
+  exceptionId: undefined as IdValue | undefined,
   status: undefined as string | undefined,
   remark: '',
 })
@@ -81,7 +81,7 @@ const statusRules = {
 const closeModalOpen = ref(false)
 const closeSubmitting = ref(false)
 const closeForm = reactive({
-  exceptionId: undefined as number | undefined,
+  exceptionId: undefined as IdValue | undefined,
   handleResult: '',
   closeRemark: '',
 })
@@ -149,8 +149,12 @@ const handleCreate = async () => {
   await createFormRef.value?.validate()
   createSubmitting.value = true
   try {
+    if (createForm.planStepId === undefined) {
+      return
+    }
+
     const payload: ExceptionRecordUpsertRequest = {
-      planStepId: createForm.planStepId ?? 0,
+      planStepId: createForm.planStepId,
       exceptionType: 'QUALITY',
       exceptionLevel: createForm.exceptionLevel,
       description: createForm.description.trim(),
@@ -177,11 +181,15 @@ const handleStatusSubmit = async () => {
   await statusFormRef.value?.validate()
   statusSubmitting.value = true
   try {
+    if (statusForm.exceptionId === undefined) {
+      return
+    }
+
     const payload: ExceptionStatusPatchRequest = {
       status: statusForm.status ?? 'OPEN',
       remark: statusForm.remark.trim() || undefined,
     }
-    await patchExceptionRecordStatus(statusForm.exceptionId ?? 0, payload)
+    await patchExceptionRecordStatus(statusForm.exceptionId, payload)
     statusModalOpen.value = false
     message.success('异常状态更新成功')
     await loadData()
@@ -200,11 +208,15 @@ const openCloseModal = (record: ExceptionRecordItem) => {
 const handleCloseSubmit = async () => {
   closeSubmitting.value = true
   try {
+    if (closeForm.exceptionId === undefined) {
+      return
+    }
+
     const payload: ExceptionCloseRequest = {
       handleResult: closeForm.handleResult.trim(),
       closeRemark: closeForm.closeRemark.trim() || undefined,
     }
-    await closeExceptionRecord(closeForm.exceptionId ?? 0, payload)
+    await closeExceptionRecord(closeForm.exceptionId, payload)
     closeModalOpen.value = false
     message.success('异常关闭成功')
     await loadData()

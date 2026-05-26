@@ -5,6 +5,7 @@ import TablePage from '@/components/TablePage.vue'
 import SearchBar from '@/components/SearchBar.vue'
 import { fetchTasks, type TaskItem, type TaskQuery } from '@/api/quality/task'
 import { useTable } from '@/hooks/useTable'
+import type { IdValue } from '@/types/domain'
 
 const router = useRouter()
 
@@ -75,7 +76,7 @@ const getStatusColor = (status: TaskItem['status']) => {
   }
 }
 
-const jumpToInspect = (planStepId: number) => {
+const jumpToInspect = (planStepId: IdValue) => {
   void router.push({
     path: '/quality/realtime',
     query: { planStepId: String(planStepId) },

@@ -12,10 +12,10 @@ import TablePage from '@/components/TablePage.vue'
 import SearchBar from '@/components/SearchBar.vue'
 import { machineStatusOptions } from '@/constants/dictionaries'
 import { useTable } from '@/hooks/useTable'
-import type { MachineItem } from '@/types/domain'
+import type { IdValue, MachineItem } from '@/types/domain'
 
 type MachineFormModel = {
-  machineId?: number
+  machineId?: IdValue
   machineCode: string
   machineName: string
   machineType: string

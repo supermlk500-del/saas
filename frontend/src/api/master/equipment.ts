@@ -1,5 +1,5 @@
 import request, { type ApiListResponse, type ApiSuccessResponse } from '@/utils/request'
-import type { MachineItem } from '@/types/domain'
+import type { IdValue, MachineItem } from '@/types/domain'
 import type { PageQuery, PageResult } from '@/types/http'
 
 export type EquipmentItem = MachineItem
@@ -25,7 +25,7 @@ export const listEquipments = (query?: EquipmentQuery) =>
     params: query,
   })
 
-export const getEquipment = (machineId: number) =>
+export const getEquipment = (machineId: IdValue) =>
   request<ApiSuccessResponse<EquipmentItem>>({
     url: `/api/machines/${machineId}`,
     method: 'get',
@@ -38,7 +38,7 @@ export const createEquipment = (payload: MachineUpsertRequest) =>
     data: payload,
   })
 
-export const updateEquipment = (machineId: number, payload: MachineUpsertRequest) =>
+export const updateEquipment = (machineId: IdValue, payload: MachineUpsertRequest) =>
   request<ApiSuccessResponse<EquipmentItem>>({
     url: `/api/machines/${machineId}`,
     method: 'put',

@@ -9,6 +9,9 @@ import com.zhihuitong.common.util.AuditRemarkUtils;
 import com.zhihuitong.common.util.TableDataInfoBuilder;
 import com.zhihuitong.modules.batch.entity.BatchInfo;
 import com.zhihuitong.modules.batch.service.BatchService;
+import com.zhihuitong.modules.order.entity.OrderInfo;
+import com.zhihuitong.modules.order.entity.OrderItem;
+import com.zhihuitong.modules.order.service.OrderService;
 import com.zhihuitong.modules.plan.dto.PlanRescheduleRequest;
 import com.zhihuitong.modules.plan.dto.ProductionPlanCreateRequest;
 import com.zhihuitong.modules.plan.dto.ProductionPlanQuery;
@@ -51,10 +54,12 @@ import java.util.stream.Collectors;
 public class ProductionPlanService {
 
     private static final Set<String> PLAN_STATUSES = Set.of("DRAFT", "RELEASED", "RUNNING", "COMPLETED", "CANCELLED");
+    private static final Set<String> ACTIVE_PLAN_STATUSES = Set.of("DRAFT", "RELEASED", "RUNNING");
 
     private final ProductionPlanMapper productionPlanMapper;
     private final PlanStepMapper planStepMapper;
     private final BatchService batchService;
+    private final OrderService orderService;
     private final ProcessRouteService processRouteService;
     private final ProcessStepService processStepService;
     private final MachineService machineService;
@@ -63,6 +68,7 @@ public class ProductionPlanService {
     public ProductionPlanService(ProductionPlanMapper productionPlanMapper,
                                  PlanStepMapper planStepMapper,
                                  BatchService batchService,
+                                 OrderService orderService,
                                  ProcessRouteService processRouteService,
                                  ProcessStepService processStepService,
                                  MachineService machineService,
@@ -70,6 +76,7 @@ public class ProductionPlanService {
         this.productionPlanMapper = productionPlanMapper;
         this.planStepMapper = planStepMapper;
         this.batchService = batchService;
+        this.orderService = orderService;
         this.processRouteService = processRouteService;
         this.processStepService = processStepService;
         this.machineService = machineService;
@@ -77,8 +84,10 @@ public class ProductionPlanService {
     }
 
     public TableDataInfo<ProductionPlanListVo> list(ProductionPlanQuery query) {
-        validateTimeRange(query.getPlanStartFrom(), query.getPlanStartTo(), "planStartFrom must be earlier than or equal to planStartTo");
+        validateTimeRange(query.getPlanStartFrom(), query.getPlanStartTo(), "planStartFrom 不能晚于 planStartTo");
         Page<ProductionPlan> page = productionPlanMapper.selectPage(query.toPage(), Wrappers.<ProductionPlan>lambdaQuery()
+                .eq(query.getOrderId() != null, ProductionPlan::getOrderId, query.getOrderId())
+                .eq(query.getOrderItemId() != null, ProductionPlan::getOrderItemId, query.getOrderItemId())
                 .eq(query.getBatchId() != null, ProductionPlan::getBatchId, query.getBatchId())
                 .eq(query.getRouteId() != null, ProductionPlan::getRouteId, query.getRouteId())
                 .eq(StringUtils.hasText(query.getStatus()), ProductionPlan::getStatus, query.getStatus())
@@ -86,9 +95,20 @@ public class ProductionPlanService {
                 .le(query.getPlanStartTo() != null, ProductionPlan::getPlanStartTime, query.getPlanStartTo())
                 .orderByDesc(ProductionPlan::getCreateTime));
         List<ProductionPlan> records = page.getRecords();
+        if (records.isEmpty()) {
+            return TableDataInfoBuilder.build(Collections.emptyList(), page.getTotal());
+        }
+        Map<Long, OrderInfo> orderMap = orderService.fetchOrderMap(records.stream().map(ProductionPlan::getOrderId).toList());
+        Map<Long, OrderItem> orderItemMap = orderService.fetchOrderItemMap(records.stream().map(ProductionPlan::getOrderItemId).toList());
         Map<Long, BatchInfo> batchMap = fetchBatchMap(records.stream().map(ProductionPlan::getBatchId).toList());
         Map<Long, ProcessRoute> routeMap = fetchRouteMap(records.stream().map(ProductionPlan::getRouteId).toList());
-        List<ProductionPlanListVo> rows = records.stream().map(item -> toListVo(item, batchMap.get(item.getBatchId()), routeMap.get(item.getRouteId()))).toList();
+        List<ProductionPlanListVo> rows = records.stream().map(item -> toListVo(
+                item,
+                orderMap.get(item.getOrderId()),
+                orderItemMap.get(item.getOrderItemId()),
+                batchMap.get(item.getBatchId()),
+                routeMap.get(item.getRouteId())
+        )).toList();
         return TableDataInfoBuilder.build(rows, page.getTotal());
     }
 
@@ -96,6 +116,8 @@ public class ProductionPlanService {
         ProductionPlan plan = requirePlan(planId);
         ProductionPlanDetailVo detail = new ProductionPlanDetailVo();
         detail.setPlanId(plan.getPlanId());
+        detail.setOrderInfo(plan.getOrderId() == null ? null : orderService.requireOrder(plan.getOrderId()));
+        detail.setOrderItemInfo(plan.getOrderItemId() == null ? null : orderService.requireOrderItem(plan.getOrderItemId()));
         detail.setBatchInfo(batchService.requireBatch(plan.getBatchId()));
         detail.setRouteInfo(processRouteService.requireRoute(plan.getRouteId()));
         detail.setPlanStartTime(plan.getPlanStartTime());
@@ -108,15 +130,21 @@ public class ProductionPlanService {
 
     @Transactional
     public Map<String, Object> create(ProductionPlanCreateRequest request) {
-        validateTimeRange(request.getPlanStartTime(), request.getPlanEndTime(), "planStartTime must be earlier than or equal to planEndTime");
+        validateTimeRange(request.getPlanStartTime(), request.getPlanEndTime(), "计划开始时间不能晚于计划结束时间");
+        orderService.requireOrder(request.getOrderId());
+        orderService.validateOrderItemForOrder(request.getOrderId(), request.getOrderItemId());
+        orderService.ensureBatchAllocatedToOrderItem(request.getOrderId(), request.getOrderItemId(), request.getBatchId());
+        validateActivePlanConflicts(request);
         BatchInfo batch = batchService.requireBatch(request.getBatchId());
         ProcessRoute route = processRouteService.requireRoute(request.getRouteId());
         if (!Objects.equals(route.getIsActive(), 1)) {
-            throw new BusinessException(422, "Process route must be active");
+            throw new BusinessException(422, "工艺路线未启用，无法用于排产");
         }
         List<RouteStep> routeSteps = processRouteService.listRequiredRouteSteps(route.getRouteId());
 
         ProductionPlan plan = new ProductionPlan();
+        plan.setOrderId(request.getOrderId());
+        plan.setOrderItemId(request.getOrderItemId());
         plan.setBatchId(batch.getBatchId());
         plan.setRouteId(route.getRouteId());
         plan.setPlanStartTime(request.getPlanStartTime());
@@ -132,7 +160,7 @@ public class ProductionPlanService {
         if (request.getPlanEndTime() != null) {
             LocalDateTime actualEnd = generatedSteps.isEmpty() ? request.getPlanStartTime() : generatedSteps.get(generatedSteps.size() - 1).getPlanEndTime();
             if (actualEnd != null && actualEnd.isAfter(request.getPlanEndTime())) {
-                throw new BusinessException(422, "Generated plan steps exceed the provided planEndTime");
+                throw new BusinessException(422, "生成的工序计划超出了指定的计划结束时间");
             }
         }
         return Map.of(
@@ -144,7 +172,7 @@ public class ProductionPlanService {
     @Transactional
     public ProductionPlan update(Long planId, ProductionPlanUpdateRequest request) {
         ProductionPlan plan = requirePlan(planId);
-        validateTimeRange(request.getPlanStartTime(), request.getPlanEndTime(), "planStartTime must be earlier than or equal to planEndTime");
+        validateTimeRange(request.getPlanStartTime(), request.getPlanEndTime(), "计划开始时间不能晚于计划结束时间");
         if (request.getPlanStartTime() != null) {
             plan.setPlanStartTime(request.getPlanStartTime());
         }
@@ -221,7 +249,7 @@ public class ProductionPlanService {
     public ProductionPlan requirePlan(Long planId) {
         ProductionPlan plan = productionPlanMapper.selectById(planId);
         if (plan == null) {
-            throw new BusinessException(404, "Production plan not found");
+            throw new BusinessException(404, "生产计划不存在");
         }
         return plan;
     }
@@ -289,7 +317,7 @@ public class ProductionPlanService {
             planStep.setSequenceNo(routeStep.getSortOrder());
             planStep.setStatus("PENDING");
             if (planStep.getMachineId() == null) {
-                planStep.setRemark("No matching active machine capability was found during plan generation");
+                planStep.setRemark("计划生成时未匹配到可用的启用机台能力");
             }
             generated.add(planStep);
             cursor = endTime;
@@ -353,9 +381,21 @@ public class ProductionPlanService {
                 .collect(Collectors.toMap(ProcessRoute::getRouteId, Function.identity()));
     }
 
-    private ProductionPlanListVo toListVo(ProductionPlan plan, BatchInfo batch, ProcessRoute route) {
+    private ProductionPlanListVo toListVo(ProductionPlan plan,
+                                          OrderInfo order,
+                                          OrderItem orderItem,
+                                          BatchInfo batch,
+                                          ProcessRoute route) {
         ProductionPlanListVo vo = new ProductionPlanListVo();
         vo.setPlanId(plan.getPlanId());
+        vo.setOrderId(plan.getOrderId());
+        vo.setOrderNo(order == null ? null : order.getOrderNo());
+        vo.setCustomerName(order == null ? null : order.getCustomerName());
+        vo.setOrderItemId(plan.getOrderItemId());
+        vo.setProductCode(orderItem == null ? null : orderItem.getProductCode());
+        vo.setProductName(orderItem == null ? null : orderItem.getProductName());
+        vo.setSpecification(orderItem == null ? null : orderItem.getSpecification());
+        vo.setColor(orderItem == null ? null : orderItem.getColor());
         vo.setBatchId(plan.getBatchId());
         vo.setBatchNo(batch == null ? null : batch.getBatchNo());
         vo.setRouteId(plan.getRouteId());
@@ -370,7 +410,7 @@ public class ProductionPlanService {
 
     private void assertPlanStatus(String status) {
         if (!PLAN_STATUSES.contains(status)) {
-            throw new BusinessException(422, "Unsupported plan status: " + status);
+            throw new BusinessException(422, "不支持的生产计划状态: " + status);
         }
     }
 
@@ -378,5 +418,26 @@ public class ProductionPlanService {
         if (from != null && to != null && from.isAfter(to)) {
             throw new BusinessException(400, message);
         }
+    }
+
+    private void validateActivePlanConflicts(ProductionPlanCreateRequest request) {
+        List<ProductionPlan> activePlans = productionPlanMapper.selectList(Wrappers.<ProductionPlan>lambdaQuery()
+                .eq(ProductionPlan::getBatchId, request.getBatchId())
+                .in(ProductionPlan::getStatus, ACTIVE_PLAN_STATUSES)
+                .orderByDesc(ProductionPlan::getCreateTime));
+        if (activePlans.isEmpty()) {
+            return;
+        }
+        ProductionPlan duplicatedPlan = activePlans.stream()
+                .filter(plan -> Objects.equals(plan.getOrderId(), request.getOrderId())
+                        && Objects.equals(plan.getOrderItemId(), request.getOrderItemId())
+                        && Objects.equals(plan.getBatchId(), request.getBatchId()))
+                .findFirst()
+                .orElse(null);
+        if (duplicatedPlan != null) {
+            throw new BusinessException(409, "该订单明细批次已存在活跃生产计划，请勿重复创建");
+        }
+        ProductionPlan conflictPlan = activePlans.get(0);
+        throw new BusinessException(409, "该批次已有活跃生产计划，计划ID：" + conflictPlan.getPlanId() + "，请先处理后再创建");
     }
 }

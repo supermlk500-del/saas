@@ -1,10 +1,10 @@
 import request, { type ApiSuccessResponse } from '@/utils/request'
-import type { QcDetectionBox, QcDetectionResult } from '@/types/domain'
+import type { IdValue, QcDetectionBox, QcDetectionResult } from '@/types/domain'
 
 export type QcStreamSessionCreateRequest = {
-  planStepId: number | string
-  qcItemId: number | string
-  cameraId: number | string
+  planStepId: IdValue
+  qcItemId: IdValue
+  cameraId: IdValue
   inspector?: string
   remark?: string
 }
@@ -12,7 +12,7 @@ export type QcStreamSessionCreateRequest = {
 export type QcStreamSessionInfo = {
   sessionId: string
   streamMode?: string
-  cameraId?: number | string | null
+  cameraId?: IdValue | null
   startedAt?: string
 }
 

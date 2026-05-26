@@ -36,31 +36,31 @@ export const appRoutes: RouteRecordRaw[] = [
     path: '/gray/inbound',
     name: 'gray-inbound',
     component: view(() => import('@/views/gray/InboundBatchList.vue')),
-    meta: { title: '来料批次', section: '来料管理', sectionKey: 'gray', menuOrder: 11, showInMenu: true },
+    meta: { title: '来料资源池', section: '来料资源', sectionKey: 'gray', menuOrder: 11, showInMenu: true },
   },
   {
     path: '/gray/iqc-task',
     name: 'gray-iqc-task',
     component: view(() => import('@/views/quality/TaskList.vue')),
-    meta: { title: 'IQC任务', section: '来料管理', sectionKey: 'gray', menuOrder: 12, showInMenu: true },
+    meta: { title: 'IQC任务', section: '来料资源', sectionKey: 'gray', menuOrder: 12, showInMenu: true },
   },
   {
     path: '/gray/iqc-result',
     name: 'gray-iqc-result',
     component: view(() => import('@/views/quality/ResultList.vue')),
-    meta: { title: 'IQC结果', section: '来料管理', sectionKey: 'gray', menuOrder: 13, showInMenu: true },
+    meta: { title: 'IQC结果', section: '来料资源', sectionKey: 'gray', menuOrder: 13, showInMenu: true },
   },
   {
     path: '/gray/fabric',
     name: 'gray-fabric',
     component: view(() => import('@/views/master/GrayFabricList.vue')),
-    meta: { title: '来料主数据', section: '来料管理', sectionKey: 'gray', menuOrder: 14, showInMenu: false },
+    meta: { title: '来料主数据', section: '来料资源', sectionKey: 'gray', menuOrder: 14, showInMenu: false },
   },
   {
     path: '/gray/release',
     name: 'gray-release',
     component: view(() => import('@/views/gray/ReleaseDecisionList.vue')),
-    meta: { title: '放行决策', section: '来料管理', sectionKey: 'gray', menuOrder: 15, showInMenu: false },
+    meta: { title: '放行决策', section: '来料资源', sectionKey: 'gray', menuOrder: 15, showInMenu: false },
   },
   {
     path: '/process-center/process',
@@ -93,28 +93,34 @@ export const appRoutes: RouteRecordRaw[] = [
     meta: { title: '布料瑕疵种类', section: '工艺中心', sectionKey: 'process-center', menuOrder: 25, showInMenu: false },
   },
   {
+    path: '/schedule/order-pool',
+    name: 'schedule-order-pool',
+    component: view(() => import('@/views/schedule/OrderSchedulePool.vue')),
+    meta: { title: '订单排产池', section: '排产管理', sectionKey: 'schedule', menuOrder: 31, showInMenu: true },
+  },
+  {
     path: '/schedule/pool',
     name: 'schedule-pool',
     component: view(() => import('@/views/schedule/SchedulePool.vue')),
-    meta: { title: '排产池', section: '排产管理', sectionKey: 'schedule', menuOrder: 31, showInMenu: true },
+    meta: { title: '批次执行池', section: '排产管理', sectionKey: 'schedule', menuOrder: 32, showInMenu: true },
   },
   {
     path: '/schedule/main',
     name: 'schedule-main',
     component: view(() => import('@/views/plan/PlanMain.vue')),
-    meta: { title: '生产计划', section: '排产管理', sectionKey: 'schedule', menuOrder: 32, showInMenu: true },
+    meta: { title: '生产计划', section: '排产管理', sectionKey: 'schedule', menuOrder: 33, showInMenu: true },
   },
   {
     path: '/schedule/board',
     name: 'schedule-board',
     component: view(() => import('@/views/schedule/ProductionGantt.vue')),
-    meta: { title: '生产调度甘特图', section: '排产管理', sectionKey: 'schedule', menuOrder: 33, showInMenu: true },
+    meta: { title: '生产调度甘特图', section: '排产管理', sectionKey: 'schedule', menuOrder: 34, showInMenu: true },
   },
   {
     path: '/schedule/reschedule-log',
     name: 'schedule-reschedule-log',
     component: view(() => import('@/views/plan/PlanLog.vue')),
-    meta: { title: '重排日志', section: '排产管理', sectionKey: 'schedule', menuOrder: 34, showInMenu: false },
+    meta: { title: '重排日志', section: '排产管理', sectionKey: 'schedule', menuOrder: 35, showInMenu: false },
   },
   {
     path: '/quality/realtime',
@@ -140,17 +146,23 @@ export const appRoutes: RouteRecordRaw[] = [
     component: view(() => import('@/views/order/OrderList.vue')),
     meta: { title: '订单管理', section: '订单管理', sectionKey: 'order', menuOrder: 51, showInMenu: true },
   },
+  {
+    path: '/order/list/:id',
+    name: 'order-detail',
+    component: view(() => import('@/views/order/OrderDetail.vue')),
+    meta: { title: '订单详情', section: '订单管理', sectionKey: 'order', menuOrder: 52, showInMenu: false },
+  },
 ]
 
 const typedAppRoutes = appRoutes as Array<RouteRecordRaw & { meta: AppRouteMeta }>
 
 const menuSectionDefinitions: Omit<AppMenuSection, 'items'>[] = [
   { key: 'dashboard', title: '看板' },
-  { key: 'gray', title: '来料管理' },
+  { key: 'order', title: '订单管理' },
+  { key: 'gray', title: '来料资源' },
   { key: 'process-center', title: '工艺中心' },
   { key: 'schedule', title: '排产管理' },
   { key: 'quality', title: '质量管理' },
-  { key: 'order', title: '订单管理' },
 ]
 
 export const appMenuSections: AppMenuSection[] = menuSectionDefinitions

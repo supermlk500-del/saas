@@ -1,5 +1,5 @@
 import request, { type ApiListResponse, type ApiSuccessResponse } from '@/utils/request'
-import type { ProcessRouteItem, ProcessStepItem, RouteStepItem } from '@/types/domain'
+import type { IdValue, ProcessRouteItem, ProcessStepItem, RouteStepItem } from '@/types/domain'
 import type { PageQuery, PageResult } from '@/types/http'
 
 export type ProcessItem = ProcessRouteItem
@@ -16,7 +16,7 @@ export type ProcessRouteUpsertRequest = {
 }
 
 export type RouteStepUpsertRequest = {
-  stepId: number
+  stepId: IdValue
   sortOrder: number
   isMandatory: number
 }
@@ -45,7 +45,7 @@ export const listProcesses = (query?: ProcessQuery) =>
     params: query,
   })
 
-export const getProcessRoute = (routeId: number) =>
+export const getProcessRoute = (routeId: IdValue) =>
   request<ApiSuccessResponse<ProcessRouteItem & { steps?: RouteStepItem[] }>>({
     url: `/api/process-routes/${routeId}`,
     method: 'get',
@@ -58,40 +58,40 @@ export const createProcessRoute = (payload: ProcessRouteUpsertRequest) =>
     data: payload,
   })
 
-export const updateProcessRoute = (routeId: number, payload: ProcessRouteUpsertRequest) =>
+export const updateProcessRoute = (routeId: IdValue, payload: ProcessRouteUpsertRequest) =>
   request<ApiSuccessResponse<ProcessRouteItem>>({
     url: `/api/process-routes/${routeId}`,
     method: 'put',
     data: payload,
   })
 
-export const deleteProcessRoute = (routeId: number) =>
+export const deleteProcessRoute = (routeId: IdValue) =>
   request<ApiSuccessResponse<null>>({
     url: `/api/process-routes/${routeId}`,
     method: 'delete',
   })
 
-export const listRouteSteps = (routeId: number) =>
+export const listRouteSteps = (routeId: IdValue) =>
   request<ApiSuccessResponse<RouteStepItem[]>>({
     url: `/api/process-routes/${routeId}/steps`,
     method: 'get',
   })
 
-export const createRouteStep = (routeId: number, payload: RouteStepUpsertRequest) =>
+export const createRouteStep = (routeId: IdValue, payload: RouteStepUpsertRequest) =>
   request<ApiSuccessResponse<RouteStepItem>>({
     url: `/api/process-routes/${routeId}/steps`,
     method: 'post',
     data: payload,
   })
 
-export const updateRouteStep = (routeId: number, routeStepId: number, payload: RouteStepUpsertRequest) =>
+export const updateRouteStep = (routeId: IdValue, routeStepId: IdValue, payload: RouteStepUpsertRequest) =>
   request<ApiSuccessResponse<RouteStepItem>>({
     url: `/api/process-routes/${routeId}/steps/${routeStepId}`,
     method: 'put',
     data: payload,
   })
 
-export const deleteRouteStep = (routeId: number, routeStepId: number) =>
+export const deleteRouteStep = (routeId: IdValue, routeStepId: IdValue) =>
   request<ApiSuccessResponse<null>>({
     url: `/api/process-routes/${routeId}/steps/${routeStepId}`,
     method: 'delete',
@@ -104,7 +104,7 @@ export const listProcessSteps = (query?: ProcessStepQuery) =>
     params: query,
   })
 
-export const getProcessStep = (stepId: number) =>
+export const getProcessStep = (stepId: IdValue) =>
   request<ApiSuccessResponse<ProcessStepItem>>({
     url: `/api/process-steps/${stepId}`,
     method: 'get',
@@ -117,14 +117,14 @@ export const createProcessStep = (payload: ProcessStepUpsertRequest) =>
     data: payload,
   })
 
-export const updateProcessStep = (stepId: number, payload: ProcessStepUpsertRequest) =>
+export const updateProcessStep = (stepId: IdValue, payload: ProcessStepUpsertRequest) =>
   request<ApiSuccessResponse<ProcessStepItem>>({
     url: `/api/process-steps/${stepId}`,
     method: 'put',
     data: payload,
   })
 
-export const patchProcessStepStatus = (stepId: number, isActive: number) =>
+export const patchProcessStepStatus = (stepId: IdValue, isActive: number) =>
   request<ApiSuccessResponse<ProcessStepItem>>({
     url: `/api/process-steps/${stepId}/status`,
     method: 'patch',
@@ -139,7 +139,7 @@ export const fetchProcesses = async (query?: ProcessQuery): Promise<PageResult<P
   }
 }
 
-export const fetchRouteSteps = async (routeId: number): Promise<RouteStepItem[]> => {
+export const fetchRouteSteps = async (routeId: IdValue): Promise<RouteStepItem[]> => {
   const response = await listRouteSteps(routeId)
   return response.data ?? []
 }

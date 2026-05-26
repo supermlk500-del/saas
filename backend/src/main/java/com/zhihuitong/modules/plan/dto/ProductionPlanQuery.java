@@ -11,6 +11,10 @@ import java.time.LocalDateTime;
 @EqualsAndHashCode(callSuper = true)
 public class ProductionPlanQuery extends PageQuery {
 
+    private Long orderId;
+
+    private Long orderItemId;
+
     private Long batchId;
 
     private Long routeId;

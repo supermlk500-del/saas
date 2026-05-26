@@ -8,7 +8,7 @@ import { fetchQcItems } from '@/api/quality/qcItem'
 import TablePage from '@/components/TablePage.vue'
 import SearchBar from '@/components/SearchBar.vue'
 import { useTable } from '@/hooks/useTable'
-import type { InspectionDataItem, QcDetectionBox, QcItem, QcRecordItem } from '@/types/domain'
+import type { IdValue, InspectionDataItem, QcDetectionBox, QcItem, QcRecordItem } from '@/types/domain'
 import type { InspectType, ResultJudge } from '@/types/dictionary'
 import { formatDateTime } from '@/utils/date'
 import { isLikelyResultImage, isLikelySourceImage, normalizeImagePath, resolveImageUrl } from '@/utils/image'
@@ -25,8 +25,8 @@ const inspectTypeOptions: { label: string; value: InspectType }[] = [
 ]
 
 const searchForm = reactive({
-  planStepId: undefined as number | string | undefined,
-  qcItemId: undefined as number | string | undefined,
+  planStepId: undefined as IdValue | undefined,
+  qcItemId: undefined as IdValue | undefined,
   inspectType: undefined as InspectType | undefined,
   resultJudge: undefined as ResultJudge | undefined,
   inspectTimeFrom: '',
@@ -75,7 +75,7 @@ const reviewModalOpen = ref(false)
 const reviewSubmitting = ref(false)
 const reviewFormRef = ref()
 const reviewForm = reactive({
-  inspectionId: undefined as number | string | undefined,
+  inspectionId: undefined as IdValue | undefined,
   reviewResult: undefined as ResultJudge | undefined,
   reviewer: '',
   reviewRemark: '',
@@ -84,7 +84,7 @@ const reviewForm = reactive({
 const closeModalOpen = ref(false)
 const closeSubmitting = ref(false)
 const closeForm = reactive({
-  inspectionId: undefined as number | string | undefined,
+  inspectionId: undefined as IdValue | undefined,
   closeRemark: '',
 })
 
@@ -98,8 +98,8 @@ const getJudgeMeta = (value?: string) =>
 const getInspectTypeLabel = (value?: string) =>
   inspectTypeOptions.find((item) => item.value === value)?.label || value || '-'
 
-const getQcItemLabel = (qcItemId?: number | string) => {
-  const item = qcItems.value.find((current) => current.qcItemId === qcItemId)
+const getQcItemLabel = (qcItemId?: IdValue) => {
+  const item = qcItems.value.find((current) => String(current.qcItemId) === String(qcItemId))
   return item ? `${item.qcItemCode} / ${item.qcItemName}` : qcItemId || '-'
 }
 
@@ -225,7 +225,7 @@ const handleReviewSubmit = async () => {
     message.success('复核已保存')
     await loadData()
     const currentDetail = detailRecord.value
-    if (currentDetail && currentDetail.inspectionId === reviewForm.inspectionId) {
+    if (currentDetail && String(currentDetail.inspectionId) === String(reviewForm.inspectionId)) {
       await openDetailDrawer(currentDetail)
     }
   } finally {
@@ -244,7 +244,7 @@ const handleCloseSubmit = async () => {
     message.success('质检记录已关闭')
     await loadData()
     const currentDetail = detailRecord.value
-    if (currentDetail && currentDetail.inspectionId === closeForm.inspectionId) {
+    if (currentDetail && String(currentDetail.inspectionId) === String(closeForm.inspectionId)) {
       await openDetailDrawer(currentDetail)
     }
   } finally {

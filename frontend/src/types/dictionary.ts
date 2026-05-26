@@ -4,6 +4,7 @@ export interface DictionaryOption<T extends string | number = string> {
   color?: string
 }
 
+export type OrderStatus = 'NEW' | 'READY' | 'PLANNING' | 'IN_PROGRESS' | 'DONE' | 'CANCELLED'
 export type BatchStatus = 'NEW' | 'READY' | 'PLANNED' | 'IN_PROGRESS' | 'DONE' | 'CANCELLED'
 export type PlanStatus = 'DRAFT' | 'RELEASED' | 'RUNNING' | 'COMPLETED' | 'CANCELLED'
 export type PlanStepStatus = 'PENDING' | 'READY' | 'RUNNING' | 'PAUSED' | 'FINISHED' | 'ABNORMAL'

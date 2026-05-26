@@ -15,6 +15,7 @@ import com.zhihuitong.modules.batch.vo.BatchImportResultVo;
 import com.zhihuitong.modules.batch.vo.BatchListVo;
 import com.zhihuitong.modules.batch.vo.BatchPlanSummaryVo;
 import com.zhihuitong.modules.batch.vo.BatchQcSummaryVo;
+import com.zhihuitong.modules.batch.vo.BatchResourcePoolVo;
 import com.zhihuitong.modules.exception.entity.ExceptionRecord;
 import com.zhihuitong.modules.exception.mapper.ExceptionRecordMapper;
 import com.zhihuitong.modules.plan.entity.PlanStep;
@@ -54,17 +55,20 @@ public class BatchService {
     private final PlanStepMapper planStepMapper;
     private final QcRecordMapper qcRecordMapper;
     private final ExceptionRecordMapper exceptionRecordMapper;
+    private final BatchResourcePoolService batchResourcePoolService;
 
     public BatchService(BatchInfoMapper batchInfoMapper,
                         ProductionPlanMapper productionPlanMapper,
                         PlanStepMapper planStepMapper,
                         QcRecordMapper qcRecordMapper,
-                        ExceptionRecordMapper exceptionRecordMapper) {
+                        ExceptionRecordMapper exceptionRecordMapper,
+                        BatchResourcePoolService batchResourcePoolService) {
         this.batchInfoMapper = batchInfoMapper;
         this.productionPlanMapper = productionPlanMapper;
         this.planStepMapper = planStepMapper;
         this.qcRecordMapper = qcRecordMapper;
         this.exceptionRecordMapper = exceptionRecordMapper;
+        this.batchResourcePoolService = batchResourcePoolService;
     }
 
     public TableDataInfo<BatchListVo> list(BatchQuery query) {
@@ -88,6 +92,7 @@ public class BatchService {
         detail.setComposition(batchInfo.getComposition());
         detail.setNote(batchInfo.getNote());
         detail.setStatus(deriveBatchStatuses(List.of(batchId)).getOrDefault(batchId, "READY"));
+        applyResourceFields(detail, batchResourcePoolService.getResource(batchId));
 
         List<ProductionPlan> plans = productionPlanMapper.selectList(Wrappers.<ProductionPlan>lambdaQuery()
                 .eq(ProductionPlan::getBatchId, batchId)
@@ -211,7 +216,7 @@ public class BatchService {
     public BatchInfo requireBatch(Long batchId) {
         BatchInfo batchInfo = batchInfoMapper.selectById(batchId);
         if (batchInfo == null) {
-            throw new BusinessException(404, "Batch not found");
+            throw new BusinessException(404, "批次不存在");
         }
         return batchInfo;
     }
@@ -255,6 +260,23 @@ public class BatchService {
         vo.setInspectTime(record.getInspectTime());
         vo.setResultJudge(record.getResultJudge());
         return vo;
+    }
+
+    private void applyResourceFields(BatchDetailVo detail, BatchResourcePoolVo resource) {
+        detail.setResourceStatus(resource.getResourceStatus());
+        detail.setResourceStatusLabel(resource.getResourceStatusLabel());
+        detail.setLinkedOrderCount(resource.getLinkedOrderCount());
+        detail.setLinkedOrders(resource.getLinkedOrders());
+        detail.setAllocatedWeight(resource.getAllocatedWeight());
+        detail.setAllocatedQuantity(resource.getAllocatedQuantity());
+        detail.setRemainingWeight(resource.getRemainingWeight());
+        detail.setRemainingQuantity(resource.getRemainingQuantity());
+        detail.setCurrentPlanId(resource.getCurrentPlanId());
+        detail.setCurrentPlanStatus(resource.getCurrentPlanStatus());
+        detail.setCurrentOrderId(resource.getCurrentOrderId());
+        detail.setCurrentOrderNo(resource.getCurrentOrderNo());
+        detail.setLockedByPlan(resource.isLockedByPlan());
+        detail.setReadyForSchedule(resource.isReadyForSchedule());
     }
 
     private void copyUpsertRequest(BatchUpsertRequest request, BatchInfo entity) {

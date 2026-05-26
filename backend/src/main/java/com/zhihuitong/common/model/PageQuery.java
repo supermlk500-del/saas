@@ -6,11 +6,11 @@ import jakarta.validation.constraints.Min;
 
 public class PageQuery {
 
-    @Min(value = 1, message = "pageNum must be greater than or equal to 1")
+    @Min(value = 1, message = "pageNum 不能小于 1")
     private long pageNum = 1;
 
-    @Min(value = 1, message = "pageSize must be greater than or equal to 1")
-    @Max(value = 200, message = "pageSize must be less than or equal to 200")
+    @Min(value = 1, message = "pageSize 不能小于 1")
+    @Max(value = 200, message = "pageSize 不能大于 200")
     private long pageSize = 10;
 
     public <T> Page<T> toPage() {

@@ -1,16 +1,16 @@
 import request, { type ApiListResponse, type ApiSuccessResponse } from '@/utils/request'
-import type { ExceptionRecordItem } from '@/types/domain'
+import type { ExceptionRecordItem, IdValue } from '@/types/domain'
 import type { PageQuery, PageResult } from '@/types/http'
 
 export type ExceptionRecordQuery = PageQuery & {
-  planStepId?: number
+  planStepId?: IdValue
   exceptionType?: string
   exceptionLevel?: string
   status?: string
 }
 
 export type ExceptionRecordUpsertRequest = {
-  planStepId: number
+  planStepId: IdValue
   exceptionType: string
   exceptionLevel: string
   description: string
@@ -42,7 +42,7 @@ export const listExceptionRecords = (query?: ExceptionRecordQuery) =>
     params: query,
   })
 
-export const getExceptionRecord = (exceptionId: number) =>
+export const getExceptionRecord = (exceptionId: IdValue) =>
   request<ApiSuccessResponse<ExceptionRecordItem>>({
     url: `/api/exception-records/${exceptionId}`,
     method: 'get',
@@ -55,28 +55,28 @@ export const createExceptionRecord = (payload: ExceptionRecordUpsertRequest) =>
     data: payload,
   })
 
-export const updateExceptionRecord = (exceptionId: number, payload: ExceptionRecordUpsertRequest) =>
+export const updateExceptionRecord = (exceptionId: IdValue, payload: ExceptionRecordUpsertRequest) =>
   request<ApiSuccessResponse<ExceptionRecordItem>>({
     url: `/api/exception-records/${exceptionId}`,
     method: 'put',
     data: payload,
   })
 
-export const patchExceptionRecordStatus = (exceptionId: number, payload: ExceptionStatusPatchRequest) =>
+export const patchExceptionRecordStatus = (exceptionId: IdValue, payload: ExceptionStatusPatchRequest) =>
   request<ApiSuccessResponse<ExceptionRecordItem>>({
     url: `/api/exception-records/${exceptionId}/status`,
     method: 'patch',
     data: payload,
   })
 
-export const closeExceptionRecord = (exceptionId: number, payload: ExceptionCloseRequest) =>
+export const closeExceptionRecord = (exceptionId: IdValue, payload: ExceptionCloseRequest) =>
   request<ApiSuccessResponse<ExceptionRecordItem>>({
     url: `/api/exception-records/${exceptionId}/close`,
     method: 'patch',
     data: payload,
   })
 
-export const reworkExceptionRecord = (exceptionId: number, payload: ExceptionReworkRequest) =>
+export const reworkExceptionRecord = (exceptionId: IdValue, payload: ExceptionReworkRequest) =>
   request<ApiSuccessResponse<ExceptionRecordItem>>({
     url: `/api/exception-records/${exceptionId}/rework`,
     method: 'post',

@@ -6,11 +6,11 @@ import TablePage from '@/components/TablePage.vue'
 import SearchBar from '@/components/SearchBar.vue'
 import { exceptionLevelOptions, exceptionStatusOptions } from '@/constants/dictionaries'
 import { useTable } from '@/hooks/useTable'
-import type { ExceptionRecordItem } from '@/types/domain'
+import type { ExceptionRecordItem, IdValue } from '@/types/domain'
 import { formatDateTime } from '@/utils/date'
 
 const searchForm = reactive({
-  planStepId: undefined as number | undefined,
+  planStepId: undefined as IdValue | undefined,
   exceptionLevel: undefined as string | undefined,
   status: undefined as string | undefined,
 })
@@ -38,7 +38,7 @@ const reworkModalOpen = ref(false)
 const reworkSubmitting = ref(false)
 const reworkFormRef = ref()
 const reworkForm = reactive({
-  exceptionId: undefined as number | undefined,
+  exceptionId: undefined as IdValue | undefined,
   reworkPlan: '',
   reworkOwner: '',
   expectedFinishTime: '',
@@ -47,7 +47,7 @@ const reworkForm = reactive({
 const closeModalOpen = ref(false)
 const closeSubmitting = ref(false)
 const closeForm = reactive({
-  exceptionId: undefined as number | undefined,
+  exceptionId: undefined as IdValue | undefined,
   handleResult: '',
   closeRemark: '',
 })
@@ -111,12 +111,16 @@ const handleReworkSubmit = async () => {
   await reworkFormRef.value?.validate()
   reworkSubmitting.value = true
   try {
+    if (reworkForm.exceptionId === undefined) {
+      return
+    }
+
     const payload: ExceptionReworkRequest = {
       reworkPlan: reworkForm.reworkPlan.trim(),
       reworkOwner: reworkForm.reworkOwner.trim() || undefined,
       expectedFinishTime: reworkForm.expectedFinishTime || undefined,
     }
-    await reworkExceptionRecord(reworkForm.exceptionId ?? 0, payload)
+    await reworkExceptionRecord(reworkForm.exceptionId, payload)
     reworkModalOpen.value = false
     message.success('返工处理已发起')
     await loadData()
@@ -135,11 +139,15 @@ const openCloseModal = (record: ExceptionRecordItem) => {
 const handleCloseSubmit = async () => {
   closeSubmitting.value = true
   try {
+    if (closeForm.exceptionId === undefined) {
+      return
+    }
+
     const payload: ExceptionCloseRequest = {
       handleResult: closeForm.handleResult.trim(),
       closeRemark: closeForm.closeRemark.trim() || undefined,
     }
-    await closeExceptionRecord(closeForm.exceptionId ?? 0, payload)
+    await closeExceptionRecord(closeForm.exceptionId, payload)
     closeModalOpen.value = false
     message.success('返工异常已关闭')
     await loadData()

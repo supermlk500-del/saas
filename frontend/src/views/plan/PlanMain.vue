@@ -1,7 +1,8 @@
 <script setup lang="ts">
-import { computed, onMounted, reactive, ref } from 'vue'
+import { computed, onMounted, reactive, ref, watch } from 'vue'
 import { message } from 'ant-design-vue'
-import { useRouter } from 'vue-router'
+import { useRoute, useRouter } from 'vue-router'
+import { fetchOrderItems, fetchOrders } from '@/api/order'
 import { fetchBatches } from '@/api/batch/batch'
 import { fetchEquipments } from '@/api/master/equipment'
 import { fetchProcesses } from '@/api/master/process'
@@ -37,7 +38,10 @@ import {
 import { useTable } from '@/hooks/useTable'
 import type {
   BatchItem,
+  IdValue,
   MachineItem,
+  OrderLineItem,
+  OrderSummaryItem,
   PlanStepItem,
   ProcessRouteItem,
   ProductionPlanDetailItem,
@@ -45,30 +49,35 @@ import type {
 } from '@/types/domain'
 
 type PlanFormModel = {
-  planId?: number
-  batchId?: number
-  routeId?: number
+  planId?: IdValue
+  orderId?: IdValue
+  orderItemId?: IdValue
+  batchId?: IdValue
+  routeId?: IdValue
   planStartTime: string
   planEndTime: string
   remark: string
+  orderNo: string
+  customerName: string
+  productSummary: string
   batchNo: string
   routeName: string
 }
 
 type PlanStatusForm = {
-  planId?: number
+  planId?: IdValue
   status?: string
   reason: string
 }
 
 type RescheduleForm = {
-  planId?: number
+  planId?: IdValue
   rescheduleReason: string
   startTime: string
 }
 
 type StepEditForm = {
-  planStepId?: number
+  planStepId?: IdValue
   planStartTime: string
   planEndTime: string
   planHours: number | null
@@ -78,27 +87,30 @@ type StepEditForm = {
 }
 
 type StepMachineForm = {
-  planStepId?: number
-  machineId?: number
+  planStepId?: IdValue
+  machineId?: IdValue
 }
 
 type StepStatusForm = {
-  planStepId?: number
+  planStepId?: IdValue
   status?: string
   reason: string
 }
 
 const router = useRouter()
+const route = useRoute()
 
 const searchForm = reactive({
+  orderNo: '',
+  customerName: '',
   batchId: '',
-  routeId: '',
   status: undefined as string | undefined,
 })
 
 const searchFields = [
+  { label: '订单号', name: 'orderNo', type: 'input' as const, placeholder: '请输入订单号', width: '180px' },
+  { label: '客户', name: 'customerName', type: 'input' as const, placeholder: '请输入客户名称', width: '180px' },
   { label: '批次ID', name: 'batchId', type: 'input' as const, placeholder: '请输入批次ID', width: '180px' },
-  { label: '路线ID', name: 'routeId', type: 'input' as const, placeholder: '请输入路线ID', width: '180px' },
   {
     label: '计划状态',
     name: 'status',
@@ -111,9 +123,10 @@ const searchFields = [
 
 const columns = [
   { title: '计划ID', dataIndex: 'planId', key: 'planId', width: 100 },
-  { title: '批次ID', dataIndex: 'batchId', key: 'batchId', width: 100 },
+  { title: '订单号', dataIndex: 'orderNo', key: 'orderNo', width: 160 },
+  { title: '客户', dataIndex: 'customerName', key: 'customerName', width: 180 },
+  { title: '产品/规格', dataIndex: 'productSummary', key: 'productSummary', width: 220 },
   { title: '批次编号', dataIndex: 'batchNo', key: 'batchNo', width: 180 },
-  { title: '路线ID', dataIndex: 'routeId', key: 'routeId', width: 100 },
   { title: '路线名称', dataIndex: 'routeName', key: 'routeName', width: 180 },
   { title: '计划开始', dataIndex: 'planStartTime', key: 'planStartTime', width: 180 },
   { title: '计划结束', dataIndex: 'planEndTime', key: 'planEndTime', width: 180 },
@@ -136,6 +149,13 @@ const planStepColumns = [
 ]
 
 const { data, loading, pagination } = useTable<ProductionPlanItem>()
+const displayRows = computed(() =>
+  data.value.filter((item) => {
+    const hitOrderNo = !searchForm.orderNo || (item.orderNo || '').includes(searchForm.orderNo)
+    const hitCustomer = !searchForm.customerName || (item.customerName || '').includes(searchForm.customerName)
+    return hitOrderNo && hitCustomer
+  }),
+)
 
 const planModalOpen = ref(false)
 const planSubmitting = ref(false)
@@ -169,8 +189,13 @@ const stepStatusFormRef = ref()
 const routeOptions = ref<ProcessRouteItem[]>([])
 const batchOptions = ref<BatchItem[]>([])
 const machineOptions = ref<MachineItem[]>([])
+const orderOptions = ref<OrderSummaryItem[]>([])
+const orderItemOptions = ref<OrderLineItem[]>([])
 
 const planForm = reactive<PlanFormModel>({
+  orderNo: '',
+  customerName: '',
+  productSummary: '',
   planStartTime: '',
   planEndTime: '',
   remark: '',
@@ -202,6 +227,8 @@ const stepStatusForm = reactive<StepStatusForm>({
 })
 
 const planRules = {
+  orderId: [{ required: true, message: '请选择订单' }],
+  orderItemId: [{ required: true, message: '请选择订单明细' }],
   batchId: [{ required: true, message: '请选择批次' }],
   routeId: [{ required: true, message: '请选择工艺路线' }],
   planStartTime: [{ required: true, message: '请选择计划开始时间' }],
@@ -241,6 +268,20 @@ const routeSelectOptions = computed(() =>
   })),
 )
 
+const orderSelectOptions = computed(() =>
+  orderOptions.value.map((item) => ({
+    label: `${item.orderNo} / ${item.customerName}`,
+    value: item.orderId,
+  })),
+)
+
+const orderItemSelectOptions = computed(() =>
+  orderItemOptions.value.map((item) => ({
+    label: [item.productCode || item.productName, item.specification, item.color].filter(Boolean).join(' / '),
+    value: item.orderItemId,
+  })),
+)
+
 const machineSelectOptions = computed(() =>
   machineOptions.value.map((item) => ({
     label: `${item.machineCode} / ${item.machineName}`,
@@ -260,6 +301,21 @@ const getBatchStatusMeta = (status?: string) =>
 const getMachineStatusMeta = (status?: string) =>
   machineStatusOptions.find((item) => item.value === status)
 
+const hasIdValue = (value: unknown): value is IdValue =>
+  value !== undefined && value !== null && String(value).trim() !== ''
+
+const normalizeQueryId = (value: unknown): IdValue | undefined => {
+  if (Array.isArray(value)) {
+    return normalizeQueryId(value[0])
+  }
+
+  if (typeof value === 'string' || typeof value === 'number') {
+    return value
+  }
+
+  return undefined
+}
+
 const loadData = async () => {
   loading.value = true
 
@@ -267,8 +323,9 @@ const loadData = async () => {
     const query: PlanQuery = {
       pageNum: pagination.current,
       pageSize: pagination.pageSize,
-      batchId: searchForm.batchId ? Number(searchForm.batchId) : undefined,
-      routeId: searchForm.routeId ? Number(searchForm.routeId) : undefined,
+      orderId: undefined,
+      orderItemId: undefined,
+      batchId: searchForm.batchId || undefined,
       status: searchForm.status,
     }
 
@@ -290,6 +347,26 @@ const loadPlanResources = async () => {
   batchOptions.value = batchResponse.list
   routeOptions.value = routeResponse.list
   machineOptions.value = machineResponse.list
+
+  try {
+    const orderResponse = await fetchOrders({ pageNum: 1, pageSize: 100 })
+    orderOptions.value = orderResponse.list
+  } catch (error) {
+    orderOptions.value = []
+  }
+}
+
+const loadOrderItemOptions = async (orderId?: IdValue) => {
+  if (!orderId) {
+    orderItemOptions.value = []
+    return
+  }
+
+  try {
+    orderItemOptions.value = await fetchOrderItems(orderId)
+  } catch (error) {
+    orderItemOptions.value = []
+  }
 }
 
 const reloadCurrentPlanDetail = async () => {
@@ -308,8 +385,9 @@ pagination.onChange = (page: number, pageSize: number) => {
 }
 
 const resetSearch = () => {
+  searchForm.orderNo = ''
+  searchForm.customerName = ''
   searchForm.batchId = ''
-  searchForm.routeId = ''
   searchForm.status = undefined
   pagination.current = 1
   void loadData()
@@ -317,13 +395,19 @@ const resetSearch = () => {
 
 const resetPlanForm = () => {
   planForm.planId = undefined
+  planForm.orderId = undefined
+  planForm.orderItemId = undefined
   planForm.batchId = undefined
   planForm.routeId = undefined
   planForm.planStartTime = ''
   planForm.planEndTime = ''
   planForm.remark = ''
+  planForm.orderNo = ''
+  planForm.customerName = ''
+  planForm.productSummary = ''
   planForm.batchNo = ''
   planForm.routeName = ''
+  orderItemOptions.value = []
 }
 
 const openCreateModal = async () => {
@@ -336,11 +420,16 @@ const openCreateModal = async () => {
 const openEditModal = (record: ProductionPlanItem) => {
   planModalMode.value = 'edit'
   planForm.planId = record.planId
+  planForm.orderId = record.orderId
+  planForm.orderItemId = record.orderItemId
   planForm.batchId = record.batchId
   planForm.routeId = record.routeId
   planForm.planStartTime = record.planStartTime
   planForm.planEndTime = record.planEndTime || ''
   planForm.remark = record.remark || ''
+  planForm.orderNo = record.orderNo || String(record.orderId || '')
+  planForm.customerName = record.customerName || ''
+  planForm.productSummary = [record.productCode || record.productName, record.specification, record.color].filter(Boolean).join(' / ')
   planForm.batchNo = record.batchNo || String(record.batchId)
   planForm.routeName = record.routeName || String(record.routeId)
   planModalOpen.value = true
@@ -360,7 +449,7 @@ const openRescheduleModal = (record: ProductionPlanItem) => {
   rescheduleModalOpen.value = true
 }
 
-const openDetailDrawer = async (record: ProductionPlanItem) => {
+const openDetailDrawerByPlanId = async (planId: IdValue) => {
   detailDrawerOpen.value = true
   detailLoading.value = true
 
@@ -368,11 +457,15 @@ const openDetailDrawer = async (record: ProductionPlanItem) => {
     if (!machineOptions.value.length) {
       await loadPlanResources()
     }
-    const response = await getPlan(record.planId)
+    const response = await getPlan(planId)
     currentPlanDetail.value = response.data
   } finally {
     detailLoading.value = false
   }
+}
+
+const openDetailDrawer = async (record: ProductionPlanItem) => {
+  await openDetailDrawerByPlanId(record.planId)
 }
 
 const openStepEditModal = (record: PlanStepItem) => {
@@ -403,6 +496,24 @@ const openStepStatusModal = (record: PlanStepItem) => {
   stepStatusModalOpen.value = true
 }
 
+const handleOrderChange = async (value?: IdValue) => {
+  planForm.orderId = value
+  planForm.orderItemId = undefined
+  const selectedOrder = orderOptions.value.find((item) => String(item.orderId) === String(value))
+  planForm.orderNo = selectedOrder?.orderNo || ''
+  planForm.customerName = selectedOrder?.customerName || ''
+  planForm.productSummary = ''
+  await loadOrderItemOptions(value)
+}
+
+const handleOrderItemChange = (value?: IdValue) => {
+  planForm.orderItemId = value
+  const selectedItem = orderItemOptions.value.find((item) => String(item.orderItemId) === String(value))
+  planForm.productSummary = [selectedItem?.productCode || selectedItem?.productName, selectedItem?.specification, selectedItem?.color]
+    .filter(Boolean)
+    .join(' / ')
+}
+
 const jumpToGantt = (record: ProductionPlanItem) => {
   void router.push({
     path: '/schedule/board',
@@ -416,9 +527,20 @@ const handlePlanSubmit = async () => {
   planSubmitting.value = true
   try {
     if (planModalMode.value === 'create') {
+      if (
+        !hasIdValue(planForm.orderId) ||
+        !hasIdValue(planForm.orderItemId) ||
+        !hasIdValue(planForm.batchId) ||
+        !hasIdValue(planForm.routeId)
+      ) {
+        return
+      }
+
       const payload: ProductionPlanCreateRequest = {
-        batchId: planForm.batchId ?? 0,
-        routeId: planForm.routeId ?? 0,
+        orderId: planForm.orderId,
+        orderItemId: planForm.orderItemId,
+        batchId: planForm.batchId,
+        routeId: planForm.routeId,
         planStartTime: planForm.planStartTime,
         planEndTime: planForm.planEndTime || undefined,
         remark: planForm.remark.trim() || undefined,
@@ -426,7 +548,7 @@ const handlePlanSubmit = async () => {
 
       await createPlan(payload)
       message.success('生产计划创建成功')
-    } else if (planForm.planId) {
+    } else if (hasIdValue(planForm.planId)) {
       const payload: ProductionPlanUpdateRequest = {
         planStartTime: planForm.planStartTime || undefined,
         planEndTime: planForm.planEndTime || undefined,
@@ -450,12 +572,16 @@ const handlePlanStatusSubmit = async () => {
 
   planStatusSubmitting.value = true
   try {
+    if (!hasIdValue(planStatusForm.planId)) {
+      return
+    }
+
     const payload: PlanStatusPatchRequest = {
       status: planStatusForm.status ?? 'DRAFT',
       reason: planStatusForm.reason.trim() || undefined,
     }
 
-    await patchPlanStatus(planStatusForm.planId ?? 0, payload)
+    await patchPlanStatus(planStatusForm.planId, payload)
     planStatusModalOpen.value = false
     message.success('计划状态更新成功')
     await loadData()
@@ -470,12 +596,16 @@ const handleRescheduleSubmit = async () => {
 
   rescheduleSubmitting.value = true
   try {
+    if (!hasIdValue(rescheduleForm.planId)) {
+      return
+    }
+
     const payload: PlanRescheduleRequest = {
       rescheduleReason: rescheduleForm.rescheduleReason.trim(),
       startTime: rescheduleForm.startTime || undefined,
     }
 
-    await reschedulePlan(rescheduleForm.planId ?? 0, payload)
+    await reschedulePlan(rescheduleForm.planId, payload)
     rescheduleModalOpen.value = false
     message.success('计划重排成功')
     await loadData()
@@ -490,6 +620,10 @@ const handleStepEditSubmit = async () => {
 
   stepEditSubmitting.value = true
   try {
+    if (!hasIdValue(stepEditForm.planStepId)) {
+      return
+    }
+
     const payload: PlanStepUpdateRequest = {
       planStartTime: stepEditForm.planStartTime || undefined,
       planEndTime: stepEditForm.planEndTime || undefined,
@@ -499,7 +633,7 @@ const handleStepEditSubmit = async () => {
       remark: stepEditForm.remark.trim() || undefined,
     }
 
-    await updatePlanStep(stepEditForm.planStepId ?? 0, payload)
+    await updatePlanStep(stepEditForm.planStepId, payload)
     stepEditModalOpen.value = false
     message.success('工序计划更新成功')
     await reloadCurrentPlanDetail()
@@ -513,11 +647,15 @@ const handleStepMachineSubmit = async () => {
 
   stepMachineSubmitting.value = true
   try {
-    const payload: PlanStepMachinePatchRequest = {
-      machineId: stepMachineForm.machineId ?? 0,
+    if (!hasIdValue(stepMachineForm.planStepId) || !hasIdValue(stepMachineForm.machineId)) {
+      return
     }
 
-    await patchPlanStepMachine(stepMachineForm.planStepId ?? 0, payload)
+    const payload: PlanStepMachinePatchRequest = {
+      machineId: stepMachineForm.machineId,
+    }
+
+    await patchPlanStepMachine(stepMachineForm.planStepId, payload)
     stepMachineModalOpen.value = false
     message.success('工序设备分配成功')
     await reloadCurrentPlanDetail()
@@ -531,12 +669,16 @@ const handleStepStatusSubmit = async () => {
 
   stepStatusSubmitting.value = true
   try {
+    if (!hasIdValue(stepStatusForm.planStepId)) {
+      return
+    }
+
     const payload: StatusPatchRequest = {
       status: stepStatusForm.status ?? 'PENDING',
       reason: stepStatusForm.reason.trim() || undefined,
     }
 
-    await patchPlanStepStatus(stepStatusForm.planStepId ?? 0, payload)
+    await patchPlanStepStatus(stepStatusForm.planStepId, payload)
     stepStatusModalOpen.value = false
     message.success('工序状态更新成功')
     await reloadCurrentPlanDetail()
@@ -545,13 +687,24 @@ const handleStepStatusSubmit = async () => {
   }
 }
 
+watch(
+  () => route.query.planId,
+  async (planId) => {
+    const normalizedPlanId = normalizeQueryId(planId)
+    if (hasIdValue(normalizedPlanId)) {
+      await openDetailDrawerByPlanId(normalizedPlanId)
+    }
+  },
+  { immediate: true },
+)
+
 onMounted(() => {
   void loadData()
 })
 </script>
 
 <template>
-  <TablePage title="生产计划" :columns="columns" :data="data" :loading="loading" :pagination="pagination">
+  <TablePage title="生产计划" :columns="columns" :data="displayRows" :loading="loading" :pagination="pagination">
     <template #search>
       <SearchBar :model="searchForm" :fields="searchFields" @search="loadData" @reset="resetSearch" />
     </template>
@@ -561,7 +714,16 @@ onMounted(() => {
     </template>
 
     <template #bodyCell="{ column, record }">
-      <template v-if="column.key === 'batchNo'">
+      <template v-if="column.key === 'orderNo'">
+        {{ record.orderNo || '-' }}
+      </template>
+      <template v-else-if="column.key === 'customerName'">
+        {{ record.customerName || '-' }}
+      </template>
+      <template v-else-if="column.key === 'productSummary'">
+        {{ [record.productCode || record.productName, record.specification, record.color].filter(Boolean).join(' / ') || '-' }}
+      </template>
+      <template v-else-if="column.key === 'batchNo'">
         {{ record.batchNo || '-' }}
       </template>
       <template v-else-if="column.key === 'routeName'">
@@ -604,6 +766,36 @@ onMounted(() => {
   >
     <a-form ref="planFormRef" :model="planForm" :rules="planRules" layout="vertical">
       <div class="form-grid">
+        <a-form-item v-if="planModalMode === 'create'" label="订单" name="orderId">
+          <a-select
+            v-model:value="planForm.orderId"
+            :options="orderSelectOptions"
+            placeholder="请选择订单"
+            show-search
+            option-filter-prop="label"
+            @change="handleOrderChange"
+          />
+        </a-form-item>
+
+        <a-form-item v-else label="订单">
+          <a-input :value="`${planForm.orderNo || '-'} / ${planForm.customerName || '-'}`" disabled />
+        </a-form-item>
+
+        <a-form-item v-if="planModalMode === 'create'" label="订单明细" name="orderItemId">
+          <a-select
+            v-model:value="planForm.orderItemId"
+            :options="orderItemSelectOptions"
+            placeholder="请选择订单明细"
+            show-search
+            option-filter-prop="label"
+            @change="handleOrderItemChange"
+          />
+        </a-form-item>
+
+        <a-form-item v-else label="订单明细">
+          <a-input :value="planForm.productSummary || '-'" disabled />
+        </a-form-item>
+
         <a-form-item v-if="planModalMode === 'create'" label="批次" name="batchId">
           <a-select
             v-model:value="planForm.batchId"
@@ -718,6 +910,11 @@ onMounted(() => {
       <div v-if="currentPlanDetail" class="plan-detail">
         <a-descriptions :column="4" bordered size="small">
           <a-descriptions-item label="计划ID">{{ currentPlanDetail.planId }}</a-descriptions-item>
+          <a-descriptions-item label="订单号">{{ currentPlanDetail.orderInfo?.orderNo || '-' }}</a-descriptions-item>
+          <a-descriptions-item label="客户">{{ currentPlanDetail.orderInfo?.customerName || '-' }}</a-descriptions-item>
+          <a-descriptions-item label="订单明细">
+            {{ [currentPlanDetail.orderItemInfo?.productCode || currentPlanDetail.orderItemInfo?.productName, currentPlanDetail.orderItemInfo?.specification, currentPlanDetail.orderItemInfo?.color].filter(Boolean).join(' / ') || '-' }}
+          </a-descriptions-item>
           <a-descriptions-item label="批次编号">{{ currentPlanDetail.batchInfo.batchNo }}</a-descriptions-item>
           <a-descriptions-item label="工艺路线">{{ currentPlanDetail.routeInfo.routeName }}</a-descriptions-item>
           <a-descriptions-item label="状态">

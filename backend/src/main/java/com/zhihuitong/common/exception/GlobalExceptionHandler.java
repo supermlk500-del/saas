@@ -2,6 +2,8 @@ package com.zhihuitong.common.exception;
 
 import com.zhihuitong.common.domain.AjaxResult;
 import jakarta.validation.ConstraintViolationException;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
 import org.springframework.http.converter.HttpMessageNotReadableException;
 import org.springframework.validation.BindException;
 import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
@@ -13,45 +15,53 @@ import org.springframework.web.bind.annotation.RestControllerAdvice;
 public class GlobalExceptionHandler {
 
     @ExceptionHandler(MethodArgumentNotValidException.class)
-    public AjaxResult handleMethodArgumentNotValidException(MethodArgumentNotValidException exception) {
+    public ResponseEntity<AjaxResult> handleMethodArgumentNotValidException(MethodArgumentNotValidException exception) {
         String message = exception.getBindingResult().getFieldErrors().stream()
                 .findFirst()
                 .map(error -> error.getField() + ": " + error.getDefaultMessage())
-                .orElse("Validation failed");
-        return AjaxResult.error(400, message);
+                .orElse("参数校验失败");
+        return buildResponse(400, message);
     }
 
     @ExceptionHandler(BindException.class)
-    public AjaxResult handleBindException(BindException exception) {
+    public ResponseEntity<AjaxResult> handleBindException(BindException exception) {
         String message = exception.getBindingResult().getFieldErrors().stream()
                 .findFirst()
                 .map(error -> error.getField() + ": " + error.getDefaultMessage())
-                .orElse("Binding failed");
-        return AjaxResult.error(400, message);
+                .orElse("参数绑定失败");
+        return buildResponse(400, message);
     }
 
     @ExceptionHandler(ConstraintViolationException.class)
-    public AjaxResult handleConstraintViolationException(ConstraintViolationException exception) {
-        return AjaxResult.error(400, exception.getMessage());
+    public ResponseEntity<AjaxResult> handleConstraintViolationException(ConstraintViolationException exception) {
+        return buildResponse(400, exception.getMessage());
     }
 
     @ExceptionHandler(HttpMessageNotReadableException.class)
-    public AjaxResult handleHttpMessageNotReadableException() {
-        return AjaxResult.error(400, "Invalid request body");
+    public ResponseEntity<AjaxResult> handleHttpMessageNotReadableException() {
+        return buildResponse(400, "请求体格式不正确");
     }
 
     @ExceptionHandler(MethodArgumentTypeMismatchException.class)
-    public AjaxResult handleMethodArgumentTypeMismatchException(MethodArgumentTypeMismatchException exception) {
-        return AjaxResult.error(400, "Invalid parameter: " + exception.getName());
+    public ResponseEntity<AjaxResult> handleMethodArgumentTypeMismatchException(MethodArgumentTypeMismatchException exception) {
+        return buildResponse(400, "参数不合法: " + exception.getName());
     }
 
     @ExceptionHandler(BusinessException.class)
-    public AjaxResult handleBusinessException(BusinessException exception) {
-        return AjaxResult.error(exception.getCode(), exception.getMessage());
+    public ResponseEntity<AjaxResult> handleBusinessException(BusinessException exception) {
+        return buildResponse(exception.getCode(), exception.getMessage());
     }
 
     @ExceptionHandler(Exception.class)
-    public AjaxResult handleException(Exception exception) {
-        return AjaxResult.error(exception.getMessage() == null ? "Internal server error" : exception.getMessage());
+    public ResponseEntity<AjaxResult> handleException(Exception exception) {
+        return buildResponse(500, exception.getMessage() == null ? "服务器内部错误" : exception.getMessage());
+    }
+
+    private ResponseEntity<AjaxResult> buildResponse(int code, String message) {
+        HttpStatus status = HttpStatus.resolve(code);
+        if (status == null) {
+            status = HttpStatus.INTERNAL_SERVER_ERROR;
+        }
+        return ResponseEntity.status(status).body(AjaxResult.error(code, message));
     }
 }
