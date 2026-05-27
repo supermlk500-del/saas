@@ -3,12 +3,13 @@ package com.zhihuitong.modules.plan.service;
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.zhihuitong.common.domain.TableDataInfo;
-import com.zhihuitong.common.enums.DeviceStatus;
 import com.zhihuitong.common.exception.BusinessException;
 import com.zhihuitong.common.util.AuditRemarkUtils;
 import com.zhihuitong.common.util.TableDataInfoBuilder;
 import com.zhihuitong.modules.batch.entity.BatchInfo;
 import com.zhihuitong.modules.batch.service.BatchService;
+import com.zhihuitong.modules.plan.algorithm.ScheduleMachineAssignment;
+import com.zhihuitong.modules.plan.algorithm.SchedulingAlgorithmService;
 import com.zhihuitong.modules.plan.dto.PlanRescheduleRequest;
 import com.zhihuitong.modules.plan.dto.ProductionPlanCreateRequest;
 import com.zhihuitong.modules.plan.dto.ProductionPlanQuery;
@@ -38,7 +39,6 @@ import org.springframework.util.StringUtils;
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
-import java.util.Comparator;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
@@ -59,6 +59,7 @@ public class ProductionPlanService {
     private final ProcessStepService processStepService;
     private final MachineService machineService;
     private final StepMachineCapabilityService capabilityService;
+    private final SchedulingAlgorithmService schedulingAlgorithmService;
 
     public ProductionPlanService(ProductionPlanMapper productionPlanMapper,
                                  PlanStepMapper planStepMapper,
@@ -66,7 +67,8 @@ public class ProductionPlanService {
                                  ProcessRouteService processRouteService,
                                  ProcessStepService processStepService,
                                  MachineService machineService,
-                                 StepMachineCapabilityService capabilityService) {
+                                 StepMachineCapabilityService capabilityService,
+                                 SchedulingAlgorithmService schedulingAlgorithmService) {
         this.productionPlanMapper = productionPlanMapper;
         this.planStepMapper = planStepMapper;
         this.batchService = batchService;
@@ -74,6 +76,7 @@ public class ProductionPlanService {
         this.processStepService = processStepService;
         this.machineService = machineService;
         this.capabilityService = capabilityService;
+        this.schedulingAlgorithmService = schedulingAlgorithmService;
     }
 
     public TableDataInfo<ProductionPlanListVo> list(ProductionPlanQuery query) {
@@ -276,69 +279,34 @@ public class ProductionPlanService {
         LocalDateTime cursor = plan.getPlanStartTime();
         for (RouteStep routeStep : routeSteps) {
             ProcessStep step = processStepService.requireStep(routeStep.getStepId());
-            BigDecimal planHours = resolvePlanHours(step);
-            LocalDateTime endTime = calculateEndTime(cursor, planHours);
+            List<StepMachineCapability> capabilities = capabilityService.findActiveCapabilities(step.getStepId()).stream()
+                    .filter(item -> capabilityService.supportsCapability(item, batch.getWidth(), batch.getWeight()))
+                    .toList();
+            ScheduleMachineAssignment assignment = schedulingAlgorithmService.chooseEarliestFinishMachine(
+                    step,
+                    batch,
+                    cursor,
+                    capabilities
+            );
 
             PlanStep planStep = new PlanStep();
             planStep.setPlanId(plan.getPlanId());
             planStep.setStepId(step.getStepId());
-            planStep.setMachineId(pickRecommendedMachine(step.getStepId(), batch));
-            planStep.setPlanStartTime(cursor);
-            planStep.setPlanEndTime(endTime);
-            planStep.setPlanHours(planHours);
+            planStep.setMachineId(assignment.getMachineId());
+            planStep.setPlanStartTime(assignment.getStartTime());
+            planStep.setPlanEndTime(assignment.getEndTime());
+            planStep.setPlanHours(assignment.getPlanHours());
             planStep.setSequenceNo(routeStep.getSortOrder());
             planStep.setStatus("PENDING");
-            if (planStep.getMachineId() == null) {
-                planStep.setRemark("No matching active machine capability was found during plan generation");
-            }
+            planStep.setRemark(assignment.getReason());
             generated.add(planStep);
-            cursor = endTime;
+            cursor = assignment.getEndTime();
         }
         if (!generated.isEmpty()) {
             plan.setPlanEndTime(generated.get(generated.size() - 1).getPlanEndTime());
             productionPlanMapper.updateById(plan);
         }
         return generated;
-    }
-
-    private Long pickRecommendedMachine(Long stepId, BatchInfo batch) {
-        return capabilityService.findActiveCapabilities(stepId).stream()
-                .filter(item -> capabilityService.supportsCapability(item, batch.getWidth(), batch.getWeight()))
-                .sorted(Comparator
-                        .comparingInt((StepMachineCapability item) -> machineAvailabilityRank(item.getMachineId()))
-                        .thenComparing(StepMachineCapability::getMaxSpeed, Comparator.nullsLast(Comparator.reverseOrder()))
-                        .thenComparing(StepMachineCapability::getMaxBatchWeight, Comparator.nullsLast(Comparator.reverseOrder())))
-                .map(StepMachineCapability::getMachineId)
-                .findFirst()
-                .orElse(null);
-    }
-
-    private BigDecimal resolvePlanHours(ProcessStep step) {
-        return step.getDefaultHours() == null ? BigDecimal.ONE : step.getDefaultHours();
-    }
-
-    private LocalDateTime calculateEndTime(LocalDateTime startTime, BigDecimal planHours) {
-        return startTime.plusMinutes(planHours.multiply(BigDecimal.valueOf(60)).longValue());
-    }
-
-    private int machineAvailabilityRank(Long machineId) {
-        if (machineId == null) {
-            return Integer.MAX_VALUE;
-        }
-        Machine machine = machineService.requireMachine(machineId);
-        if (machine.getStatus() == null) {
-            return 10;
-        }
-        if (machine.getStatus() == DeviceStatus.IDLE.getCode()) {
-            return 0;
-        }
-        if (machine.getStatus() == DeviceStatus.RUNNING.getCode()) {
-            return 1;
-        }
-        if (machine.getStatus() == DeviceStatus.MAINTENANCE.getCode()) {
-            return 2;
-        }
-        return 3;
     }
 
     private Map<Long, BatchInfo> fetchBatchMap(List<Long> ids) {
