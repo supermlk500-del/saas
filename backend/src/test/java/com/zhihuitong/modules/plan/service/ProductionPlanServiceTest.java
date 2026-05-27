@@ -8,6 +8,7 @@ import com.zhihuitong.modules.batch.service.BatchService;
 import com.zhihuitong.modules.order.entity.OrderInfo;
 import com.zhihuitong.modules.order.entity.OrderItem;
 import com.zhihuitong.modules.order.service.OrderService;
+import com.zhihuitong.modules.plan.algorithm.SchedulingAlgorithmService;
 import com.zhihuitong.modules.plan.dto.ProductionPlanCreateRequest;
 import com.zhihuitong.modules.plan.dto.ProductionPlanQuery;
 import com.zhihuitong.modules.plan.entity.ProductionPlan;
@@ -56,6 +57,8 @@ class ProductionPlanServiceTest {
     private MachineService machineService;
     @Mock
     private StepMachineCapabilityService capabilityService;
+    @Mock
+    private SchedulingAlgorithmService schedulingAlgorithmService;
 
     private ProductionPlanService productionPlanService;
 
@@ -69,7 +72,8 @@ class ProductionPlanServiceTest {
                 processRouteService,
                 processStepService,
                 machineService,
-                capabilityService
+                capabilityService,
+                schedulingAlgorithmService
         );
     }
 
