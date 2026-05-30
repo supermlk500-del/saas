@@ -10,6 +10,8 @@ import com.zhihuitong.modules.batch.entity.BatchInfo;
 import com.zhihuitong.modules.order.entity.OrderInfo;
 import com.zhihuitong.modules.order.entity.OrderItem;
 import com.zhihuitong.modules.plan.service.ProductionPlanService;
+import com.zhihuitong.modules.plan.vo.PlanMachineLoadItemVo;
+import com.zhihuitong.modules.plan.vo.PlanMachineLoadSummaryVo;
 import com.zhihuitong.modules.plan.vo.PlanStepVo;
 import com.zhihuitong.modules.plan.vo.ProductionPlanDetailVo;
 import com.zhihuitong.modules.plan.vo.ProductionPlanListVo;
@@ -24,6 +26,7 @@ import org.springframework.http.converter.json.MappingJackson2HttpMessageConvert
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.setup.MockMvcBuilders;
 
+import java.math.BigDecimal;
 import java.util.List;
 
 import static org.mockito.ArgumentMatchers.any;
@@ -139,5 +142,32 @@ class ProductionPlanControllerTest {
                 .andExpect(status().isNotFound())
                 .andExpect(jsonPath("$.code").value(404))
                 .andExpect(jsonPath("$.msg").value(message));
+    }
+
+    @Test
+    void machineLoadsShouldSerializeLoadSummary() throws Exception {
+        PlanMachineLoadItemVo item = new PlanMachineLoadItemVo();
+        item.setMachineId(501L);
+        item.setMachineName("染缸-01");
+        item.setStepCount(2);
+        item.setTotalPlanHours(new BigDecimal("5.50"));
+
+        PlanMachineLoadSummaryVo summary = new PlanMachineLoadSummaryVo();
+        summary.setPlanId(LONG_PLAN_ID);
+        summary.setTotalStepCount(3);
+        summary.setAssignedStepCount(2);
+        summary.setUnassignedStepCount(1);
+        summary.setMachineCount(1);
+        summary.setTotalPlanHours(new BigDecimal("5.50"));
+        summary.setMachines(List.of(item));
+
+        when(productionPlanService.getMachineLoads(LONG_PLAN_ID)).thenReturn(summary);
+
+        mockMvc.perform(get("/api/production-plans/{planId}/machine-loads", String.valueOf(LONG_PLAN_ID)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.planId").value(String.valueOf(LONG_PLAN_ID)))
+                .andExpect(jsonPath("$.data.unassignedStepCount").value(1))
+                .andExpect(jsonPath("$.data.machines[0].machineName").value("染缸-01"))
+                .andExpect(jsonPath("$.data.machines[0].totalPlanHours").value(5.50));
     }
 }

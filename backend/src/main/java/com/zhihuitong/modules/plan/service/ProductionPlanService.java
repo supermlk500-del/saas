@@ -19,9 +19,11 @@ import com.zhihuitong.modules.plan.dto.ProductionPlanUpdateRequest;
 import com.zhihuitong.modules.plan.dto.StatusPatchRequest;
 import com.zhihuitong.modules.plan.entity.PlanStep;
 import com.zhihuitong.modules.plan.entity.ProductionPlan;
+import com.zhihuitong.modules.plan.load.PlanMachineLoadService;
 import com.zhihuitong.modules.plan.mapper.PlanStepMapper;
 import com.zhihuitong.modules.plan.mapper.ProductionPlanMapper;
 import com.zhihuitong.modules.plan.vo.GanttTaskVo;
+import com.zhihuitong.modules.plan.vo.PlanMachineLoadSummaryVo;
 import com.zhihuitong.modules.plan.vo.PlanStepVo;
 import com.zhihuitong.modules.plan.vo.ProductionPlanDetailVo;
 import com.zhihuitong.modules.plan.vo.ProductionPlanListVo;
@@ -64,6 +66,7 @@ public class ProductionPlanService {
     private final ProcessStepService processStepService;
     private final MachineService machineService;
     private final StepMachineCapabilityService capabilityService;
+    private final PlanMachineLoadService machineLoadService;
 
     public ProductionPlanService(ProductionPlanMapper productionPlanMapper,
                                  PlanStepMapper planStepMapper,
@@ -72,7 +75,8 @@ public class ProductionPlanService {
                                  ProcessRouteService processRouteService,
                                  ProcessStepService processStepService,
                                  MachineService machineService,
-                                 StepMachineCapabilityService capabilityService) {
+                                 StepMachineCapabilityService capabilityService,
+                                 PlanMachineLoadService machineLoadService) {
         this.productionPlanMapper = productionPlanMapper;
         this.planStepMapper = planStepMapper;
         this.batchService = batchService;
@@ -81,6 +85,7 @@ public class ProductionPlanService {
         this.processStepService = processStepService;
         this.machineService = machineService;
         this.capabilityService = capabilityService;
+        this.machineLoadService = machineLoadService;
     }
 
     public TableDataInfo<ProductionPlanListVo> list(ProductionPlanQuery query) {
@@ -244,6 +249,11 @@ public class ProductionPlanService {
                 "planId", planId,
                 "tasks", tasks
         );
+    }
+
+    public PlanMachineLoadSummaryVo getMachineLoads(Long planId) {
+        requirePlan(planId);
+        return machineLoadService.summarize(planId, buildPlanStepVos(findPlanSteps(planId)));
     }
 
     public ProductionPlan requirePlan(Long planId) {
