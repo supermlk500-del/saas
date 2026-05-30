@@ -123,6 +123,12 @@ export const appRoutes: RouteRecordRaw[] = [
     meta: { title: '重排日志', section: '排产管理', sectionKey: 'schedule', menuOrder: 35, showInMenu: false },
   },
   {
+    path: '/schedule/strategies',
+    name: 'schedule-strategies',
+    component: view(() => import('@/views/plan/StrategyList.vue')),
+    meta: { title: '排产策略', section: '排产管理', sectionKey: 'schedule', menuOrder: 36, showInMenu: true },
+  },
+  {
     path: '/quality/realtime',
     name: 'quality-realtime',
     component: view(() => import('@/views/quality/RealtimeInspect.vue')),

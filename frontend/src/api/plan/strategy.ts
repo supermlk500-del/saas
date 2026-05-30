@@ -15,7 +15,7 @@ export type StrategyQuery = {
 
 export function listStrategies(query?: StrategyQuery) {
   return request<RuoYiListResponse<StrategyItem>>({
-    url: '/business/strategy/list',
+    url: '/api/plan-strategies',
     method: 'get',
     params: query,
   })
