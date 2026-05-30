@@ -11,6 +11,8 @@ import com.zhihuitong.modules.order.entity.OrderInfo;
 import com.zhihuitong.modules.order.entity.OrderItem;
 import com.zhihuitong.modules.plan.service.ProductionPlanService;
 import com.zhihuitong.modules.plan.vo.PlanStepVo;
+import com.zhihuitong.modules.plan.vo.PlanUnassignedReasonItemVo;
+import com.zhihuitong.modules.plan.vo.PlanUnassignedReasonVo;
 import com.zhihuitong.modules.plan.vo.ProductionPlanDetailVo;
 import com.zhihuitong.modules.plan.vo.ProductionPlanListVo;
 import com.zhihuitong.modules.process.entity.ProcessRoute;
@@ -139,5 +141,33 @@ class ProductionPlanControllerTest {
                 .andExpect(status().isNotFound())
                 .andExpect(jsonPath("$.code").value(404))
                 .andExpect(jsonPath("$.msg").value(message));
+    }
+
+    @Test
+    void unassignedReasonsShouldSerializeReasonItems() throws Exception {
+        PlanUnassignedReasonItemVo item = new PlanUnassignedReasonItemVo();
+        item.setPlanStepId(6001L);
+        item.setStepId(7001L);
+        item.setStepName("染色");
+        item.setReasonCode("MACHINE_UNASSIGNED");
+        item.setReasonDesc("计划生成时未匹配到可用的启用机台能力");
+        item.setSuggestion("检查该工序是否存在启用的机台能力，或补充批次宽幅/重量匹配的设备能力");
+
+        PlanUnassignedReasonVo result = new PlanUnassignedReasonVo();
+        result.setPlanId(LONG_PLAN_ID);
+        result.setTotalIssueCount(1);
+        result.setUnassignedCount(1);
+        result.setAbnormalCount(0);
+        result.setMissingTimeCount(0);
+        result.setItems(List.of(item));
+
+        when(productionPlanService.getUnassignedReasons(LONG_PLAN_ID)).thenReturn(result);
+
+        mockMvc.perform(get("/api/production-plans/{planId}/unassigned-reasons", String.valueOf(LONG_PLAN_ID)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.planId").value(String.valueOf(LONG_PLAN_ID)))
+                .andExpect(jsonPath("$.data.totalIssueCount").value(1))
+                .andExpect(jsonPath("$.data.items[0].reasonCode").value("MACHINE_UNASSIGNED"))
+                .andExpect(jsonPath("$.data.items[0].stepName").value("染色"));
     }
 }

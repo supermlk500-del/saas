@@ -13,6 +13,7 @@ import com.zhihuitong.modules.plan.dto.ProductionPlanQuery;
 import com.zhihuitong.modules.plan.entity.ProductionPlan;
 import com.zhihuitong.modules.plan.mapper.PlanStepMapper;
 import com.zhihuitong.modules.plan.mapper.ProductionPlanMapper;
+import com.zhihuitong.modules.plan.unassigned.PlanUnassignedReasonService;
 import com.zhihuitong.modules.plan.vo.ProductionPlanListVo;
 import com.zhihuitong.modules.process.entity.ProcessRoute;
 import com.zhihuitong.modules.process.service.MachineService;
@@ -56,6 +57,8 @@ class ProductionPlanServiceTest {
     private MachineService machineService;
     @Mock
     private StepMachineCapabilityService capabilityService;
+    @Mock
+    private PlanUnassignedReasonService unassignedReasonService;
 
     private ProductionPlanService productionPlanService;
 
@@ -69,7 +72,8 @@ class ProductionPlanServiceTest {
                 processRouteService,
                 processStepService,
                 machineService,
-                capabilityService
+                capabilityService,
+                unassignedReasonService
         );
     }
 

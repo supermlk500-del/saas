@@ -72,4 +72,9 @@ public class ProductionPlanController {
     public AjaxResult gantt(@PathVariable @Min(value = 1, message = "planId 必须大于 0") Long planId) {
         return AjaxResult.success(productionPlanService.getGantt(planId));
     }
+
+    @GetMapping("/{planId}/unassigned-reasons")
+    public AjaxResult unassignedReasons(@PathVariable @Min(value = 1, message = "planId 必须大于 0") Long planId) {
+        return AjaxResult.success(productionPlanService.getUnassignedReasons(planId));
+    }
 }
