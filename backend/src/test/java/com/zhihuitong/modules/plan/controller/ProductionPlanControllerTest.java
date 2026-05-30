@@ -10,6 +10,7 @@ import com.zhihuitong.modules.batch.entity.BatchInfo;
 import com.zhihuitong.modules.order.entity.OrderInfo;
 import com.zhihuitong.modules.order.entity.OrderItem;
 import com.zhihuitong.modules.plan.service.ProductionPlanService;
+import com.zhihuitong.modules.plan.vo.PlanKpiVo;
 import com.zhihuitong.modules.plan.vo.PlanStepVo;
 import com.zhihuitong.modules.plan.vo.ProductionPlanDetailVo;
 import com.zhihuitong.modules.plan.vo.ProductionPlanListVo;
@@ -24,6 +25,7 @@ import org.springframework.http.converter.json.MappingJackson2HttpMessageConvert
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.setup.MockMvcBuilders;
 
+import java.math.BigDecimal;
 import java.util.List;
 
 import static org.mockito.ArgumentMatchers.any;
@@ -139,5 +141,27 @@ class ProductionPlanControllerTest {
                 .andExpect(status().isNotFound())
                 .andExpect(jsonPath("$.code").value(404))
                 .andExpect(jsonPath("$.msg").value(message));
+    }
+
+    @Test
+    void kpiShouldSerializePlanMetrics() throws Exception {
+        PlanKpiVo kpi = new PlanKpiVo();
+        kpi.setPlanId(LONG_PLAN_ID);
+        kpi.setTotalStepCount(3);
+        kpi.setAssignedStepCount(2);
+        kpi.setUnassignedStepCount(1);
+        kpi.setMachineAssignmentRate(new BigDecimal("66.67"));
+        kpi.setOnTimeRate(new BigDecimal("50.00"));
+        kpi.setAlgorithmRemarkCoverageRate(new BigDecimal("33.33"));
+
+        when(productionPlanService.getKpi(LONG_PLAN_ID)).thenReturn(kpi);
+
+        mockMvc.perform(get("/api/production-plans/{planId}/kpi", String.valueOf(LONG_PLAN_ID)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.planId").value(String.valueOf(LONG_PLAN_ID)))
+                .andExpect(jsonPath("$.data.totalStepCount").value(3))
+                .andExpect(jsonPath("$.data.assignedStepCount").value(2))
+                .andExpect(jsonPath("$.data.machineAssignmentRate").value(66.67))
+                .andExpect(jsonPath("$.data.algorithmRemarkCoverageRate").value(33.33));
     }
 }

@@ -328,6 +328,24 @@ export interface ProductionPlanDetailItem {
   planSteps: PlanStepItem[]
 }
 
+export interface PlanKpiItem {
+  planId: IdValue
+  totalStepCount: number
+  assignedStepCount: number
+  unassignedStepCount: number
+  machineAssignmentRate: number
+  totalPlanHours: number
+  onTimeStepCount: number
+  lateStepCount: number
+  onTimeRate: number
+  maxLateHours: number
+  plannedEndTime?: string
+  deliveryDate?: string
+  deliveryDateMet?: boolean | null
+  algorithmRemarkCount: number
+  algorithmRemarkCoverageRate: number
+}
+
 export interface PlanStepItem {
   planStepId: IdValue
   planId: IdValue

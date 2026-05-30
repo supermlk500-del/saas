@@ -10,6 +10,7 @@ import {
   createPlan,
   fetchPlans,
   getPlan,
+  getPlanKpi,
   patchPlanStatus,
   reschedulePlan,
   updatePlan,
@@ -42,6 +43,7 @@ import type {
   MachineItem,
   OrderLineItem,
   OrderSummaryItem,
+  PlanKpiItem,
   PlanStepItem,
   ProcessRouteItem,
   ProductionPlanDetailItem,
@@ -173,6 +175,7 @@ const rescheduleFormRef = ref()
 const detailDrawerOpen = ref(false)
 const detailLoading = ref(false)
 const currentPlanDetail = ref<ProductionPlanDetailItem | null>(null)
+const currentPlanKpi = ref<PlanKpiItem | null>(null)
 
 const stepEditModalOpen = ref(false)
 const stepEditSubmitting = ref(false)
@@ -374,8 +377,13 @@ const reloadCurrentPlanDetail = async () => {
     return
   }
 
-  const response = await getPlan(currentPlanDetail.value.planId)
-  currentPlanDetail.value = response.data
+  const planId = currentPlanDetail.value.planId
+  const [detailResponse, kpiResponse] = await Promise.all([
+    getPlan(planId),
+    getPlanKpi(planId),
+  ])
+  currentPlanDetail.value = detailResponse.data
+  currentPlanKpi.value = kpiResponse.data
 }
 
 pagination.onChange = (page: number, pageSize: number) => {
@@ -452,13 +460,18 @@ const openRescheduleModal = (record: ProductionPlanItem) => {
 const openDetailDrawerByPlanId = async (planId: IdValue) => {
   detailDrawerOpen.value = true
   detailLoading.value = true
+  currentPlanKpi.value = null
 
   try {
     if (!machineOptions.value.length) {
       await loadPlanResources()
     }
-    const response = await getPlan(planId)
-    currentPlanDetail.value = response.data
+    const [detailResponse, kpiResponse] = await Promise.all([
+      getPlan(planId),
+      getPlanKpi(planId),
+    ])
+    currentPlanDetail.value = detailResponse.data
+    currentPlanKpi.value = kpiResponse.data
   } finally {
     detailLoading.value = false
   }
@@ -466,6 +479,13 @@ const openDetailDrawerByPlanId = async (planId: IdValue) => {
 
 const openDetailDrawer = async (record: ProductionPlanItem) => {
   await openDetailDrawerByPlanId(record.planId)
+}
+
+const formatPercent = (value?: number | string | null) => {
+  if (value === undefined || value === null || value === '') {
+    return '0.00%'
+  }
+  return `${Number(value).toFixed(2)}%`
 }
 
 const openStepEditModal = (record: PlanStepItem) => {
@@ -928,6 +948,34 @@ onMounted(() => {
           <a-descriptions-item label="备注">{{ currentPlanDetail.remark || '-' }}</a-descriptions-item>
         </a-descriptions>
 
+        <div v-if="currentPlanKpi" class="kpi-panel">
+          <div class="kpi-item">
+            <span class="kpi-label">机台分配率</span>
+            <strong>{{ formatPercent(currentPlanKpi.machineAssignmentRate) }}</strong>
+            <small>{{ currentPlanKpi.assignedStepCount }} / {{ currentPlanKpi.totalStepCount }}</small>
+          </div>
+          <div class="kpi-item">
+            <span class="kpi-label">准时率</span>
+            <strong>{{ formatPercent(currentPlanKpi.onTimeRate) }}</strong>
+            <small>延期 {{ currentPlanKpi.lateStepCount }} 道</small>
+          </div>
+          <div class="kpi-item">
+            <span class="kpi-label">总计划工时</span>
+            <strong>{{ currentPlanKpi.totalPlanHours ?? 0 }}</strong>
+            <small>小时</small>
+          </div>
+          <div class="kpi-item">
+            <span class="kpi-label">未分配工序</span>
+            <strong>{{ currentPlanKpi.unassignedStepCount }}</strong>
+            <small>最大延期 {{ currentPlanKpi.maxLateHours ?? 0 }} 小时</small>
+          </div>
+          <div class="kpi-item">
+            <span class="kpi-label">算法备注覆盖</span>
+            <strong>{{ formatPercent(currentPlanKpi.algorithmRemarkCoverageRate) }}</strong>
+            <small>{{ currentPlanKpi.algorithmRemarkCount }} 道</small>
+          </div>
+        </div>
+
         <a-table
           :columns="planStepColumns"
           :data-source="currentPlanDetail.planSteps"
@@ -1081,6 +1129,35 @@ onMounted(() => {
   margin-top: 8px;
 }
 
+.kpi-panel {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.kpi-item {
+  min-width: 0;
+  padding: 12px;
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  background: #f8fafc;
+}
+
+.kpi-label,
+.kpi-item small {
+  display: block;
+  color: #64748b;
+  line-height: 1.4;
+}
+
+.kpi-item strong {
+  display: block;
+  margin: 4px 0;
+  color: #0f172a;
+  font-size: 20px;
+  line-height: 1.2;
+}
+
 .form-grid {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -1095,6 +1172,10 @@ onMounted(() => {
 @media (max-width: 900px) {
   .form-grid {
     grid-template-columns: 1fr;
+  }
+
+  .kpi-panel {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 }
 </style>

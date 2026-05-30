@@ -19,9 +19,11 @@ import com.zhihuitong.modules.plan.dto.ProductionPlanUpdateRequest;
 import com.zhihuitong.modules.plan.dto.StatusPatchRequest;
 import com.zhihuitong.modules.plan.entity.PlanStep;
 import com.zhihuitong.modules.plan.entity.ProductionPlan;
+import com.zhihuitong.modules.plan.kpi.PlanKpiService;
 import com.zhihuitong.modules.plan.mapper.PlanStepMapper;
 import com.zhihuitong.modules.plan.mapper.ProductionPlanMapper;
 import com.zhihuitong.modules.plan.vo.GanttTaskVo;
+import com.zhihuitong.modules.plan.vo.PlanKpiVo;
 import com.zhihuitong.modules.plan.vo.PlanStepVo;
 import com.zhihuitong.modules.plan.vo.ProductionPlanDetailVo;
 import com.zhihuitong.modules.plan.vo.ProductionPlanListVo;
@@ -64,6 +66,7 @@ public class ProductionPlanService {
     private final ProcessStepService processStepService;
     private final MachineService machineService;
     private final StepMachineCapabilityService capabilityService;
+    private final PlanKpiService planKpiService;
 
     public ProductionPlanService(ProductionPlanMapper productionPlanMapper,
                                  PlanStepMapper planStepMapper,
@@ -72,7 +75,8 @@ public class ProductionPlanService {
                                  ProcessRouteService processRouteService,
                                  ProcessStepService processStepService,
                                  MachineService machineService,
-                                 StepMachineCapabilityService capabilityService) {
+                                 StepMachineCapabilityService capabilityService,
+                                 PlanKpiService planKpiService) {
         this.productionPlanMapper = productionPlanMapper;
         this.planStepMapper = planStepMapper;
         this.batchService = batchService;
@@ -81,6 +85,7 @@ public class ProductionPlanService {
         this.processStepService = processStepService;
         this.machineService = machineService;
         this.capabilityService = capabilityService;
+        this.planKpiService = planKpiService;
     }
 
     public TableDataInfo<ProductionPlanListVo> list(ProductionPlanQuery query) {
@@ -244,6 +249,12 @@ public class ProductionPlanService {
                 "planId", planId,
                 "tasks", tasks
         );
+    }
+
+    public PlanKpiVo getKpi(Long planId) {
+        ProductionPlan plan = requirePlan(planId);
+        OrderInfo orderInfo = plan.getOrderId() == null ? null : orderService.requireOrder(plan.getOrderId());
+        return planKpiService.calculate(plan, findPlanSteps(planId), orderInfo);
     }
 
     public ProductionPlan requirePlan(Long planId) {

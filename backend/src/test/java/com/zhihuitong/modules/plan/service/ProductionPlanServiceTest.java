@@ -11,6 +11,7 @@ import com.zhihuitong.modules.order.service.OrderService;
 import com.zhihuitong.modules.plan.dto.ProductionPlanCreateRequest;
 import com.zhihuitong.modules.plan.dto.ProductionPlanQuery;
 import com.zhihuitong.modules.plan.entity.ProductionPlan;
+import com.zhihuitong.modules.plan.kpi.PlanKpiService;
 import com.zhihuitong.modules.plan.mapper.PlanStepMapper;
 import com.zhihuitong.modules.plan.mapper.ProductionPlanMapper;
 import com.zhihuitong.modules.plan.vo.ProductionPlanListVo;
@@ -56,6 +57,8 @@ class ProductionPlanServiceTest {
     private MachineService machineService;
     @Mock
     private StepMachineCapabilityService capabilityService;
+    @Mock
+    private PlanKpiService planKpiService;
 
     private ProductionPlanService productionPlanService;
 
@@ -69,7 +72,8 @@ class ProductionPlanServiceTest {
                 processRouteService,
                 processStepService,
                 machineService,
-                capabilityService
+                capabilityService,
+                planKpiService
         );
     }
 

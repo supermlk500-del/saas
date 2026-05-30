@@ -3,7 +3,7 @@ import request, {
   type ApiSuccessResponse,
   type RequestConfig,
 } from '@/utils/request'
-import type { GanttTaskItem, IdValue, ProductionPlanDetailItem, ProductionPlanItem } from '@/types/domain'
+import type { GanttTaskItem, IdValue, PlanKpiItem, ProductionPlanDetailItem, ProductionPlanItem } from '@/types/domain'
 import type { PageQuery, PageResult } from '@/types/http'
 
 export type PlanItem = ProductionPlanItem
@@ -96,6 +96,13 @@ export const reschedulePlan = (planId: IdValue, payload: PlanRescheduleRequest) 
 export const getPlanGantt = (planId: IdValue, config?: RequestConfig) =>
   request<ApiSuccessResponse<GanttResponse>>({
     url: `/api/production-plans/${planId}/gantt`,
+    method: 'get',
+    ...config,
+  })
+
+export const getPlanKpi = (planId: IdValue, config?: RequestConfig) =>
+  request<ApiSuccessResponse<PlanKpiItem>>({
+    url: `/api/production-plans/${planId}/kpi`,
     method: 'get',
     ...config,
   })

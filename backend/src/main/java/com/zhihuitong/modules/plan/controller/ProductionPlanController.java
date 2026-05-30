@@ -72,4 +72,9 @@ public class ProductionPlanController {
     public AjaxResult gantt(@PathVariable @Min(value = 1, message = "planId 必须大于 0") Long planId) {
         return AjaxResult.success(productionPlanService.getGantt(planId));
     }
+
+    @GetMapping("/{planId}/kpi")
+    public AjaxResult kpi(@PathVariable @Min(value = 1, message = "planId 必须大于 0") Long planId) {
+        return AjaxResult.success(productionPlanService.getKpi(planId));
+    }
 }
