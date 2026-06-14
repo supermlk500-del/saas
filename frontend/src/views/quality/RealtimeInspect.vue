@@ -998,46 +998,6 @@ onBeforeUnmount(() => {
             <a-card class="page-card" :bordered="false" title="实时视频流采集">
               <a-spin :spinning="loading || streamPreparing">
                 <a-form ref="monitorFormRef" :model="monitorForm" :rules="monitorRules" layout="vertical">
-                  <div class="form-grid">
-                    <a-form-item label="工序计划" name="planStepId">
-                      <a-select
-                        v-model:value="monitorForm.planStepId"
-                        :options="planStepOptions"
-                        placeholder="请选择工序计划"
-                        show-search
-                        option-filter-prop="label"
-                      />
-                    </a-form-item>
-
-                    <a-form-item label="检测标准（质检项）" name="qcItemId">
-                      <a-select
-                        v-model:value="monitorForm.qcItemId"
-                        :options="qcItemOptions"
-                        placeholder="请选择检测标准"
-                        show-search
-                        option-filter-prop="label"
-                      />
-                    </a-form-item>
-
-                    <a-form-item label="摄像头" name="cameraId">
-                      <a-select
-                        v-model:value="monitorForm.cameraId"
-                        :options="cameraOptions"
-                        placeholder="请选择摄像头"
-                        show-search
-                        option-filter-prop="label"
-                      />
-                    </a-form-item>
-
-                    <a-form-item label="检验人" name="inspector">
-                      <a-input v-model:value="monitorForm.inspector" placeholder="请输入检验人" />
-                    </a-form-item>
-
-                    <a-form-item label="备注" name="remark" class="full-field">
-                      <a-input v-model:value="monitorForm.remark" placeholder="可填写实时检测会话备注" />
-                    </a-form-item>
-                  </div>
-
                   <div class="camera-section">
                     <div class="camera-preview">
                       <div class="section-heading">实时视频源</div>
@@ -1082,6 +1042,47 @@ onBeforeUnmount(() => {
                         <a-button size="small" @click="resetMonitorForm">重置实时模式</a-button>
                       </div>
                     </div>
+                  </div>
+
+
+                  <div class="form-grid">
+                    <a-form-item label="工序计划" name="planStepId">
+                      <a-select
+                        v-model:value="monitorForm.planStepId"
+                        :options="planStepOptions"
+                        placeholder="请选择工序计划"
+                        show-search
+                        option-filter-prop="label"
+                      />
+                    </a-form-item>
+
+                    <a-form-item label="检测标准（质检项）" name="qcItemId">
+                      <a-select
+                        v-model:value="monitorForm.qcItemId"
+                        :options="qcItemOptions"
+                        placeholder="请选择检测标准"
+                        show-search
+                        option-filter-prop="label"
+                      />
+                    </a-form-item>
+
+                    <a-form-item label="摄像头" name="cameraId">
+                      <a-select
+                        v-model:value="monitorForm.cameraId"
+                        :options="cameraOptions"
+                        placeholder="请选择摄像头"
+                        show-search
+                        option-filter-prop="label"
+                      />
+                    </a-form-item>
+
+                    <a-form-item label="检验人" name="inspector">
+                      <a-input v-model:value="monitorForm.inspector" placeholder="请输入检验人" />
+                    </a-form-item>
+
+                    <a-form-item label="备注" name="remark" class="full-field">
+                      <a-input v-model:value="monitorForm.remark" placeholder="可填写实时检测会话备注" />
+                    </a-form-item>
                   </div>
 
                   <div class="image-check-section">
@@ -1271,7 +1272,7 @@ onBeforeUnmount(() => {
 
 .workbench-grid {
   display: grid;
-  grid-template-columns: minmax(0, 1.2fr) minmax(420px, 0.8fr);
+  grid-template-columns: minmax(0, 1fr);
   gap: 16px;
 }
 
@@ -1279,6 +1280,9 @@ onBeforeUnmount(() => {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 0 16px;
+  margin-top: 18px;
+  padding-top: 16px;
+  border-top: 1px solid rgba(145, 158, 171, 0.14);
 }
 
 .full-field {
@@ -1357,7 +1361,7 @@ onBeforeUnmount(() => {
 
 .video-frame {
   position: relative;
-  min-height: clamp(480px, 42vw, 640px);
+  min-height: clamp(560px, 50vw, 760px);
   background: radial-gradient(circle at top left, rgba(59, 130, 246, 0.18), transparent 38%),
     linear-gradient(145deg, #111827, #293241);
 }
@@ -1365,7 +1369,7 @@ onBeforeUnmount(() => {
 .video-frame video {
   width: 100%;
   height: 100%;
-  min-height: clamp(480px, 42vw, 640px);
+  min-height: clamp(560px, 50vw, 760px);
   object-fit: contain;
 }
 
