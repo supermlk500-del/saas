@@ -1272,7 +1272,7 @@ onBeforeUnmount(() => {
 
 .workbench-grid {
   display: grid;
-  grid-template-columns: minmax(0, 1fr);
+  grid-template-columns: minmax(0, 1.2fr) minmax(420px, 0.8fr);
   gap: 16px;
 }
 
@@ -1280,9 +1280,6 @@ onBeforeUnmount(() => {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 0 16px;
-  margin-top: 18px;
-  padding-top: 16px;
-  border-top: 1px solid rgba(145, 158, 171, 0.14);
 }
 
 .full-field {
@@ -1361,7 +1358,7 @@ onBeforeUnmount(() => {
 
 .video-frame {
   position: relative;
-  height: clamp(440px, 52vh, 620px);
+  height: clamp(420px, calc(100vh - 420px), 560px);
   min-height: 0;
   background: radial-gradient(circle at top left, rgba(59, 130, 246, 0.18), transparent 38%),
     linear-gradient(145deg, #111827, #293241);
