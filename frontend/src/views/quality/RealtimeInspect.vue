@@ -1081,21 +1081,6 @@ onBeforeUnmount(() => {
                   </div>
                 </div>
 
-                <a-card size="small" title="实时状态" class="inner-card">
-                  <a-descriptions :column="1" size="small" bordered>
-                    <a-descriptions-item label="状态">{{ streamStatusText }}</a-descriptions-item>
-                    <a-descriptions-item label="错误信息">{{ streamErrorText || '-' }}</a-descriptions-item>
-                    <a-descriptions-item label="实时消息数">{{ streamMessageCount }}</a-descriptions-item>
-                    <a-descriptions-item label="最近延迟">
-                      {{ latestFrameLatency !== null ? `${latestFrameLatency} ms` : '-' }}
-                    </a-descriptions-item>
-                    <a-descriptions-item label="当前帧大小">
-                      {{ latestFramePayloadSize ? `${Math.round(latestFramePayloadSize / 1024)} KB` : '-' }}
-                    </a-descriptions-item>
-                    <a-descriptions-item label="渲染模式">{{ renderMode }}</a-descriptions-item>
-                  </a-descriptions>
-                </a-card>
-
                 <a-card size="small" title="关键帧留档" class="inner-card">
                   <div class="image-grid">
                     <a-card size="small" title="关键帧原图">
@@ -1114,6 +1099,21 @@ onBeforeUnmount(() => {
                   <div class="path-text">
                     {{ latestSavedFrameTime ? `最近保存时间：${latestSavedFrameTime}` : '“保存当前帧”会调用 /api/qc-stream-sessions/{sessionId}/snapshot 落库' }}
                   </div>
+                </a-card>
+
+                <a-card size="small" title="实时状态" class="inner-card">
+                  <a-descriptions :column="1" size="small" bordered>
+                    <a-descriptions-item label="状态">{{ streamStatusText }}</a-descriptions-item>
+                    <a-descriptions-item label="错误信息">{{ streamErrorText || '-' }}</a-descriptions-item>
+                    <a-descriptions-item label="实时消息数">{{ streamMessageCount }}</a-descriptions-item>
+                    <a-descriptions-item label="最近延迟">
+                      {{ latestFrameLatency !== null ? `${latestFrameLatency} ms` : '-' }}
+                    </a-descriptions-item>
+                    <a-descriptions-item label="当前帧大小">
+                      {{ latestFramePayloadSize ? `${Math.round(latestFramePayloadSize / 1024)} KB` : '-' }}
+                    </a-descriptions-item>
+                    <a-descriptions-item label="渲染模式">{{ renderMode }}</a-descriptions-item>
+                  </a-descriptions>
                 </a-card>
 
                 <a-card size="small" title="当前帧结构化 boxes" class="inner-card">
