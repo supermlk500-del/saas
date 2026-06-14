@@ -1361,7 +1361,8 @@ onBeforeUnmount(() => {
 
 .video-frame {
   position: relative;
-  min-height: clamp(560px, 50vw, 760px);
+  height: clamp(440px, 52vh, 620px);
+  min-height: 0;
   background: radial-gradient(circle at top left, rgba(59, 130, 246, 0.18), transparent 38%),
     linear-gradient(145deg, #111827, #293241);
 }
@@ -1369,7 +1370,7 @@ onBeforeUnmount(() => {
 .video-frame video {
   width: 100%;
   height: 100%;
-  min-height: clamp(560px, 50vw, 760px);
+  min-height: 0;
   object-fit: contain;
 }
 
