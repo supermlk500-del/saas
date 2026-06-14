@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { computed, nextTick, onBeforeUnmount, onMounted, reactive, ref } from 'vue'
 import { useRoute } from 'vue-router'
+import { SettingOutlined } from '@ant-design/icons-vue'
 import { message } from 'ant-design-vue'
 import QcDetectionResultPanel from '@/components/quality/QcDetectionResultPanel.vue'
 import { fetchPlanSteps } from '@/api/plan/planStep'
@@ -98,6 +99,7 @@ const streamClosing = ref(false)
 const snapshotSaving = ref(false)
 const detailLoading = ref(false)
 const reviewModalOpen = ref(false)
+const settingsModalOpen = ref(false)
 const reviewSubmitting = ref(false)
 const closeSubmitting = ref(false)
 
@@ -997,10 +999,16 @@ onBeforeUnmount(() => {
           <div class="workbench-grid">
             <a-card class="page-card" :bordered="false" title="实时视频流采集">
               <a-spin :spinning="loading || streamPreparing">
-                <a-form ref="monitorFormRef" :model="monitorForm" :rules="monitorRules" layout="vertical">
+                <div class="capture-workspace">
                   <div class="camera-section">
                     <div class="camera-preview">
-                      <div class="section-heading">实时视频源</div>
+                      <div class="video-toolbar">
+                        <div class="section-heading">实时视频源</div>
+                        <a-button class="settings-button" @click="settingsModalOpen = true">
+                          <template #icon><SettingOutlined /></template>
+                          设置
+                        </a-button>
+                      </div>
                       <div class="video-frame">
                         <video ref="videoRef" muted playsinline @loadedmetadata="handleVideoReady" />
                         <canvas ref="overlayCanvasRef" class="overlay-canvas" />
@@ -1021,68 +1029,6 @@ onBeforeUnmount(() => {
                         </a-button>
                       </div>
                     </div>
-
-                    <div class="detect-summary">
-                      <div class="section-heading">实时会话</div>
-                      <a-descriptions :column="1" size="small" bordered>
-                        <a-descriptions-item label="计划ID">{{ selectedMonitorPlanStep?.planId || '-' }}</a-descriptions-item>
-                        <a-descriptions-item label="工序计划ID">{{ selectedMonitorPlanStep?.planStepId || '-' }}</a-descriptions-item>
-                        <a-descriptions-item label="工序">{{ selectedMonitorPlanStep?.stepName || '未选择' }}</a-descriptions-item>
-                        <a-descriptions-item label="当前摄像头">{{ selectedCamera?.cameraName || '未选择' }}</a-descriptions-item>
-                        <a-descriptions-item label="摄像头类型">{{ selectedCamera?.cameraType || '-' }}</a-descriptions-item>
-                        <a-descriptions-item label="会话 ID">{{ streamSession?.sessionId || '-' }}</a-descriptions-item>
-                        <a-descriptions-item label="连接状态">{{ streamSocketStateLabel }}</a-descriptions-item>
-                        <a-descriptions-item label="会话开始时间">{{ streamSession?.startedAt || '-' }}</a-descriptions-item>
-                        <a-descriptions-item label="最近帧时间">{{ latestFrameTime || '-' }}</a-descriptions-item>
-                        <a-descriptions-item label="推流频率">{{ STREAM_FRAME_INTERVAL_MS }}ms / 次</a-descriptions-item>
-                        <a-descriptions-item label="提交链路">POST /api/qc-stream-sessions + WebSocket /ws/qc-stream/{sessionId}</a-descriptions-item>
-                      </a-descriptions>
-                      <div class="summary-actions">
-                        <a-button size="small" :loading="cameraLoading" @click="reloadCameras">刷新摄像头列表</a-button>
-                        <a-button size="small" @click="resetMonitorForm">重置实时模式</a-button>
-                      </div>
-                    </div>
-                  </div>
-
-
-                  <div class="form-grid">
-                    <a-form-item label="工序计划" name="planStepId">
-                      <a-select
-                        v-model:value="monitorForm.planStepId"
-                        :options="planStepOptions"
-                        placeholder="请选择工序计划"
-                        show-search
-                        option-filter-prop="label"
-                      />
-                    </a-form-item>
-
-                    <a-form-item label="检测标准（质检项）" name="qcItemId">
-                      <a-select
-                        v-model:value="monitorForm.qcItemId"
-                        :options="qcItemOptions"
-                        placeholder="请选择检测标准"
-                        show-search
-                        option-filter-prop="label"
-                      />
-                    </a-form-item>
-
-                    <a-form-item label="摄像头" name="cameraId">
-                      <a-select
-                        v-model:value="monitorForm.cameraId"
-                        :options="cameraOptions"
-                        placeholder="请选择摄像头"
-                        show-search
-                        option-filter-prop="label"
-                      />
-                    </a-form-item>
-
-                    <a-form-item label="检验人" name="inspector">
-                      <a-input v-model:value="monitorForm.inspector" placeholder="请输入检验人" />
-                    </a-form-item>
-
-                    <a-form-item label="备注" name="remark" class="full-field">
-                      <a-input v-model:value="monitorForm.remark" placeholder="可填写实时检测会话备注" />
-                    </a-form-item>
                   </div>
 
                   <div class="image-check-section">
@@ -1101,7 +1047,7 @@ onBeforeUnmount(() => {
 
                       <div class="image-check-actions">
                         <div class="path-text">
-                          图片补检复用上方工序计划、检测标准、检验人和备注，结果会进入右侧归档预览。
+                          图片补检复用设置中的工序计划、检测标准、检验人和备注，结果会进入右侧归档预览。
                         </div>
                         <div class="camera-actions compact-actions">
                           <a-button @click="resetImageInspection">清空图片</a-button>
@@ -1110,7 +1056,7 @@ onBeforeUnmount(() => {
                       </div>
                     </div>
                   </div>
-                </a-form>
+                </div>
               </a-spin>
             </a-card>
 
@@ -1231,6 +1177,77 @@ onBeforeUnmount(() => {
     </a-card>
 
     <a-modal
+      v-model:open="settingsModalOpen"
+      title="实时质检设置"
+      width="760px"
+      :footer="null"
+      :force-render="true"
+    >
+      <a-form ref="monitorFormRef" :model="monitorForm" :rules="monitorRules" layout="vertical">
+        <div class="form-grid settings-form-grid">
+          <a-form-item label="工序计划" name="planStepId">
+            <a-select
+              v-model:value="monitorForm.planStepId"
+              :options="planStepOptions"
+              placeholder="请选择工序计划"
+              show-search
+              option-filter-prop="label"
+            />
+          </a-form-item>
+
+          <a-form-item label="检测标准（质检项）" name="qcItemId">
+            <a-select
+              v-model:value="monitorForm.qcItemId"
+              :options="qcItemOptions"
+              placeholder="请选择检测标准"
+              show-search
+              option-filter-prop="label"
+            />
+          </a-form-item>
+
+          <a-form-item label="摄像头" name="cameraId">
+            <a-select
+              v-model:value="monitorForm.cameraId"
+              :options="cameraOptions"
+              placeholder="请选择摄像头"
+              show-search
+              option-filter-prop="label"
+            />
+          </a-form-item>
+
+          <a-form-item label="检验人" name="inspector">
+            <a-input v-model:value="monitorForm.inspector" placeholder="请输入检验人" />
+          </a-form-item>
+
+          <a-form-item label="备注" name="remark" class="full-field">
+            <a-input v-model:value="monitorForm.remark" placeholder="可填写实时检测会话备注" />
+          </a-form-item>
+        </div>
+      </a-form>
+
+      <div class="settings-session">
+        <div class="section-heading">实时会话</div>
+        <a-descriptions :column="1" size="small" bordered>
+          <a-descriptions-item label="计划ID">{{ selectedMonitorPlanStep?.planId || '-' }}</a-descriptions-item>
+          <a-descriptions-item label="工序计划ID">{{ selectedMonitorPlanStep?.planStepId || '-' }}</a-descriptions-item>
+          <a-descriptions-item label="工序">{{ selectedMonitorPlanStep?.stepName || '未选择' }}</a-descriptions-item>
+          <a-descriptions-item label="当前摄像头">{{ selectedCamera?.cameraName || '未选择' }}</a-descriptions-item>
+          <a-descriptions-item label="摄像头类型">{{ selectedCamera?.cameraType || '-' }}</a-descriptions-item>
+          <a-descriptions-item label="会话 ID">{{ streamSession?.sessionId || '-' }}</a-descriptions-item>
+          <a-descriptions-item label="连接状态">{{ streamSocketStateLabel }}</a-descriptions-item>
+          <a-descriptions-item label="会话开始时间">{{ streamSession?.startedAt || '-' }}</a-descriptions-item>
+          <a-descriptions-item label="最近帧时间">{{ latestFrameTime || '-' }}</a-descriptions-item>
+          <a-descriptions-item label="推流频率">{{ STREAM_FRAME_INTERVAL_MS }}ms / 次</a-descriptions-item>
+          <a-descriptions-item label="提交链路">POST /api/qc-stream-sessions + WebSocket /ws/qc-stream/{sessionId}</a-descriptions-item>
+        </a-descriptions>
+        <div class="summary-actions">
+          <a-button size="small" :loading="cameraLoading" @click="reloadCameras">刷新摄像头列表</a-button>
+          <a-button size="small" @click="resetMonitorForm">重置实时模式</a-button>
+        </div>
+      </div>
+    </a-modal>
+
+    <a-modal
       v-model:open="reviewModalOpen"
       title="人工复核"
       ok-text="保存"
@@ -1268,6 +1285,23 @@ onBeforeUnmount(() => {
 
 .mode-shell {
   padding: 0 0 4px;
+}
+
+.settings-button {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.video-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.video-toolbar .section-heading {
+  margin-bottom: 0;
 }
 
 .workbench-grid {
@@ -1422,6 +1456,16 @@ onBeforeUnmount(() => {
 
 .summary-actions {
   justify-content: flex-end;
+}
+
+.settings-session {
+  margin-top: 18px;
+  padding-top: 16px;
+  border-top: 1px solid rgba(145, 158, 171, 0.14);
+}
+
+.settings-session :deep(.ant-descriptions-item-content) {
+  word-break: break-word;
 }
 
 .submit-row {
