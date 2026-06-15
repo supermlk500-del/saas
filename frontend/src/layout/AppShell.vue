@@ -86,10 +86,10 @@ const breadcrumbItems = computed(() => {
       </div>
     </a-layout-header>
 
-    <a-layout>
+    <a-layout class="app-body">
       <a-layout-sider
-        :width="248"
-        :collapsed-width="60"
+        :width="224"
+        :collapsed-width="54"
         :collapsed="collapsed"
         class="app-sider"
         theme="light"
@@ -121,7 +121,10 @@ const breadcrumbItems = computed(() => {
       </a-layout-sider>
 
       <a-layout class="app-main">
-        <a-layout-content class="app-content">
+        <a-layout-content
+          class="app-content"
+          :class="{ 'app-content--dashboard': route.path === '/dashboard' }"
+        >
           <a-breadcrumb class="app-breadcrumb">
             <a-breadcrumb-item v-for="item in breadcrumbItems" :key="item">
               {{ item }}
@@ -137,44 +140,51 @@ const breadcrumbItems = computed(() => {
 <style scoped>
 .app-shell {
   min-height: 100vh;
+  height: 100vh;
+  overflow: hidden;
   background:
     radial-gradient(circle at top left, rgba(214, 111, 34, 0.12), transparent 24rem),
     linear-gradient(180deg, #f8f5f1 0%, #f4f7fb 100%);
+}
+
+.app-body {
+  height: calc(100vh - 52px);
+  min-height: 0;
 }
 
 .app-header {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 0 24px;
+  padding: 0 22px;
   background: rgba(255, 255, 255, 0.9);
   border-bottom: 1px solid rgba(145, 158, 171, 0.15);
   backdrop-filter: blur(18px);
-  height: 58px;
-  line-height: 58px;
+  height: 52px;
+  line-height: 52px;
 }
 
 .header-left {
   display: flex;
   align-items: center;
-  gap: 12px;
+  gap: 10px;
 }
 
 .collapse-btn {
   color: #5d6b7b;
-  font-size: 18px;
+  font-size: 16px;
 }
 
 .brand {
   display: flex;
   align-items: center;
-  gap: 12px;
+  gap: 10px;
   line-height: 1;
 }
 
 .brand-logo {
   width: auto;
-  height: 38px;
+  height: 34px;
   display: block;
   object-fit: contain;
 }
@@ -182,18 +192,18 @@ const breadcrumbItems = computed(() => {
 .brand-copy {
   display: flex;
   flex-direction: column;
-  gap: 4px;
+  gap: 3px;
 }
 
 .brand-copy strong {
   color: #1f2937;
-  font-size: 18px;
+  font-size: 16px;
   letter-spacing: 0.04em;
 }
 
 .brand-copy span {
   color: #7b8794;
-  font-size: 12px;
+  font-size: 11px;
 }
 
 .header-right {
@@ -202,7 +212,7 @@ const breadcrumbItems = computed(() => {
 }
 
 .header-icon {
-  font-size: 20px;
+  font-size: 18px;
   color: #5d6b7b;
 }
 
@@ -213,16 +223,16 @@ const breadcrumbItems = computed(() => {
 .user-chip {
   display: inline-flex;
   align-items: center;
-  gap: 8px;
+  gap: 7px;
   color: #344054;
   background: rgba(255, 248, 240, 0.92);
   border: 1px solid rgba(214, 111, 34, 0.18);
   border-radius: 999px;
-  padding: 4px 10px 4px 4px;
+  padding: 3px 9px 3px 3px;
 }
 
 .user-name {
-  font-size: 14px;
+  font-size: 13px;
   font-weight: 500;
 }
 
@@ -233,8 +243,8 @@ const breadcrumbItems = computed(() => {
 
 .sider-title {
   color: #98a2b3;
-  padding: 18px 24px 8px;
-  font-size: 11px;
+  padding: 16px 22px 7px;
+  font-size: 10px;
   font-weight: 700;
   letter-spacing: 0.08em;
 }
@@ -250,30 +260,30 @@ const breadcrumbItems = computed(() => {
 }
 
 :deep(.ant-menu-inline) {
-  padding: 8px 0 12px;
+  padding: 7px 0 11px;
 }
 
 :deep(.ant-menu-submenu-title) {
-  height: 44px !important;
-  line-height: 44px !important;
-  margin: 4px 14px;
-  width: calc(100% - 28px);
-  border-radius: 12px;
-  font-size: 13px;
+  height: 40px !important;
+  line-height: 40px !important;
+  margin: 4px 13px;
+  width: calc(100% - 26px);
+  border-radius: 11px;
+  font-size: 12px;
 }
 
 :deep(.ant-menu-inline .ant-menu-item) {
-  height: 42px;
-  line-height: 42px;
-  margin: 4px 14px;
-  width: calc(100% - 28px);
-  border-radius: 12px;
-  font-size: 13px;
+  height: 38px;
+  line-height: 38px;
+  margin: 4px 13px;
+  width: calc(100% - 26px);
+  border-radius: 11px;
+  font-size: 12px;
 }
 
 :deep(.ant-menu-item-icon),
 :deep(.ant-menu-submenu-title .anticon) {
-  font-size: 15px;
+  font-size: 14px;
 }
 
 :deep(.ant-menu-title-content) {
@@ -294,21 +304,33 @@ const breadcrumbItems = computed(() => {
 }
 
 .app-main {
-  padding: 14px;
+  padding: 13px;
   background: transparent;
+  min-width: 0;
+  min-height: 0;
+  overflow: hidden;
 }
 
 .app-content {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
   padding: 0;
   min-height: auto;
+  overflow: auto;
+}
+
+.app-content--dashboard {
+  overflow: hidden;
 }
 
 .app-breadcrumb {
-  margin-bottom: 12px;
+  flex: none;
+  margin-bottom: 11px;
 }
 
 :deep(.ant-breadcrumb) {
-  font-size: 14px;
+  font-size: 13px;
 }
 
 :deep(.ant-breadcrumb-link) {

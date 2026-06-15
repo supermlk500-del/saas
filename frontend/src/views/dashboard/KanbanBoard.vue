@@ -344,7 +344,7 @@ onMounted(() => {
 </script>
 
 <template>
-  <a-spin :spinning="loading">
+  <a-spin class="dashboard-spin" :spinning="loading">
     <div class="dashboard-page">
       <div class="metric-grid">
         <a-card v-for="item in metricCards" :key="item.title" class="metric-card" :bordered="false">
@@ -480,75 +480,95 @@ onMounted(() => {
 </template>
 
 <style scoped>
+.dashboard-spin {
+  flex: 1 1 auto;
+  height: 100%;
+  min-height: 0;
+  overflow: hidden;
+}
+
+.dashboard-spin :deep(.ant-spin-container) {
+  height: 100%;
+  min-height: 0;
+}
+
 .dashboard-page {
   display: flex;
   flex-direction: column;
-  gap: 12px;
+  height: auto;
+  min-height: 0;
+  gap: 10px;
+  overflow: visible;
 }
 
 .metric-grid {
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));
-  gap: 12px;
+  gap: 10px;
+  min-height: 0;
 }
 
 .metric-card,
 .panel-card,
 .summary-card {
-  border-radius: 14px;
+  border-radius: 13px;
   border: 1px solid rgba(145, 158, 171, 0.12);
-  box-shadow: 0 12px 32px rgba(15, 23, 42, 0.05);
+  box-shadow: 0 10px 28px rgba(15, 23, 42, 0.05);
+}
+
+.panel-card {
+  min-height: 210px;
 }
 
 .metric-card {
-  min-height: 112px;
+  min-height: 100px;
 }
 
 .metric-card :deep(.ant-card-body) {
-  padding: 14px 18px 16px;
+  padding: 12px 16px 13px;
 }
 
 .panel-card :deep(.ant-card-head),
 .summary-card :deep(.ant-card-head) {
-  min-height: 46px;
-  padding: 0 18px;
+  min-height: 41px;
+  padding: 0 16px;
 }
 
 .panel-card :deep(.ant-card-head-title),
 .panel-card :deep(.ant-card-extra) {
-  padding: 10px 0;
+  padding: 9px 0;
 }
 
 .panel-card :deep(.ant-card-body),
 .summary-card :deep(.ant-card-body) {
-  padding: 14px 18px;
+  padding: 12px 16px;
 }
 
 .metric-header {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  margin-bottom: 12px;
+  margin-bottom: 10px;
 }
 
 .metric-icon {
-  width: 36px;
-  height: 36px;
-  border-radius: 12px;
+  width: 32px;
+  height: 32px;
+  border-radius: 11px;
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 18px;
+  font-size: 16px;
 }
 
 .metric-trend {
   display: inline-flex;
   align-items: center;
-  gap: 5px;
-  min-height: 28px;
-  padding: 0 10px;
+  gap: 4px;
+  min-height: 25px;
+  padding: 0 9px;
   border-radius: 999px;
-  font-size: 13px;
+  font-size: 12px;
   font-weight: 700;
 }
 
@@ -563,19 +583,19 @@ onMounted(() => {
 }
 
 .trend-arrow {
-  font-size: 13px;
+  font-size: 12px;
 }
 
 .metric-title {
-  margin-bottom: 8px;
+  margin-bottom: 7px;
   color: #536682;
-  font-size: 15px;
+  font-size: 14px;
   font-weight: 700;
 }
 
 .metric-value {
   color: #18243d;
-  font-size: 32px;
+  font-size: 29px;
   font-weight: 800;
   line-height: 1;
 }
@@ -583,44 +603,45 @@ onMounted(() => {
 .panel-grid {
   display: grid;
   grid-template-columns: 1fr 1fr;
-  gap: 12px;
+  gap: 10px;
+  min-height: 0;
 }
 
 .panel-title {
   display: flex;
   align-items: center;
-  gap: 10px;
+  gap: 9px;
   color: #18243d;
-  font-size: 15px;
+  font-size: 14px;
   font-weight: 800;
 }
 
 .title-dot {
   width: 5px;
-  height: 20px;
+  height: 18px;
   border-radius: 999px;
   background: #ff7a45;
 }
 
 .panel-link {
   color: #ff7a45;
-  font-size: 13px;
+  font-size: 12px;
   font-weight: 700;
 }
 
 .activity-list {
   display: flex;
   flex-direction: column;
-  gap: 10px;
+  gap: 8px;
 }
 
 .activity-item {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  min-height: 72px;
-  padding: 0 16px;
-  border-radius: 12px;
+  min-height: 58px;
+  padding: 0 14px;
+  border-radius: 11px;
   background: #f8fbff;
   border: 1px solid rgba(145, 158, 171, 0.10);
 }
@@ -628,12 +649,12 @@ onMounted(() => {
 .activity-left {
   display: flex;
   align-items: center;
-  gap: 12px;
+  gap: 10px;
 }
 
 .activity-indicator {
-  width: 12px;
-  height: 12px;
+  width: 11px;
+  height: 11px;
   border-radius: 999px;
   box-shadow: 0 0 0 5px rgba(148, 163, 184, 0.08);
 }
@@ -653,19 +674,19 @@ onMounted(() => {
 .activity-title-row {
   display: flex;
   align-items: center;
-  gap: 10px;
-  margin-bottom: 5px;
+  gap: 9px;
+  margin-bottom: 4px;
 }
 
 .activity-title {
   color: #18243d;
-  font-size: 14px;
+  font-size: 13px;
   font-weight: 800;
 }
 
 .activity-subtitle {
   color: #6a7f9b;
-  font-size: 12px;
+  font-size: 11px;
 }
 
 .activity-right {
@@ -673,37 +694,38 @@ onMounted(() => {
 }
 
 .activity-time {
-  margin-bottom: 5px;
+  margin-bottom: 4px;
   color: #9aa9bf;
-  font-size: 12px;
+  font-size: 11px;
 }
 
 .schedule-weight {
   color: #18243d;
-  font-size: 15px;
+  font-size: 14px;
   font-weight: 800;
 }
 
 .schedule-caption {
   margin-top: 4px;
   color: #6a7f9b;
-  font-size: 12px;
+  font-size: 11px;
 }
 
 .summary-grid {
   display: grid;
+  min-height: 0;
   grid-template-columns: 1fr 1fr;
-  gap: 12px;
+  gap: 10px;
 }
 
 .summary-card {
-  min-height: 160px;
+  min-height: 142px;
 }
 
 .summary-header {
-  margin-bottom: 10px;
+  margin-bottom: 8px;
   color: #18243d;
-  font-size: 15px;
+  font-size: 14px;
   font-weight: 800;
 }
 
@@ -711,30 +733,30 @@ onMounted(() => {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 8px 0;
+  padding: 6px 0;
   border-bottom: 1px solid rgba(145, 158, 171, 0.12);
   color: #536682;
 }
 
 .summary-row strong {
   color: #18243d;
-  font-size: 16px;
+  font-size: 14px;
   font-weight: 800;
 }
 
 .summary-list {
   display: flex;
   flex-direction: column;
-  gap: 8px;
-  padding-top: 10px;
+  gap: 6px;
+  padding-top: 8px;
 }
 
 .summary-item {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 7px;
   color: #536682;
-  font-size: 12px;
+  font-size: 11px;
 }
 
 @media (max-width: 1400px) {
