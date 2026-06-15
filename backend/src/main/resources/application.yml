@@ -40,8 +40,8 @@ logging:
 
 inspection:
   storage:
-    upload-root: D:\lhr\Desktop\saas\photo/upload
-    result-root: D:\lhr\Desktop\saas\photo/results
+    upload-root: D:\lhr\Desktop\saas\photo\upload
+    result-root: D:\lhr\Desktop\saas\photo\results
 
 ai:
   yolo:
