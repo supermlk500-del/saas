@@ -1072,17 +1072,16 @@ onBeforeUnmount(() => {
     <div class="mode-shell">
           <div class="workbench-grid">
             <a-card class="page-card realtime-capture-card" :bordered="false" title="实时视频流采集">
+              <template #extra>
+                <a-button class="settings-button" @click="settingsModalOpen = true">
+                  <template #icon><SettingOutlined /></template>
+                  设置
+                </a-button>
+              </template>
                 <a-spin :spinning="loading || streamPreparing">
                   <div class="capture-workspace">
                     <div class="camera-section">
                       <div class="camera-preview">
-                        <div class="video-toolbar">
-                          <div class="section-heading">实时视频源</div>
-                          <a-button class="settings-button" @click="settingsModalOpen = true">
-                            <template #icon><SettingOutlined /></template>
-                            设置
-                          </a-button>
-                        </div>
                         <div class="video-frame">
                           <video ref="videoRef" muted playsinline @loadedmetadata="handleVideoReady" />
                           <canvas ref="overlayCanvasRef" class="overlay-canvas" />
@@ -1129,8 +1128,7 @@ onBeforeUnmount(() => {
                   </div>
                 </div>
 
-                <a-card size="small" title="关键帧留档" class="inner-card">
-                  <div class="image-grid">
+                <div class="image-grid">
                     <a-card size="small" title="关键帧原图">
                       <div class="image-frame">
                         <a-image v-if="streamSnapshotSourcePreviewUrl" :src="streamSnapshotSourcePreviewUrl" alt="关键帧原图" />
@@ -1147,7 +1145,6 @@ onBeforeUnmount(() => {
                   <div class="path-text">
                     {{ latestSavedFrameTime ? `最近保存时间：${latestSavedFrameTime}` : '检测到缺陷后会自动保存原图和结果图到 photo' }}
                   </div>
-                </a-card>
 
                 <a-card size="small" title="当前帧结构化 boxes" class="inner-card">
                   <a-table
@@ -1402,17 +1399,6 @@ onBeforeUnmount(() => {
   display: inline-flex;
   align-items: center;
   gap: 4px;
-}
-
-.video-toolbar {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 12px;
-}
-
-.video-toolbar .section-heading {
-  margin-bottom: 0;
 }
 
 .workbench-grid {
@@ -1760,6 +1746,103 @@ onBeforeUnmount(() => {
   margin-top: 4px;
   color: #667085;
   font-size: 13px;
+}
+
+@media (min-width: 1025px) {
+  .realtime-page {
+    gap: 14px;
+  }
+
+  .mode-shell,
+  .page-card {
+    border-radius: 11px;
+  }
+
+  .workbench-grid,
+  .camera-section,
+  .image-check-grid,
+  .image-grid {
+    gap: 14px;
+  }
+
+  .image-check-section {
+    margin-top: 16px;
+    padding-top: 14px;
+  }
+
+  .image-result-card,
+  .inner-card {
+    margin-top: 14px;
+  }
+
+  .compact-preview-box {
+    min-height: 144px;
+    margin-top: 9px;
+    border-radius: 11px;
+  }
+
+  .image-frame,
+  .video-frame {
+    min-height: 234px;
+    margin-top: 10px;
+    border-radius: 11px;
+  }
+
+  .video-frame {
+    height: clamp(378px, calc(100vh - 378px), 504px);
+  }
+
+  .camera-actions,
+  .summary-actions,
+  .submit-row {
+    gap: 9px;
+    margin-top: 12px;
+  }
+
+  .settings-session,
+  .motion-settings {
+    margin-top: 16px;
+    padding-top: 14px;
+  }
+
+  .stream-overview {
+    gap: 10px;
+    margin-bottom: 14px;
+  }
+
+  .judge-block,
+  .metric {
+    min-height: 66px;
+    padding: 12px;
+    border-radius: 11px;
+  }
+
+  .judge-block {
+    gap: 9px;
+  }
+
+  .metric span,
+  .label {
+    margin-bottom: 7px;
+  }
+
+  .metric strong {
+    font-size: 16px;
+  }
+
+  .recent-list {
+    gap: 9px;
+  }
+
+  .recent-item {
+    gap: 10px;
+    padding: 10px 12px;
+    border-radius: 11px;
+  }
+
+  .recent-sub {
+    font-size: 12px;
+  }
 }
 
 @media (max-width: 1280px) {

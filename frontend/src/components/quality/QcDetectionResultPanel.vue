@@ -274,6 +274,56 @@ const boxSummaryText = computed(() => {
   flex: 1;
 }
 
+@media (min-width: 1025px) {
+  .result-overview {
+    gap: 10px;
+    margin-bottom: 14px;
+  }
+
+  .judge-block,
+  .metric {
+    min-height: 66px;
+    padding: 12px;
+    border-radius: 11px;
+  }
+
+  .judge-block {
+    gap: 9px;
+  }
+
+  .metric span,
+  .label {
+    margin-bottom: 7px;
+  }
+
+  .metric strong {
+    font-size: 16px;
+  }
+
+  .image-grid {
+    gap: 14px;
+  }
+
+  .image-frame {
+    min-height: 234px;
+    margin-top: 10px;
+    border-radius: 11px;
+  }
+
+  .inner-card {
+    margin-top: 14px;
+  }
+
+  .attachment-item {
+    padding: 9px 0;
+  }
+
+  .result-actions {
+    gap: 10px;
+    margin-top: 14px;
+  }
+}
+
 @media (max-width: 1280px) {
   .image-grid {
     grid-template-columns: 1fr;

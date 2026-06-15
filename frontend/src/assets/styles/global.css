@@ -73,3 +73,85 @@ a {
   background: #e08642;
   border-color: #e08642;
 }
+
+@media (min-width: 1025px) {
+  :root {
+    font-size: 14.4px;
+  }
+
+  body,
+  .ant-typography,
+  .ant-menu,
+  .ant-table,
+  .ant-form,
+  .ant-input,
+  .ant-select,
+  .ant-btn,
+  .ant-card {
+    font-size: 13px;
+  }
+
+  .ant-btn {
+    height: 30px;
+    padding: 4px 12px;
+    border-radius: 7px;
+  }
+
+  .ant-btn-sm {
+    height: 24px;
+    padding: 1px 8px;
+  }
+
+  .ant-input,
+  .ant-input-affix-wrapper,
+  .ant-select-single:not(.ant-select-customize-input) .ant-select-selector {
+    min-height: 30px;
+    border-radius: 7px;
+  }
+
+  .ant-form-item {
+    margin-bottom: 14px;
+  }
+
+  .ant-card-head {
+    min-height: 46px;
+    padding: 0 18px;
+  }
+
+  .ant-card-head-title,
+  .ant-card-extra {
+    padding: 12px 0;
+  }
+
+  .ant-card-body {
+    padding: 18px;
+  }
+
+  .ant-card-small > .ant-card-head {
+    min-height: 38px;
+    padding: 0 14px;
+  }
+
+  .ant-card-small > .ant-card-head > .ant-card-head-wrapper > .ant-card-head-title,
+  .ant-card-small > .ant-card-head > .ant-card-head-wrapper > .ant-card-extra {
+    padding: 9px 0;
+  }
+
+  .ant-card-small > .ant-card-body {
+    padding: 14px;
+  }
+
+  .ant-table-thead > tr > th,
+  .ant-table-tbody > tr > td {
+    padding: 10px 12px;
+  }
+
+  .section-title {
+    font-size: 16px;
+  }
+
+  .section-subtitle {
+    font-size: 12px;
+    line-height: 1.5;
+  }
+}

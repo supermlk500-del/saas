@@ -148,7 +148,7 @@ const breadcrumbItems = computed(() => {
 }
 
 .app-body {
-  height: calc(100vh - 52px);
+  height: calc(100vh - 48px);
   min-height: 0;
 }
 
@@ -156,12 +156,12 @@ const breadcrumbItems = computed(() => {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 0 22px;
+  padding: 0 20px;
   background: rgba(255, 255, 255, 0.9);
   border-bottom: 1px solid rgba(145, 158, 171, 0.15);
   backdrop-filter: blur(18px);
-  height: 52px;
-  line-height: 52px;
+  height: 48px;
+  line-height: 48px;
 }
 
 .header-left {
@@ -184,7 +184,7 @@ const breadcrumbItems = computed(() => {
 
 .brand-logo {
   width: auto;
-  height: 34px;
+  height: 31px;
   display: block;
   object-fit: contain;
 }
@@ -197,13 +197,13 @@ const breadcrumbItems = computed(() => {
 
 .brand-copy strong {
   color: #1f2937;
-  font-size: 16px;
+  font-size: 15px;
   letter-spacing: 0.04em;
 }
 
 .brand-copy span {
   color: #7b8794;
-  font-size: 11px;
+  font-size: 10px;
 }
 
 .header-right {
@@ -243,7 +243,7 @@ const breadcrumbItems = computed(() => {
 
 .sider-title {
   color: #98a2b3;
-  padding: 16px 22px 7px;
+  padding: 14px 20px 6px;
   font-size: 10px;
   font-weight: 700;
   letter-spacing: 0.08em;
@@ -260,24 +260,24 @@ const breadcrumbItems = computed(() => {
 }
 
 :deep(.ant-menu-inline) {
-  padding: 7px 0 11px;
+  padding: 6px 0 10px;
 }
 
 :deep(.ant-menu-submenu-title) {
-  height: 40px !important;
-  line-height: 40px !important;
-  margin: 4px 13px;
+  height: 36px !important;
+  line-height: 36px !important;
+  margin: 3px 13px;
   width: calc(100% - 26px);
-  border-radius: 11px;
+  border-radius: 10px;
   font-size: 12px;
 }
 
 :deep(.ant-menu-inline .ant-menu-item) {
-  height: 38px;
-  line-height: 38px;
-  margin: 4px 13px;
+  height: 35px;
+  line-height: 35px;
+  margin: 3px 13px;
   width: calc(100% - 26px);
-  border-radius: 11px;
+  border-radius: 10px;
   font-size: 12px;
 }
 
@@ -304,7 +304,7 @@ const breadcrumbItems = computed(() => {
 }
 
 .app-main {
-  padding: 13px;
+  padding: 11px;
   background: transparent;
   min-width: 0;
   min-height: 0;
@@ -326,11 +326,60 @@ const breadcrumbItems = computed(() => {
 
 .app-breadcrumb {
   flex: none;
-  margin-bottom: 11px;
+  margin-bottom: 9px;
 }
 
 :deep(.ant-breadcrumb) {
-  font-size: 13px;
+  font-size: 12px;
+}
+
+@media (max-width: 1024px) {
+  .app-body {
+    height: calc(100vh - 52px);
+  }
+
+  .app-header {
+    height: 52px;
+    line-height: 52px;
+  }
+
+  .brand-logo {
+    height: 34px;
+  }
+
+  .app-main {
+    padding: 13px;
+  }
+
+  .sider-title {
+    padding: 16px 22px 7px;
+  }
+
+  :deep(.ant-menu-inline) {
+    padding: 7px 0 11px;
+  }
+
+  :deep(.ant-menu-submenu-title) {
+    height: 40px !important;
+    line-height: 40px !important;
+    margin: 4px 13px;
+    border-radius: 11px;
+  }
+
+  :deep(.ant-menu-inline .ant-menu-item) {
+    height: 38px;
+    line-height: 38px;
+    margin: 4px 13px;
+    border-radius: 11px;
+  }
+
+  .app-breadcrumb {
+    margin-bottom: 11px;
+  }
+
+  :deep(.ant-breadcrumb) {
+    font-size: 13px;
+  }
 }
 
 :deep(.ant-breadcrumb-link) {

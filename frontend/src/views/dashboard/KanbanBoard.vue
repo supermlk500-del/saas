@@ -759,6 +759,126 @@ onMounted(() => {
   font-size: 11px;
 }
 
+@media (min-width: 1025px) {
+  .dashboard-page,
+  .metric-grid,
+  .panel-grid,
+  .summary-grid {
+    gap: 9px;
+  }
+
+  .metric-card,
+  .panel-card,
+  .summary-card {
+    border-radius: 12px;
+    box-shadow: 0 9px 25px rgba(15, 23, 42, 0.05);
+  }
+
+  .panel-card {
+    min-height: 189px;
+  }
+
+  .metric-card {
+    min-height: 90px;
+  }
+
+  .metric-card :deep(.ant-card-body) {
+    padding: 11px 14px 12px;
+  }
+
+  .panel-card :deep(.ant-card-head),
+  .summary-card :deep(.ant-card-head) {
+    min-height: 37px;
+    padding: 0 14px;
+  }
+
+  .panel-card :deep(.ant-card-head-title),
+  .panel-card :deep(.ant-card-extra) {
+    padding: 8px 0;
+  }
+
+  .panel-card :deep(.ant-card-body),
+  .summary-card :deep(.ant-card-body) {
+    padding: 11px 14px;
+  }
+
+  .metric-header {
+    margin-bottom: 9px;
+  }
+
+  .metric-icon {
+    width: 29px;
+    height: 29px;
+    border-radius: 10px;
+    font-size: 15px;
+  }
+
+  .metric-trend {
+    min-height: 23px;
+    padding: 0 8px;
+    font-size: 11px;
+  }
+
+  .metric-title {
+    margin-bottom: 6px;
+    font-size: 13px;
+  }
+
+  .metric-value {
+    font-size: 26px;
+  }
+
+  .panel-title {
+    gap: 8px;
+    font-size: 13px;
+  }
+
+  .title-dot {
+    height: 16px;
+  }
+
+  .activity-list {
+    gap: 7px;
+  }
+
+  .activity-item {
+    min-height: 52px;
+    padding: 0 12px;
+    border-radius: 10px;
+  }
+
+  .activity-left {
+    gap: 9px;
+  }
+
+  .activity-title-row {
+    gap: 8px;
+    margin-bottom: 3px;
+  }
+
+  .activity-title {
+    font-size: 12px;
+  }
+
+  .summary-card {
+    min-height: 128px;
+  }
+
+  .summary-header {
+    margin-bottom: 7px;
+    font-size: 13px;
+  }
+
+  .summary-row {
+    padding: 5px 0;
+  }
+
+  .summary-list {
+    gap: 5px;
+    padding-top: 7px;
+  }
+}
+
 @media (max-width: 1400px) {
   .metric-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
