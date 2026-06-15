@@ -88,8 +88,8 @@ const breadcrumbItems = computed(() => {
 
     <a-layout>
       <a-layout-sider
-        :width="272"
-        :collapsed-width="76"
+        :width="248"
+        :collapsed-width="60"
         :collapsed="collapsed"
         class="app-sider"
         theme="light"
@@ -150,8 +150,8 @@ const breadcrumbItems = computed(() => {
   background: rgba(255, 255, 255, 0.9);
   border-bottom: 1px solid rgba(145, 158, 171, 0.15);
   backdrop-filter: blur(18px);
-  height: 72px;
-  line-height: 72px;
+  height: 58px;
+  line-height: 58px;
 }
 
 .header-left {
@@ -174,7 +174,7 @@ const breadcrumbItems = computed(() => {
 
 .brand-logo {
   width: auto;
-  height: 48px;
+  height: 38px;
   display: block;
   object-fit: contain;
 }
@@ -233,8 +233,8 @@ const breadcrumbItems = computed(() => {
 
 .sider-title {
   color: #98a2b3;
-  padding: 20px 28px 10px;
-  font-size: 12px;
+  padding: 18px 24px 8px;
+  font-size: 11px;
   font-weight: 700;
   letter-spacing: 0.08em;
 }
@@ -254,19 +254,30 @@ const breadcrumbItems = computed(() => {
 }
 
 :deep(.ant-menu-submenu-title) {
-  height: 48px !important;
-  line-height: 48px !important;
+  height: 44px !important;
+  line-height: 44px !important;
   margin: 4px 14px;
   width: calc(100% - 28px);
   border-radius: 12px;
+  font-size: 13px;
 }
 
 :deep(.ant-menu-inline .ant-menu-item) {
-  height: 44px;
-  line-height: 44px;
+  height: 42px;
+  line-height: 42px;
   margin: 4px 14px;
   width: calc(100% - 28px);
   border-radius: 12px;
+  font-size: 13px;
+}
+
+:deep(.ant-menu-item-icon),
+:deep(.ant-menu-submenu-title .anticon) {
+  font-size: 15px;
+}
+
+:deep(.ant-menu-title-content) {
+  font-weight: 500;
 }
 
 :deep(.ant-menu-item-selected) {
@@ -283,7 +294,7 @@ const breadcrumbItems = computed(() => {
 }
 
 .app-main {
-  padding: 28px;
+  padding: 14px;
   background: transparent;
 }
 
@@ -293,7 +304,11 @@ const breadcrumbItems = computed(() => {
 }
 
 .app-breadcrumb {
-  margin-bottom: 20px;
+  margin-bottom: 12px;
+}
+
+:deep(.ant-breadcrumb) {
+  font-size: 14px;
 }
 
 :deep(.ant-breadcrumb-link) {
