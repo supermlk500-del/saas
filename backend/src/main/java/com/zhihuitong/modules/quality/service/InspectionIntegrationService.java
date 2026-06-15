@@ -2,6 +2,7 @@ package com.zhihuitong.modules.quality.service;
 
 import com.zhihuitong.common.exception.BusinessException;
 import com.zhihuitong.modules.ai.model.YoloDetectResult;
+import com.zhihuitong.modules.ai.util.ImagePreprocessUtils;
 import com.zhihuitong.modules.ai.service.OnnxYoloService;
 import com.zhihuitong.modules.plan.service.PlanStepService;
 import com.zhihuitong.modules.quality.dto.InspectionDataUpsertRequest;
@@ -19,6 +20,10 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
 import org.springframework.web.multipart.MultipartFile;
 
+import javax.imageio.ImageIO;
+import java.awt.image.BufferedImage;
+import java.io.ByteArrayInputStream;
+import java.io.IOException;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
@@ -189,6 +194,63 @@ public class InspectionIntegrationService {
         return buildResult(qcRecord, inspectionDataList, algorithmResult);
     }
 
+    @Transactional
+    public InspectionIntegrationResultVo persistStreamDetection(QcStreamSessionContext sessionContext,
+                                                                byte[] frameBytes,
+                                                                LocalDateTime frameTime,
+                                                                YoloDetectResult algorithmResult) {
+        requireFrameBytes(frameBytes);
+        if (algorithmResult == null) {
+            throw new BusinessException(500, "Realtime detection result must not be null");
+        }
+        planStepService.requirePlanStep(sessionContext.getPlanStepId());
+        qcItemService.requireQcItem(sessionContext.getQcItemId());
+        qcCameraService.requireCamera(sessionContext.getCameraId());
+
+        StoredInspectionFile storedSourceFile = inspectionFileStorageService.storeSourceImage(frameBytes, ".jpg");
+        algorithmResult.setSourceImageUrl(storedSourceFile.getRelativePath());
+
+        BufferedImage sourceImage = readImage(frameBytes);
+        StoredInspectionFile resultTarget = inspectionFileStorageService.prepareResultImageTarget(".jpg");
+        BufferedImage renderedImage = ImagePreprocessUtils.renderDetections(
+                sourceImage,
+                algorithmResult.getBoxes(),
+                algorithmResult.getResultJudge()
+        );
+        inspectionFileStorageService.writeRenderedImage(renderedImage, resultTarget);
+        algorithmResult.setImageUrl(resultTarget.getRelativePath());
+
+        log.info("qc-stream auto-save defect frame: sessionId={}, planStepId={}, qcItemId={}, cameraId={}, frameTime={}, storedSourcePath={}, storedResultPath={}",
+                sessionContext.getSessionId(),
+                sessionContext.getPlanStepId(),
+                sessionContext.getQcItemId(),
+                sessionContext.getCameraId(),
+                frameTime,
+                storedSourceFile.getRelativePath(),
+                resultTarget.getRelativePath());
+
+        String inspectType = "video";
+        QcRecord qcRecord = qcRecordService.create(buildQcRecordRequest(
+                sessionContext.getPlanStepId(),
+                sessionContext.getQcItemId(),
+                sessionContext.getCameraId(),
+                inspectType,
+                algorithmResult,
+                sessionContext.getInspector(),
+                mergeRemark(sessionContext.getRemark(), "auto-saved realtime defect frame"),
+                frameTime
+        ));
+        List<InspectionData> inspectionDataList = persistInspectionData(
+                qcRecord,
+                sessionContext.getCameraId(),
+                algorithmResult,
+                storedSourceFile,
+                inspectType,
+                frameTime
+        );
+        return buildResult(qcRecord, inspectionDataList, algorithmResult);
+    }
+
     private QcRecordUpsertRequest buildQcRecordRequest(Long planStepId,
                                                        Long qcItemId,
                                                        Long cameraId,
@@ -268,6 +330,24 @@ public class InspectionIntegrationService {
             throw new BusinessException(400, "file must not be empty");
         }
         return file;
+    }
+
+    private void requireFrameBytes(byte[] frameBytes) {
+        if (frameBytes == null || frameBytes.length == 0) {
+            throw new BusinessException(400, "frame bytes must not be empty");
+        }
+    }
+
+    private BufferedImage readImage(byte[] frameBytes) {
+        try (ByteArrayInputStream inputStream = new ByteArrayInputStream(frameBytes)) {
+            BufferedImage image = ImageIO.read(inputStream);
+            if (image == null) {
+                throw new BusinessException(400, "Realtime frame is not a valid image");
+            }
+            return image;
+        } catch (IOException exception) {
+            throw new BusinessException(500, "Failed to decode realtime frame image: " + exception.getMessage());
+        }
     }
 
     private String resolveResultJudge(YoloDetectResult algorithmResult) {

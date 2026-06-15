@@ -10,6 +10,8 @@ import java.util.List;
 @Data
 public class QcStreamFrameResultVo {
 
+    private Long inspectionId;
+
     private String sessionId;
 
     private LocalDateTime frameTime;
@@ -23,4 +25,10 @@ public class QcStreamFrameResultVo {
     private List<YoloBox> boxes;
 
     private String renderMode;
+
+    private String imageUrl;
+
+    private String sourceImageUrl;
+
+    private Boolean autoSaved;
 }
