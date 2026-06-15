@@ -226,8 +226,11 @@ const resultAttachment = computed(() =>
 const sourceImagePath = computed(() => detectionResult.value?.sourceImageUrl || sourceAttachment.value?.filePath || '')
 const resultImagePath = computed(() => detectionResult.value?.imageUrl || activeRecord.value?.imageUrl || resultAttachment.value?.filePath || '')
 const offlineSourcePreviewUrl = computed(() => resolveImageUrl(sourceImagePath.value) || localSourcePreview.value)
-const streamSnapshotSourcePreviewUrl = computed(() => resolveImageUrl(sourceImagePath.value) || frameSourcePreview.value)
+const streamSnapshotSourcePreviewUrl = computed(() =>
+  resolveImageUrl(streamResult.value?.sourceImageUrl || sourceImagePath.value) || frameSourcePreview.value,
+)
 const resultPreviewUrl = computed(() => resolveImageUrl(resultImagePath.value))
+const streamResultPreviewUrl = computed(() => resolveImageUrl(streamResult.value?.imageUrl || resultImagePath.value))
 
 const streamJudgeMeta = computed(() => judgeOptions.find((item) => item.value === streamResult.value?.resultJudge))
 const streamJudgeLabel = computed(() => streamJudgeMeta.value?.label || streamResult.value?.resultJudge || '-')
@@ -645,6 +648,7 @@ const normalizeStreamMessage = (payload: unknown): QcStreamResultMessage => {
   const record = typeof payload === 'object' && payload !== null ? payload as Record<string, unknown> : {}
   const data = typeof record.data === 'object' && record.data !== null ? record.data as Record<string, unknown> : record
   return {
+    inspectionId: typeof data.inspectionId === 'number' || typeof data.inspectionId === 'string' ? data.inspectionId : undefined,
     sessionId: typeof data.sessionId === 'string' ? data.sessionId : streamSession.value?.sessionId,
     frameTime: typeof data.frameTime === 'string' ? data.frameTime : '',
     resultJudge: typeof data.resultJudge === 'string' ? data.resultJudge : undefined,
@@ -655,6 +659,7 @@ const normalizeStreamMessage = (payload: unknown): QcStreamResultMessage => {
     renderMode: typeof data.renderMode === 'string' ? data.renderMode : 'overlay',
     imageUrl: typeof data.imageUrl === 'string' ? data.imageUrl : null,
     sourceImageUrl: typeof data.sourceImageUrl === 'string' ? data.sourceImageUrl : null,
+    autoSaved: data.autoSaved === true,
   }
 }
 
@@ -680,7 +685,13 @@ const handleStreamMessage = async (event: MessageEvent<string | ArrayBuffer | Bl
     clearFrameResponseTimeout()
     latestFrameLatency.value = lastFrameSentAt.value ? Date.now() - lastFrameSentAt.value : null
     drawBoxesOnOverlay(messageData.boxes ?? [], messageData.resultJudge as ResultJudge | undefined)
-    streamStatusText.value = '实时检测进行中'
+    if (messageData.autoSaved) {
+      latestSavedFrameTime.value = messageData.frameTime || formatDateTime(new Date().toISOString())
+      streamStatusText.value = '检测到缺陷，已自动保存原图和结果图'
+      void reloadRecentRecords()
+    } else {
+      streamStatusText.value = '实时检测进行中'
+    }
   } catch (error) {
     streamErrorText.value = '实时检测结果解析失败'
     streamStatusText.value = '结果解析失败'
@@ -1065,13 +1076,13 @@ onBeforeUnmount(() => {
                     </a-card>
                     <a-card size="small" title="关键帧结果图">
                       <div class="image-frame">
-                        <a-image v-if="resultPreviewUrl" :src="resultPreviewUrl" alt="关键帧结果图" />
+                        <a-image v-if="streamResultPreviewUrl" :src="streamResultPreviewUrl" alt="关键帧结果图" />
                         <a-empty v-else description="后端生成结果图后显示" />
                       </div>
                     </a-card>
                   </div>
                   <div class="path-text">
-                    {{ latestSavedFrameTime ? `最近保存时间：${latestSavedFrameTime}` : '“保存当前帧”会调用 /api/qc-stream-sessions/{sessionId}/snapshot 落库' }}
+                    {{ latestSavedFrameTime ? `最近保存时间：${latestSavedFrameTime}` : '检测到缺陷后会自动保存原图和结果图到 photo' }}
                   </div>
                 </a-card>
 
