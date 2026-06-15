@@ -40,6 +40,7 @@ import { isLikelyResultImage, isLikelySourceImage, resolveImageUrl } from '@/uti
 
 type IdValue = number | string
 type StreamSocketState = 'idle' | 'connecting' | 'open' | 'closed' | 'error'
+type MotionCompensationDirection = 'none' | 'right' | 'left' | 'down' | 'up'
 
 type MonitorFormModel = {
   planStepId?: IdValue
@@ -79,6 +80,14 @@ const socketStateLabelMap: Record<StreamSocketState, string> = {
   closed: '已关闭',
   error: '连接异常',
 }
+
+const motionDirectionOptions: { label: string; value: MotionCompensationDirection }[] = [
+  { label: '不补偿', value: 'none' },
+  { label: '向右', value: 'right' },
+  { label: '向左', value: 'left' },
+  { label: '向下', value: 'down' },
+  { label: '向上', value: 'up' },
+]
 
 const route = useRoute()
 
@@ -134,6 +143,9 @@ const frameAwaitingResponse = ref(false)
 const streamMessageCount = ref(0)
 const renderMode = ref('overlay')
 const intentionalSocketClose = ref(false)
+const motionCompensationEnabled = ref(true)
+const motionCompensationDirection = ref<MotionCompensationDirection>('none')
+const motionCompensationSpeed = ref(0)
 
 const overlayBoxes = ref<QcDetectionBox[]>([])
 const overlayJudge = ref<ResultJudge | undefined>()
@@ -243,6 +255,37 @@ const streamResultValueText = computed(() => streamResult.value?.resultValue || 
 const streamDefectTypeText = computed(() => streamResult.value?.defectType || '-')
 const streamBoxes = computed(() => streamResult.value?.boxes ?? [])
 const streamSocketStateLabel = computed(() => socketStateLabelMap[streamSocketState.value])
+const motionCompensationOffset = computed(() => {
+  if (
+    !motionCompensationEnabled.value ||
+    motionCompensationDirection.value === 'none' ||
+    !latestFrameLatency.value ||
+    !motionCompensationSpeed.value
+  ) {
+    return { dx: 0, dy: 0, distance: 0 }
+  }
+
+  const distance = (motionCompensationSpeed.value * latestFrameLatency.value) / 1000
+  if (motionCompensationDirection.value === 'right') {
+    return { dx: distance, dy: 0, distance }
+  }
+  if (motionCompensationDirection.value === 'left') {
+    return { dx: -distance, dy: 0, distance }
+  }
+  if (motionCompensationDirection.value === 'down') {
+    return { dx: 0, dy: distance, distance }
+  }
+  return { dx: 0, dy: -distance, distance }
+})
+const motionCompensationSummary = computed(() => {
+  if (!motionCompensationEnabled.value || motionCompensationDirection.value === 'none') {
+    return '未启用'
+  }
+  if (!latestFrameLatency.value || !motionCompensationSpeed.value) {
+    return '等待延迟或速度'
+  }
+  return `${Math.round(motionCompensationOffset.value.distance)} px`
+})
 
 const getJudgeMeta = (value?: string) => judgeOptions.find((item) => item.value === value)
 
@@ -291,6 +334,23 @@ const clearOverlay = (statusText = '点击“开始检测”后显示实时叠�
   overlayStatusText.value = statusText
 }
 
+const clampBoxCoordinate = (value: number, max: number) => Math.min(Math.max(value, 0), Math.max(max, 0))
+
+const getCompensatedBoxes = (boxes: QcDetectionBox[], sourceWidth: number, sourceHeight: number) => {
+  const { dx, dy } = motionCompensationOffset.value
+  if (!dx && !dy) {
+    return boxes
+  }
+
+  return boxes.map((box) => ({
+    ...box,
+    x1: clampBoxCoordinate((box.x1 ?? 0) + dx, sourceWidth),
+    y1: clampBoxCoordinate((box.y1 ?? 0) + dy, sourceHeight),
+    x2: clampBoxCoordinate((box.x2 ?? 0) + dx, sourceWidth),
+    y2: clampBoxCoordinate((box.y2 ?? 0) + dy, sourceHeight),
+  }))
+}
+
 const drawBoxesOnOverlay = (boxes: QcDetectionBox[], judge?: ResultJudge) => {
   syncOverlayCanvasSize()
   const video = videoRef.value
@@ -324,12 +384,13 @@ const drawBoxesOnOverlay = (boxes: QcDetectionBox[], judge?: ResultJudge) => {
   const renderedHeight = sourceHeight * scale
   const offsetX = (displayWidth - renderedWidth) / 2
   const offsetY = (displayHeight - renderedHeight) / 2
+  const renderBoxes = getCompensatedBoxes(boxes, sourceWidth, sourceHeight)
 
   context.lineWidth = 2
   context.font = '12px sans-serif'
   context.textBaseline = 'top'
 
-  boxes.forEach((box) => {
+  renderBoxes.forEach((box) => {
     const x1 = offsetX + ((box.x1 ?? 0) / sourceWidth) * renderedWidth
     const y1 = offsetY + ((box.y1 ?? 0) / sourceHeight) * renderedHeight
     const x2 = offsetX + ((box.x2 ?? 0) / sourceWidth) * renderedWidth
@@ -354,7 +415,9 @@ const drawBoxesOnOverlay = (boxes: QcDetectionBox[], judge?: ResultJudge) => {
     }
   })
 
-  overlayStatusText.value = `实时叠加 ${boxes.length} 个检测框`
+  const compensationText =
+    motionCompensationOffset.value.distance > 0 ? `，补偿 ${Math.round(motionCompensationOffset.value.distance)} px` : ''
+  overlayStatusText.value = `实时叠加 ${boxes.length} 个检测框${compensationText}`
 }
 
 const redrawOverlay = () => {
@@ -1223,6 +1286,42 @@ onBeforeUnmount(() => {
         </div>
       </a-form>
 
+      <div class="motion-settings">
+        <div class="section-heading">移动补偿</div>
+        <div class="motion-settings-grid">
+          <a-form-item label="启用补偿">
+            <a-switch v-model:checked="motionCompensationEnabled" @change="redrawOverlay" />
+          </a-form-item>
+          <a-form-item label="移动方向">
+            <a-select
+              v-model:value="motionCompensationDirection"
+              :options="motionDirectionOptions"
+              @change="redrawOverlay"
+            />
+          </a-form-item>
+          <a-form-item label="像素速度">
+            <a-input-number
+              v-model:value="motionCompensationSpeed"
+              :min="0"
+              :max="3000"
+              :step="10"
+              addon-after="px/s"
+              style="width: 100%"
+              @change="redrawOverlay"
+            />
+          </a-form-item>
+          <div class="motion-readout">
+            <span>最近延迟</span>
+            <strong>{{ latestFrameLatency !== null ? `${latestFrameLatency} ms` : '-' }}</strong>
+          </div>
+          <div class="motion-readout">
+            <span>当前补偿</span>
+            <strong>{{ motionCompensationSummary }}</strong>
+          </div>
+        </div>
+        <div class="form-hint">按检测帧像素速度补偿：偏移距离 = 像素速度 × 最近延迟。</div>
+      </div>
+
       <div class="settings-session">
         <div class="section-heading">实时会话</div>
         <a-descriptions :column="1" size="small" bordered>
@@ -1523,6 +1622,49 @@ onBeforeUnmount(() => {
   border-top: 1px solid rgba(145, 158, 171, 0.14);
 }
 
+.motion-settings {
+  margin-top: 18px;
+  padding-top: 16px;
+  border-top: 1px solid rgba(145, 158, 171, 0.14);
+}
+
+.motion-settings-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+  align-items: end;
+}
+
+.motion-settings-grid :deep(.ant-form-item) {
+  margin-bottom: 0;
+}
+
+.motion-readout {
+  min-height: 56px;
+  padding: 8px 12px;
+  border: 1px solid rgba(145, 158, 171, 0.16);
+  border-radius: 8px;
+  background: #f8fafc;
+}
+
+.motion-readout span {
+  display: block;
+  margin-bottom: 6px;
+  color: #667085;
+  font-size: 12px;
+}
+
+.motion-readout strong {
+  color: #172033;
+  font-size: 15px;
+}
+
+.form-hint {
+  margin-top: 10px;
+  color: #667085;
+  font-size: 12px;
+}
+
 .settings-session :deep(.ant-descriptions-item-content) {
   word-break: break-word;
 }
@@ -1635,6 +1777,7 @@ onBeforeUnmount(() => {
 
 @media (max-width: 900px) {
   .form-grid,
+  .motion-settings-grid,
   .recent-list {
     grid-template-columns: 1fr;
   }
