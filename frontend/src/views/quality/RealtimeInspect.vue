@@ -997,7 +997,7 @@ onBeforeUnmount(() => {
   <div class="realtime-page">
     <div class="mode-shell">
           <div class="workbench-grid">
-            <a-card class="page-card" :bordered="false" title="实时视频流采集">
+            <a-card class="page-card realtime-capture-card" :bordered="false" title="实时视频流采集">
                 <a-spin :spinning="loading || streamPreparing">
                   <div class="capture-workspace">
                     <div class="camera-section">
@@ -1308,8 +1308,34 @@ onBeforeUnmount(() => {
 .workbench-grid {
   display: grid;
   grid-template-columns: minmax(0, 1.2fr) minmax(420px, 0.8fr);
-  align-items: start;
+  align-items: stretch;
   gap: 16px;
+}
+
+.realtime-capture-card {
+  display: flex;
+  flex-direction: column;
+  min-height: 100%;
+}
+
+.realtime-capture-card :deep(.ant-card-body) {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+}
+
+.realtime-capture-card :deep(.ant-spin-nested-loading),
+.realtime-capture-card :deep(.ant-spin-container),
+.capture-workspace,
+.camera-section,
+.camera-preview {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+}
+
+.realtime-capture-card .capture-workspace {
+  justify-content: center;
 }
 
 .form-grid {
@@ -1376,6 +1402,12 @@ onBeforeUnmount(() => {
   grid-template-columns: minmax(0, 1fr) minmax(280px, 0.72fr);
   gap: 16px;
   margin-top: 4px;
+}
+
+.realtime-capture-card .camera-section {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
 }
 
 .camera-preview {
