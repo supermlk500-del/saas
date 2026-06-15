@@ -1047,7 +1047,7 @@ onBeforeUnmount(() => {
 
                       <div class="image-check-actions">
                         <div class="path-text">
-                          图片补检复用设置中的工序计划、检测标准、检验人和备注，结果会进入右侧归档预览。
+                          图片补检复用设置中的工序计划、检测标准、检验人和备注，结果会在下方归档详情里展示。
                         </div>
                         <div class="camera-actions compact-actions">
                           <a-button @click="resetImageInspection">清空图片</a-button>
@@ -1055,6 +1055,29 @@ onBeforeUnmount(() => {
                         </div>
                       </div>
                     </div>
+
+                    <a-card size="small" title="归档结果详情" class="image-result-card">
+                      <QcDetectionResultPanel
+                        v-model:close-remark="closeRemark"
+                        :detail-loading="detailLoading"
+                        :active-record="activeRecord"
+                        :detection-result="detectionResult"
+                        :active-plan-step="selectedMonitorPlanStep"
+                        :current-judge="currentJudge"
+                        :current-confidence="currentConfidence"
+                        :current-defect-type="currentDefectType"
+                        :current-result-value="currentResultValue"
+                        :source-preview-url="streamSnapshotSourcePreviewUrl || offlineSourcePreviewUrl"
+                        :result-preview-url="resultPreviewUrl"
+                        :source-image-path="sourceImagePath"
+                        :result-image-path="resultImagePath"
+                        :current-boxes="currentBoxes"
+                        :active-attachments="activeAttachments"
+                        :close-submitting="closeSubmitting"
+                        @review="openReviewModal"
+                        @close="handleCloseRecord"
+                      />
+                    </a-card>
                   </div>
                 </div>
               </a-spin>
@@ -1101,21 +1124,6 @@ onBeforeUnmount(() => {
                   </div>
                 </a-card>
 
-                <a-card size="small" title="实时状态" class="inner-card">
-                  <a-descriptions :column="1" size="small" bordered>
-                    <a-descriptions-item label="状态">{{ streamStatusText }}</a-descriptions-item>
-                    <a-descriptions-item label="错误信息">{{ streamErrorText || '-' }}</a-descriptions-item>
-                    <a-descriptions-item label="实时消息数">{{ streamMessageCount }}</a-descriptions-item>
-                    <a-descriptions-item label="最近延迟">
-                      {{ latestFrameLatency !== null ? `${latestFrameLatency} ms` : '-' }}
-                    </a-descriptions-item>
-                    <a-descriptions-item label="当前帧大小">
-                      {{ latestFramePayloadSize ? `${Math.round(latestFramePayloadSize / 1024)} KB` : '-' }}
-                    </a-descriptions-item>
-                    <a-descriptions-item label="渲染模式">{{ renderMode }}</a-descriptions-item>
-                  </a-descriptions>
-                </a-card>
-
                 <a-card size="small" title="当前帧结构化 boxes" class="inner-card">
                   <a-table
                     v-if="streamBoxes.length"
@@ -1135,28 +1143,6 @@ onBeforeUnmount(() => {
                   <a-empty v-else description="当前帧未返回 boxes，主展示以视频叠框状态为准" />
                 </a-card>
 
-                <a-card size="small" title="归档结果详情" class="inner-card">
-                  <QcDetectionResultPanel
-                    v-model:close-remark="closeRemark"
-                    :detail-loading="detailLoading"
-                    :active-record="activeRecord"
-                    :detection-result="detectionResult"
-                    :active-plan-step="selectedMonitorPlanStep"
-                    :current-judge="currentJudge"
-                    :current-confidence="currentConfidence"
-                    :current-defect-type="currentDefectType"
-                    :current-result-value="currentResultValue"
-                    :source-preview-url="streamSnapshotSourcePreviewUrl || offlineSourcePreviewUrl"
-                    :result-preview-url="resultPreviewUrl"
-                    :source-image-path="sourceImagePath"
-                    :result-image-path="resultImagePath"
-                    :current-boxes="currentBoxes"
-                    :active-attachments="activeAttachments"
-                    :close-submitting="closeSubmitting"
-                    @review="openReviewModal"
-                    @close="handleCloseRecord"
-                  />
-                </a-card>
               </div>
             </a-card>
           </div>
@@ -1240,6 +1226,20 @@ onBeforeUnmount(() => {
           <a-descriptions-item label="推流频率">{{ STREAM_FRAME_INTERVAL_MS }}ms / 次</a-descriptions-item>
           <a-descriptions-item label="提交链路">POST /api/qc-stream-sessions + WebSocket /ws/qc-stream/{sessionId}</a-descriptions-item>
         </a-descriptions>
+        <a-card size="small" title="实时状态" class="settings-status-card">
+          <a-descriptions :column="1" size="small" bordered>
+            <a-descriptions-item label="状态">{{ streamStatusText }}</a-descriptions-item>
+            <a-descriptions-item label="错误信息">{{ streamErrorText || '-' }}</a-descriptions-item>
+            <a-descriptions-item label="实时消息数">{{ streamMessageCount }}</a-descriptions-item>
+            <a-descriptions-item label="最近延迟">
+              {{ latestFrameLatency !== null ? `${latestFrameLatency} ms` : '-' }}
+            </a-descriptions-item>
+            <a-descriptions-item label="当前帧大小">
+              {{ latestFramePayloadSize ? `${Math.round(latestFramePayloadSize / 1024)} KB` : '-' }}
+            </a-descriptions-item>
+            <a-descriptions-item label="渲染模式">{{ renderMode }}</a-descriptions-item>
+          </a-descriptions>
+        </a-card>
         <div class="summary-actions">
           <a-button size="small" :loading="cameraLoading" @click="reloadCameras">刷新摄像头列表</a-button>
           <a-button size="small" @click="resetMonitorForm">重置实时模式</a-button>
@@ -1307,6 +1307,7 @@ onBeforeUnmount(() => {
 .workbench-grid {
   display: grid;
   grid-template-columns: minmax(0, 1.2fr) minmax(420px, 0.8fr);
+  align-items: start;
   gap: 16px;
 }
 
@@ -1337,6 +1338,10 @@ onBeforeUnmount(() => {
   flex-direction: column;
   justify-content: space-between;
   min-height: 100%;
+}
+
+.image-result-card {
+  margin-top: 16px;
 }
 
 .compact-preview-box {
@@ -1466,6 +1471,10 @@ onBeforeUnmount(() => {
 
 .settings-session :deep(.ant-descriptions-item-content) {
   word-break: break-word;
+}
+
+.settings-status-card {
+  margin-top: 14px;
 }
 
 .submit-row {
