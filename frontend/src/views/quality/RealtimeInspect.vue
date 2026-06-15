@@ -1082,6 +1082,13 @@ onBeforeUnmount(() => {
                   <div class="capture-workspace">
                     <div class="camera-section">
                       <div class="camera-preview">
+                        <div class="video-toolbar">
+                          <div class="section-heading">实时视频源</div>
+                          <a-button class="settings-button" @click="settingsModalOpen = true">
+                            <template #icon><SettingOutlined /></template>
+                            设置
+                          </a-button>
+                        </div>
                         <div class="video-frame">
                           <video ref="videoRef" muted playsinline @loadedmetadata="handleVideoReady" />
                           <canvas ref="overlayCanvasRef" class="overlay-canvas" />
@@ -1129,6 +1136,8 @@ onBeforeUnmount(() => {
                 </div>
 
                 <div class="image-grid">
+                <a-card size="small" title="关键帧留档" class="inner-card">
+                  <div class="image-grid">
                     <a-card size="small" title="关键帧原图">
                       <div class="image-frame">
                         <a-image v-if="streamSnapshotSourcePreviewUrl" :src="streamSnapshotSourcePreviewUrl" alt="关键帧原图" />
@@ -1399,6 +1408,17 @@ onBeforeUnmount(() => {
   display: inline-flex;
   align-items: center;
   gap: 4px;
+}
+
+.video-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.video-toolbar .section-heading {
+  margin-bottom: 0;
 }
 
 .workbench-grid {
