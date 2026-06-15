@@ -174,7 +174,7 @@ const breadcrumbItems = computed(() => {
 
 .brand-logo {
   width: auto;
-  height: 48px;
+  height: 54px;
   display: block;
   object-fit: contain;
 }
