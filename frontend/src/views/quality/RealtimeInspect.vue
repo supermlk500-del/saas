@@ -997,91 +997,94 @@ onBeforeUnmount(() => {
   <div class="realtime-page">
     <div class="mode-shell">
           <div class="workbench-grid">
-            <a-card class="page-card" :bordered="false" title="实时视频流采集">
-              <a-spin :spinning="loading || streamPreparing">
-                <div class="capture-workspace">
-                  <div class="camera-section">
-                    <div class="camera-preview">
-                      <div class="video-toolbar">
-                        <div class="section-heading">实时视频源</div>
-                        <a-button class="settings-button" @click="settingsModalOpen = true">
-                          <template #icon><SettingOutlined /></template>
-                          设置
-                        </a-button>
-                      </div>
-                      <div class="video-frame">
-                        <video ref="videoRef" muted playsinline @loadedmetadata="handleVideoReady" />
-                        <canvas ref="overlayCanvasRef" class="overlay-canvas" />
-                        <div v-if="cameraActive" class="overlay-status">
-                          {{ overlayStatusText }}
+            <div class="inspection-column">
+              <a-card class="page-card" :bordered="false" title="实时视频流采集">
+                <a-spin :spinning="loading || streamPreparing">
+                  <div class="capture-workspace">
+                    <div class="camera-section">
+                      <div class="camera-preview">
+                        <div class="video-toolbar">
+                          <div class="section-heading">实时视频源</div>
+                          <a-button class="settings-button" @click="settingsModalOpen = true">
+                            <template #icon><SettingOutlined /></template>
+                            设置
+                          </a-button>
                         </div>
-                        <a-empty v-if="!cameraActive" description="点击“开始检测”后调用电脑摄像头并进入实时流检测" />
+                        <div class="video-frame">
+                          <video ref="videoRef" muted playsinline @loadedmetadata="handleVideoReady" />
+                          <canvas ref="overlayCanvasRef" class="overlay-canvas" />
+                          <div v-if="cameraActive" class="overlay-status">
+                            {{ overlayStatusText }}
+                          </div>
+                          <a-empty v-if="!cameraActive" description="点击“开始检测”后调用电脑摄像头并进入实时流检测" />
+                        </div>
+                        <canvas ref="frameCanvasRef" class="capture-canvas" />
+                        <div class="camera-actions">
+                          <a-button :loading="cameraLoading" :disabled="cameraActive" @click="ensureCameraPreview">打开视频预览</a-button>
+                          <a-button :disabled="!cameraActive && !streamRunning" @click="stopRealtimeDetection">停止检测</a-button>
+                          <a-button type="primary" :loading="streamPreparing" :disabled="streamRunning" @click="startRealtimeDetection">
+                            开始检测
+                          </a-button>
+                          <a-button type="primary" ghost :loading="snapshotSaving" :disabled="!streamRunning" @click="saveCurrentFrameSnapshot">
+                            保存当前帧
+                          </a-button>
+                        </div>
                       </div>
-                      <canvas ref="frameCanvasRef" class="capture-canvas" />
-                      <div class="camera-actions">
-                        <a-button :loading="cameraLoading" :disabled="cameraActive" @click="ensureCameraPreview">打开视频预览</a-button>
-                        <a-button :disabled="!cameraActive && !streamRunning" @click="stopRealtimeDetection">停止检测</a-button>
-                        <a-button type="primary" :loading="streamPreparing" :disabled="streamRunning" @click="startRealtimeDetection">
-                          开始检测
-                        </a-button>
-                        <a-button type="primary" ghost :loading="snapshotSaving" :disabled="!streamRunning" @click="saveCurrentFrameSnapshot">
-                          保存当前帧
-                        </a-button>
+                    </div>
+                  </div>
+                </a-spin>
+              </a-card>
+
+              <a-card class="page-card image-inspection-card" :bordered="false" title="单张图片质检">
+                <div class="image-check-section">
+                  <div class="image-check-grid">
+                    <div class="image-check-upload">
+                      <input type="file" accept="image/*" @change="handleFileChange" />
+                      <div class="compact-preview-box">
+                        <a-image v-if="localSourcePreview" :src="localSourcePreview" alt="本地原图预览" />
+                        <a-empty v-else description="需要单张复检时选择图片" />
+                      </div>
+                      <div class="path-text">
+                        {{ selectedFile?.name || `支持单张图片，建议小于 ${MAX_UPLOAD_SIZE_MB}MB` }}
+                      </div>
+                    </div>
+
+                    <div class="image-check-actions">
+                      <div class="path-text">
+                        图片质检复用设置中的工序计划、检测标准、检验人和备注，结果会在下方归档详情里展示。
+                      </div>
+                      <div class="camera-actions compact-actions">
+                        <a-button @click="resetImageInspection">清空图片</a-button>
+                        <a-button type="primary" :loading="detecting" @click="handleOfflineDetect">上传并检测</a-button>
                       </div>
                     </div>
                   </div>
 
-                  <div class="image-check-section">
-                    <div class="section-heading">单张图片补检</div>
-                    <div class="image-check-grid">
-                      <div class="image-check-upload">
-                        <input type="file" accept="image/*" @change="handleFileChange" />
-                        <div class="compact-preview-box">
-                          <a-image v-if="localSourcePreview" :src="localSourcePreview" alt="本地原图预览" />
-                          <a-empty v-else description="需要单张复检时选择图片" />
-                        </div>
-                        <div class="path-text">
-                          {{ selectedFile?.name || `支持单张图片，建议小于 ${MAX_UPLOAD_SIZE_MB}MB` }}
-                        </div>
-                      </div>
-
-                      <div class="image-check-actions">
-                        <div class="path-text">
-                          图片补检复用设置中的工序计划、检测标准、检验人和备注，结果会在下方归档详情里展示。
-                        </div>
-                        <div class="camera-actions compact-actions">
-                          <a-button @click="resetImageInspection">清空图片</a-button>
-                          <a-button type="primary" :loading="detecting" @click="handleOfflineDetect">上传并检测</a-button>
-                        </div>
-                      </div>
-                    </div>
-
-                    <a-card size="small" title="归档结果详情" class="image-result-card">
-                      <QcDetectionResultPanel
-                        v-model:close-remark="closeRemark"
-                        :detail-loading="detailLoading"
-                        :active-record="activeRecord"
-                        :detection-result="detectionResult"
-                        :active-plan-step="selectedMonitorPlanStep"
-                        :current-judge="currentJudge"
-                        :current-confidence="currentConfidence"
-                        :current-defect-type="currentDefectType"
-                        :current-result-value="currentResultValue"
-                        :source-preview-url="streamSnapshotSourcePreviewUrl || offlineSourcePreviewUrl"
-                        :result-preview-url="resultPreviewUrl"
-                        :source-image-path="sourceImagePath"
-                        :result-image-path="resultImagePath"
-                        :current-boxes="currentBoxes"
-                        :active-attachments="activeAttachments"
-                        :close-submitting="closeSubmitting"
-                        @review="openReviewModal"
-                        @close="handleCloseRecord"
-                      />
-                    </a-card>
-                  </div>
+                  <a-card size="small" title="归档结果详情" class="image-result-card">
+                    <QcDetectionResultPanel
+                      v-model:close-remark="closeRemark"
+                      :detail-loading="detailLoading"
+                      :active-record="activeRecord"
+                      :detection-result="detectionResult"
+                      :active-plan-step="selectedMonitorPlanStep"
+                      :current-judge="currentJudge"
+                      :current-confidence="currentConfidence"
+                      :current-defect-type="currentDefectType"
+                      :current-result-value="currentResultValue"
+                      :source-preview-url="streamSnapshotSourcePreviewUrl || offlineSourcePreviewUrl"
+                      :result-preview-url="resultPreviewUrl"
+                      :source-image-path="sourceImagePath"
+                      :result-image-path="resultImagePath"
+                      :current-boxes="currentBoxes"
+                      :active-attachments="activeAttachments"
+                      :close-submitting="closeSubmitting"
+                      @review="openReviewModal"
+                      @close="handleCloseRecord"
+                    />
+                  </a-card>
                 </div>
-              </a-spin>
-            </a-card>
+              </a-card>
+            </div>
 
             <a-card class="page-card" :bordered="false" title="实时结果与关键帧">
               <div class="stream-result-shell">
@@ -1311,6 +1314,13 @@ onBeforeUnmount(() => {
   gap: 16px;
 }
 
+.inspection-column {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  min-width: 0;
+}
+
 .form-grid {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -1325,6 +1335,12 @@ onBeforeUnmount(() => {
   margin-top: 18px;
   padding-top: 16px;
   border-top: 1px solid rgba(145, 158, 171, 0.14);
+}
+
+.image-inspection-card .image-check-section {
+  margin-top: 0;
+  padding-top: 0;
+  border-top: 0;
 }
 
 .image-check-grid {
