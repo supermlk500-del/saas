@@ -29,6 +29,8 @@ public class QcStreamSessionContext {
 
     private volatile LocalDateTime lastProcessedAt;
 
+    private volatile LocalDateTime lastAutoSavedAt;
+
     private volatile QcStreamFrameResultVo latestResult;
 
     private final Map<String, WebSocketSession> sockets = new ConcurrentHashMap<>();

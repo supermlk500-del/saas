@@ -63,7 +63,7 @@ const breadcrumbItems = computed(() => {
           <MenuFoldOutlined v-else />
         </a-button>
         <div class="brand">
-          <img class="brand-logo" src="/images/branding/title-top.png" alt="织慧通" />
+          <img class="brand-logo" src="/images/branding/logo.png" alt="织慧通" />
           <div class="brand-copy">
             <strong>织慧通</strong>
             <span>胚布排产质检系统</span>
@@ -174,7 +174,7 @@ const breadcrumbItems = computed(() => {
 
 .brand-logo {
   width: auto;
-  height: 32px;
+  height: 48px;
   display: block;
   object-fit: contain;
 }

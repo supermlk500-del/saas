@@ -17,6 +17,7 @@ export type QcStreamSessionInfo = {
 }
 
 export type QcStreamResultMessage = {
+  inspectionId?: IdValue
   sessionId?: string
   frameTime?: string
   resultJudge?: string
@@ -27,6 +28,7 @@ export type QcStreamResultMessage = {
   renderMode?: string
   imageUrl?: string | null
   sourceImageUrl?: string | null
+  autoSaved?: boolean
 }
 
 export type QcStreamFramePayload = {

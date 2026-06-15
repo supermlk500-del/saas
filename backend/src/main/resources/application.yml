@@ -58,3 +58,4 @@ qc:
     frame-sample-interval-ms: 250
     session-idle-timeout-ms: 300000
     max-frame-size-bytes: 5242880
+    auto-save-defect-interval-ms: 5000

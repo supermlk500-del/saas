@@ -1,6 +1,7 @@
 <script setup lang="ts">
-import { computed, nextTick, onBeforeUnmount, onMounted, reactive, ref, watch } from 'vue'
+import { computed, nextTick, onBeforeUnmount, onMounted, reactive, ref } from 'vue'
 import { useRoute } from 'vue-router'
+import { SettingOutlined } from '@ant-design/icons-vue'
 import { message } from 'ant-design-vue'
 import QcDetectionResultPanel from '@/components/quality/QcDetectionResultPanel.vue'
 import { fetchPlanSteps } from '@/api/plan/planStep'
@@ -23,7 +24,7 @@ import {
   type QcStreamResultMessage,
   type QcStreamSessionInfo,
 } from '@/api/quality/qcStreamSession'
-import { createQcItem, fetchQcItems } from '@/api/quality/qcItem'
+import { fetchQcItems } from '@/api/quality/qcItem'
 import type {
   InspectionDataItem,
   PlanStepItem,
@@ -38,15 +39,8 @@ import { formatDateTime } from '@/utils/date'
 import { isLikelyResultImage, isLikelySourceImage, resolveImageUrl } from '@/utils/image'
 
 type IdValue = number | string
-type InspectMode = 'offline' | 'monitor'
 type StreamSocketState = 'idle' | 'connecting' | 'open' | 'closed' | 'error'
-
-type OfflineFormModel = {
-  planStepId?: IdValue
-  qcItemId?: IdValue
-  inspector: string
-  remark: string
-}
+type MotionCompensationDirection = 'none' | 'right' | 'left' | 'down' | 'up'
 
 type MonitorFormModel = {
   planStepId?: IdValue
@@ -87,10 +81,16 @@ const socketStateLabelMap: Record<StreamSocketState, string> = {
   error: '连接异常',
 }
 
+const motionDirectionOptions: { label: string; value: MotionCompensationDirection }[] = [
+  { label: '不补偿', value: 'none' },
+  { label: '向右', value: 'right' },
+  { label: '向左', value: 'left' },
+  { label: '向下', value: 'down' },
+  { label: '向上', value: 'up' },
+]
+
 const route = useRoute()
 
-const activeMode = ref<InspectMode>('offline')
-const offlineFormRef = ref()
 const monitorFormRef = ref()
 const reviewFormRef = ref()
 
@@ -106,9 +106,9 @@ const streamPreparing = ref(false)
 const streamRunning = ref(false)
 const streamClosing = ref(false)
 const snapshotSaving = ref(false)
-const initializingQcItem = ref(false)
 const detailLoading = ref(false)
 const reviewModalOpen = ref(false)
+const settingsModalOpen = ref(false)
 const reviewSubmitting = ref(false)
 const closeSubmitting = ref(false)
 
@@ -143,6 +143,9 @@ const frameAwaitingResponse = ref(false)
 const streamMessageCount = ref(0)
 const renderMode = ref('overlay')
 const intentionalSocketClose = ref(false)
+const motionCompensationEnabled = ref(true)
+const motionCompensationDirection = ref<MotionCompensationDirection>('none')
+const motionCompensationSpeed = ref(0)
 
 const overlayBoxes = ref<QcDetectionBox[]>([])
 const overlayJudge = ref<ResultJudge | undefined>()
@@ -152,11 +155,6 @@ const overlaySourceSize = ref({ width: 0, height: 0 })
 const frameLoopTimerId = ref<number | null>(null)
 const frameResponseTimeoutId = ref<number | null>(null)
 const lastFrameSentAt = ref(0)
-
-const offlineForm = reactive<OfflineFormModel>({
-  inspector: '',
-  remark: '',
-})
 
 const monitorForm = reactive<MonitorFormModel>({
   inspector: '',
@@ -209,10 +207,6 @@ const cameraOptions = computed(() =>
   })),
 )
 
-const selectedOfflinePlanStep = computed(() =>
-  planSteps.value.find((item) => String(item.planStepId) === String(offlineForm.planStepId)),
-)
-
 const selectedMonitorPlanStep = computed(() =>
   planSteps.value.find((item) => String(item.planStepId) === String(monitorForm.planStepId)),
 )
@@ -244,8 +238,11 @@ const resultAttachment = computed(() =>
 const sourceImagePath = computed(() => detectionResult.value?.sourceImageUrl || sourceAttachment.value?.filePath || '')
 const resultImagePath = computed(() => detectionResult.value?.imageUrl || activeRecord.value?.imageUrl || resultAttachment.value?.filePath || '')
 const offlineSourcePreviewUrl = computed(() => resolveImageUrl(sourceImagePath.value) || localSourcePreview.value)
-const streamSnapshotSourcePreviewUrl = computed(() => resolveImageUrl(sourceImagePath.value) || frameSourcePreview.value)
+const streamSnapshotSourcePreviewUrl = computed(() =>
+  resolveImageUrl(streamResult.value?.sourceImageUrl || sourceImagePath.value) || frameSourcePreview.value,
+)
 const resultPreviewUrl = computed(() => resolveImageUrl(resultImagePath.value))
+const streamResultPreviewUrl = computed(() => resolveImageUrl(streamResult.value?.imageUrl || resultImagePath.value))
 
 const streamJudgeMeta = computed(() => judgeOptions.find((item) => item.value === streamResult.value?.resultJudge))
 const streamJudgeLabel = computed(() => streamJudgeMeta.value?.label || streamResult.value?.resultJudge || '-')
@@ -258,6 +255,37 @@ const streamResultValueText = computed(() => streamResult.value?.resultValue || 
 const streamDefectTypeText = computed(() => streamResult.value?.defectType || '-')
 const streamBoxes = computed(() => streamResult.value?.boxes ?? [])
 const streamSocketStateLabel = computed(() => socketStateLabelMap[streamSocketState.value])
+const motionCompensationOffset = computed(() => {
+  if (
+    !motionCompensationEnabled.value ||
+    motionCompensationDirection.value === 'none' ||
+    !latestFrameLatency.value ||
+    !motionCompensationSpeed.value
+  ) {
+    return { dx: 0, dy: 0, distance: 0 }
+  }
+
+  const distance = (motionCompensationSpeed.value * latestFrameLatency.value) / 1000
+  if (motionCompensationDirection.value === 'right') {
+    return { dx: distance, dy: 0, distance }
+  }
+  if (motionCompensationDirection.value === 'left') {
+    return { dx: -distance, dy: 0, distance }
+  }
+  if (motionCompensationDirection.value === 'down') {
+    return { dx: 0, dy: distance, distance }
+  }
+  return { dx: 0, dy: -distance, distance }
+})
+const motionCompensationSummary = computed(() => {
+  if (!motionCompensationEnabled.value || motionCompensationDirection.value === 'none') {
+    return '未启用'
+  }
+  if (!latestFrameLatency.value || !motionCompensationSpeed.value) {
+    return '等待延迟或速度'
+  }
+  return `${Math.round(motionCompensationOffset.value.distance)} px`
+})
 
 const getJudgeMeta = (value?: string) => judgeOptions.find((item) => item.value === value)
 
@@ -306,6 +334,23 @@ const clearOverlay = (statusText = '点击“开始检测”后显示实时叠�
   overlayStatusText.value = statusText
 }
 
+const clampBoxCoordinate = (value: number, max: number) => Math.min(Math.max(value, 0), Math.max(max, 0))
+
+const getCompensatedBoxes = (boxes: QcDetectionBox[], sourceWidth: number, sourceHeight: number) => {
+  const { dx, dy } = motionCompensationOffset.value
+  if (!dx && !dy) {
+    return boxes
+  }
+
+  return boxes.map((box) => ({
+    ...box,
+    x1: clampBoxCoordinate((box.x1 ?? 0) + dx, sourceWidth),
+    y1: clampBoxCoordinate((box.y1 ?? 0) + dy, sourceHeight),
+    x2: clampBoxCoordinate((box.x2 ?? 0) + dx, sourceWidth),
+    y2: clampBoxCoordinate((box.y2 ?? 0) + dy, sourceHeight),
+  }))
+}
+
 const drawBoxesOnOverlay = (boxes: QcDetectionBox[], judge?: ResultJudge) => {
   syncOverlayCanvasSize()
   const video = videoRef.value
@@ -339,12 +384,13 @@ const drawBoxesOnOverlay = (boxes: QcDetectionBox[], judge?: ResultJudge) => {
   const renderedHeight = sourceHeight * scale
   const offsetX = (displayWidth - renderedWidth) / 2
   const offsetY = (displayHeight - renderedHeight) / 2
+  const renderBoxes = getCompensatedBoxes(boxes, sourceWidth, sourceHeight)
 
   context.lineWidth = 2
   context.font = '12px sans-serif'
   context.textBaseline = 'top'
 
-  boxes.forEach((box) => {
+  renderBoxes.forEach((box) => {
     const x1 = offsetX + ((box.x1 ?? 0) / sourceWidth) * renderedWidth
     const y1 = offsetY + ((box.y1 ?? 0) / sourceHeight) * renderedHeight
     const x2 = offsetX + ((box.x2 ?? 0) / sourceWidth) * renderedWidth
@@ -369,7 +415,9 @@ const drawBoxesOnOverlay = (boxes: QcDetectionBox[], judge?: ResultJudge) => {
     }
   })
 
-  overlayStatusText.value = `实时叠加 ${boxes.length} 个检测框`
+  const compensationText =
+    motionCompensationOffset.value.distance > 0 ? `，补偿 ${Math.round(motionCompensationOffset.value.distance)} px` : ''
+  overlayStatusText.value = `实时叠加 ${boxes.length} 个检测框${compensationText}`
 }
 
 const redrawOverlay = () => {
@@ -437,14 +485,8 @@ const loadBaseData = async () => {
     const firstQcItemId = qcItems.value[0]?.qcItemId
     const firstCameraId = getFirstCameraId()
 
-    if (!offlineForm.planStepId) {
-      offlineForm.planStepId = routePlanStepId || firstPlanStepId
-    }
     if (!monitorForm.planStepId) {
       monitorForm.planStepId = routePlanStepId || firstPlanStepId
-    }
-    if (!offlineForm.qcItemId) {
-      offlineForm.qcItemId = firstQcItemId
     }
     if (!monitorForm.qcItemId) {
       monitorForm.qcItemId = firstQcItemId
@@ -485,26 +527,6 @@ const acceptStoredResult = async (result: QcDetectionResult) => {
   await reloadRecentRecords()
 }
 
-const handleCreateDefaultQcItem = async () => {
-  initializingQcItem.value = true
-  try {
-    await createQcItem({
-      qcItemCode: 'FABRIC_SURFACE_DEFECT',
-      qcItemName: '胚布外观缺陷检测',
-      qcType: 'image',
-      unit: '项',
-      standardMin: null,
-      standardMax: null,
-      isActive: 1,
-      description: '用于 Java ONNX 本地推理的默认图片检测标准',
-    })
-    message.success('默认检测标准已初始化')
-    await loadBaseData()
-  } finally {
-    initializingQcItem.value = false
-  }
-}
-
 const handleFileChange = (event: Event) => {
   const input = event.target as HTMLInputElement
   const file = input.files?.[0]
@@ -522,18 +544,17 @@ const handleFileChange = (event: Event) => {
   clearStoredDetectionState()
 }
 
-const resetOfflineForm = () => {
+const resetImageInspection = () => {
   selectedFile.value = null
-  offlineForm.planStepId = route.query.planStepId ? String(route.query.planStepId) : planSteps.value[0]?.planStepId
-  offlineForm.qcItemId = qcItems.value[0]?.qcItemId
-  offlineForm.inspector = ''
-  offlineForm.remark = ''
   revokeObjectUrl('local')
   clearStoredDetectionState()
 }
 
 const handleOfflineDetect = async () => {
-  await offlineFormRef.value?.validate()
+  if (!monitorForm.planStepId || !monitorForm.qcItemId) {
+    message.warning('请先选择工序计划和检测标准')
+    return
+  }
   if (!selectedFile.value) {
     message.warning('请先选择一张待检测图片')
     return
@@ -544,10 +565,10 @@ const handleOfflineDetect = async () => {
     clearStoredDetectionState()
     const result = await detectImageQcRecord({
       file: selectedFile.value,
-      planStepId: offlineForm.planStepId as IdValue,
-      qcItemId: offlineForm.qcItemId as IdValue,
-      inspector: offlineForm.inspector,
-      remark: offlineForm.remark,
+      planStepId: monitorForm.planStepId as IdValue,
+      qcItemId: monitorForm.qcItemId as IdValue,
+      inspector: monitorForm.inspector,
+      remark: monitorForm.remark,
     })
     await acceptStoredResult(result)
     message.success('图片离线质检完成')
@@ -690,6 +711,7 @@ const normalizeStreamMessage = (payload: unknown): QcStreamResultMessage => {
   const record = typeof payload === 'object' && payload !== null ? payload as Record<string, unknown> : {}
   const data = typeof record.data === 'object' && record.data !== null ? record.data as Record<string, unknown> : record
   return {
+    inspectionId: typeof data.inspectionId === 'number' || typeof data.inspectionId === 'string' ? data.inspectionId : undefined,
     sessionId: typeof data.sessionId === 'string' ? data.sessionId : streamSession.value?.sessionId,
     frameTime: typeof data.frameTime === 'string' ? data.frameTime : '',
     resultJudge: typeof data.resultJudge === 'string' ? data.resultJudge : undefined,
@@ -700,6 +722,7 @@ const normalizeStreamMessage = (payload: unknown): QcStreamResultMessage => {
     renderMode: typeof data.renderMode === 'string' ? data.renderMode : 'overlay',
     imageUrl: typeof data.imageUrl === 'string' ? data.imageUrl : null,
     sourceImageUrl: typeof data.sourceImageUrl === 'string' ? data.sourceImageUrl : null,
+    autoSaved: data.autoSaved === true,
   }
 }
 
@@ -725,7 +748,13 @@ const handleStreamMessage = async (event: MessageEvent<string | ArrayBuffer | Bl
     clearFrameResponseTimeout()
     latestFrameLatency.value = lastFrameSentAt.value ? Date.now() - lastFrameSentAt.value : null
     drawBoxesOnOverlay(messageData.boxes ?? [], messageData.resultJudge as ResultJudge | undefined)
-    streamStatusText.value = '实时检测进行中'
+    if (messageData.autoSaved) {
+      latestSavedFrameTime.value = messageData.frameTime || formatDateTime(new Date().toISOString())
+      streamStatusText.value = '检测到缺陷，已自动保存原图和结果图'
+      void reloadRecentRecords()
+    } else {
+      streamStatusText.value = '实时检测进行中'
+    }
   } catch (error) {
     streamErrorText.value = '实时检测结果解析失败'
     streamStatusText.value = '结果解析失败'
@@ -1023,12 +1052,6 @@ const reloadCameras = async () => {
   }
 }
 
-watch(activeMode, (nextMode) => {
-  if (nextMode !== 'monitor') {
-    void stopRealtimeDetection({ silent: true })
-  }
-})
-
 onMounted(async () => {
   window.addEventListener('resize', handleViewportResize)
   await loadBaseData()
@@ -1047,212 +1070,42 @@ onBeforeUnmount(() => {
 <template>
   <div class="realtime-page">
     <div class="mode-shell">
-      <a-tabs v-model:active-key="activeMode" class="mode-tabs">
-        <a-tab-pane key="offline" tab="图片离线质检">
           <div class="workbench-grid">
-            <a-card class="page-card" :bordered="false" title="图片上传录入">
-              <a-spin :spinning="loading">
-                <a-form ref="offlineFormRef" :model="offlineForm" :rules="baseRules" layout="vertical">
-                  <div class="form-grid">
-                    <a-form-item label="工序计划" name="planStepId">
-                      <a-select
-                        v-model:value="offlineForm.planStepId"
-                        :options="planStepOptions"
-                        placeholder="请选择工序计划"
-                        show-search
-                        option-filter-prop="label"
-                      />
-                    </a-form-item>
-
-                    <a-form-item label="检测标准（质检项）" name="qcItemId">
-                      <a-select
-                        v-model:value="offlineForm.qcItemId"
-                        :options="qcItemOptions"
-                        placeholder="请选择检测标准"
-                        show-search
-                        option-filter-prop="label"
-                      />
-                    </a-form-item>
-
-                    <a-form-item label="检验人" name="inspector">
-                      <a-input v-model:value="offlineForm.inspector" placeholder="请输入检验人" />
-                    </a-form-item>
-
-                    <a-form-item label="备注" name="remark">
-                      <a-input v-model:value="offlineForm.remark" placeholder="请输入业务备注" />
-                    </a-form-item>
-                  </div>
-
-                  <a-alert
-                    v-if="!qcItemOptions.length"
-                    type="warning"
-                    show-icon
-                    class="field-alert"
-                    message="后端当前没有质检项数据，离线检测接口需要 qcItemId 才能落库。"
-                  >
-                    <template #description>
-                      <a-space>
-                        <span>可先初始化一个默认的“胚布外观缺陷检测”标准。</span>
-                        <a-button size="small" type="primary" :loading="initializingQcItem" @click="handleCreateDefaultQcItem">
-                          初始化默认质检项
-                        </a-button>
-                      </a-space>
-                    </template>
-                  </a-alert>
-
-                  <div class="upload-section">
-                    <div class="upload-panel">
-                      <div class="section-heading">单张图片</div>
-                      <input type="file" accept="image/*" @change="handleFileChange" />
-                      <div class="preview-box">
-                        <a-image v-if="localSourcePreview" :src="localSourcePreview" alt="本地原图预览" />
-                        <a-empty v-else description="请选择一张待检测图片" />
-                      </div>
-                      <div class="path-text">
-                        {{ selectedFile?.name || `支持单张图片，建议小于 ${MAX_UPLOAD_SIZE_MB}MB` }}
-                      </div>
-                    </div>
-
-                    <div class="detect-summary">
-                      <div class="section-heading">业务关联</div>
-                      <a-descriptions :column="1" size="small" bordered>
-                        <a-descriptions-item label="计划ID">{{ selectedOfflinePlanStep?.planId || '-' }}</a-descriptions-item>
-                        <a-descriptions-item label="工序计划ID">{{ selectedOfflinePlanStep?.planStepId || '-' }}</a-descriptions-item>
-                        <a-descriptions-item label="工序">{{ selectedOfflinePlanStep?.stepName || '未选择' }}</a-descriptions-item>
-                        <a-descriptions-item label="设备">{{ selectedOfflinePlanStep?.machineName || '-' }}</a-descriptions-item>
-                        <a-descriptions-item label="开始时间">{{ selectedOfflinePlanStep?.planStartTime || '-' }}</a-descriptions-item>
-                        <a-descriptions-item label="结束时间">{{ selectedOfflinePlanStep?.planEndTime || '-' }}</a-descriptions-item>
-                        <a-descriptions-item label="提交接口">POST /api/qc-records/detect-image</a-descriptions-item>
-                        <a-descriptions-item label="图片路径">Java 返回 photo/upload 与 photo/results 相对路径</a-descriptions-item>
-                      </a-descriptions>
-                    </div>
-                  </div>
-
-                  <div class="submit-row">
-                    <a-button @click="resetOfflineForm">重置</a-button>
-                    <a-button type="primary" :loading="detecting" @click="handleOfflineDetect">上传并检测</a-button>
-                  </div>
-                </a-form>
-              </a-spin>
-            </a-card>
-
-            <a-card class="page-card" :bordered="false" title="检测结果展示">
-              <QcDetectionResultPanel
-                v-model:close-remark="closeRemark"
-                :detail-loading="detailLoading"
-                :active-record="activeRecord"
-                :detection-result="detectionResult"
-                :active-plan-step="selectedOfflinePlanStep"
-                :current-judge="currentJudge"
-                :current-confidence="currentConfidence"
-                :current-defect-type="currentDefectType"
-                :current-result-value="currentResultValue"
-                :source-preview-url="offlineSourcePreviewUrl"
-                :result-preview-url="resultPreviewUrl"
-                :source-image-path="sourceImagePath"
-                :result-image-path="resultImagePath"
-                :current-boxes="currentBoxes"
-                :active-attachments="activeAttachments"
-                :close-submitting="closeSubmitting"
-                @review="openReviewModal"
-                @close="handleCloseRecord"
-              />
-            </a-card>
-          </div>
-        </a-tab-pane>
-
-        <a-tab-pane key="monitor" tab="实时视频流质检">
-          <div class="workbench-grid">
-            <a-card class="page-card" :bordered="false" title="实时视频流采集">
-              <a-spin :spinning="loading || streamPreparing">
-                <a-form ref="monitorFormRef" :model="monitorForm" :rules="monitorRules" layout="vertical">
-                  <div class="form-grid">
-                    <a-form-item label="工序计划" name="planStepId">
-                      <a-select
-                        v-model:value="monitorForm.planStepId"
-                        :options="planStepOptions"
-                        placeholder="请选择工序计划"
-                        show-search
-                        option-filter-prop="label"
-                      />
-                    </a-form-item>
-
-                    <a-form-item label="检测标准（质检项）" name="qcItemId">
-                      <a-select
-                        v-model:value="monitorForm.qcItemId"
-                        :options="qcItemOptions"
-                        placeholder="请选择检测标准"
-                        show-search
-                        option-filter-prop="label"
-                      />
-                    </a-form-item>
-
-                    <a-form-item label="摄像头" name="cameraId">
-                      <a-select
-                        v-model:value="monitorForm.cameraId"
-                        :options="cameraOptions"
-                        placeholder="请选择摄像头"
-                        show-search
-                        option-filter-prop="label"
-                      />
-                    </a-form-item>
-
-                    <a-form-item label="检验人" name="inspector">
-                      <a-input v-model:value="monitorForm.inspector" placeholder="请输入检验人" />
-                    </a-form-item>
-
-                    <a-form-item label="备注" name="remark" class="full-field">
-                      <a-input v-model:value="monitorForm.remark" placeholder="可填写实时检测会话备注" />
-                    </a-form-item>
-                  </div>
-
-                  <div class="camera-section">
-                    <div class="camera-preview">
-                      <div class="section-heading">实时视频源</div>
-                      <div class="video-frame">
-                        <video ref="videoRef" muted playsinline @loadedmetadata="handleVideoReady" />
-                        <canvas ref="overlayCanvasRef" class="overlay-canvas" />
-                        <div v-if="cameraActive" class="overlay-status">
-                          {{ overlayStatusText }}
+            <a-card class="page-card realtime-capture-card" :bordered="false" title="实时视频流采集">
+                <a-spin :spinning="loading || streamPreparing">
+                  <div class="capture-workspace">
+                    <div class="camera-section">
+                      <div class="camera-preview">
+                        <div class="video-toolbar">
+                          <div class="section-heading">实时视频源</div>
+                          <a-button class="settings-button" @click="settingsModalOpen = true">
+                            <template #icon><SettingOutlined /></template>
+                            设置
+                          </a-button>
                         </div>
-                        <a-empty v-if="!cameraActive" description="点击“开始检测”后调用电脑摄像头并进入实时流检测" />
-                      </div>
-                      <canvas ref="frameCanvasRef" class="capture-canvas" />
-                      <div class="camera-actions">
-                        <a-button :loading="cameraLoading" :disabled="cameraActive" @click="ensureCameraPreview">打开视频预览</a-button>
-                        <a-button :disabled="!cameraActive && !streamRunning" @click="stopRealtimeDetection">停止检测</a-button>
-                        <a-button type="primary" :loading="streamPreparing" :disabled="streamRunning" @click="startRealtimeDetection">
-                          开始检测
-                        </a-button>
-                        <a-button type="primary" ghost :loading="snapshotSaving" :disabled="!streamRunning" @click="saveCurrentFrameSnapshot">
-                          保存当前帧
-                        </a-button>
-                      </div>
-                    </div>
-
-                    <div class="detect-summary">
-                      <div class="section-heading">实时会话</div>
-                      <a-descriptions :column="1" size="small" bordered>
-                        <a-descriptions-item label="计划ID">{{ selectedMonitorPlanStep?.planId || '-' }}</a-descriptions-item>
-                        <a-descriptions-item label="工序计划ID">{{ selectedMonitorPlanStep?.planStepId || '-' }}</a-descriptions-item>
-                        <a-descriptions-item label="工序">{{ selectedMonitorPlanStep?.stepName || '未选择' }}</a-descriptions-item>
-                        <a-descriptions-item label="当前摄像头">{{ selectedCamera?.cameraName || '未选择' }}</a-descriptions-item>
-                        <a-descriptions-item label="摄像头类型">{{ selectedCamera?.cameraType || '-' }}</a-descriptions-item>
-                        <a-descriptions-item label="会话 ID">{{ streamSession?.sessionId || '-' }}</a-descriptions-item>
-                        <a-descriptions-item label="连接状态">{{ streamSocketStateLabel }}</a-descriptions-item>
-                        <a-descriptions-item label="会话开始时间">{{ streamSession?.startedAt || '-' }}</a-descriptions-item>
-                        <a-descriptions-item label="最近帧时间">{{ latestFrameTime || '-' }}</a-descriptions-item>
-                        <a-descriptions-item label="推流频率">{{ STREAM_FRAME_INTERVAL_MS }}ms / 次</a-descriptions-item>
-                        <a-descriptions-item label="提交链路">POST /api/qc-stream-sessions + WebSocket /ws/qc-stream/{sessionId}</a-descriptions-item>
-                      </a-descriptions>
-                      <div class="summary-actions">
-                        <a-button size="small" :loading="cameraLoading" @click="reloadCameras">刷新摄像头列表</a-button>
-                        <a-button size="small" @click="resetMonitorForm">重置实时模式</a-button>
+                        <div class="video-frame">
+                          <video ref="videoRef" muted playsinline @loadedmetadata="handleVideoReady" />
+                          <canvas ref="overlayCanvasRef" class="overlay-canvas" />
+                          <div v-if="cameraActive" class="overlay-status">
+                            {{ overlayStatusText }}
+                          </div>
+                          <a-empty v-if="!cameraActive" description="点击“开始检测”后调用电脑摄像头并进入实时流检测" />
+                        </div>
+                        <canvas ref="frameCanvasRef" class="capture-canvas" />
+                        <div class="camera-actions">
+                          <a-button :loading="cameraLoading" :disabled="cameraActive" @click="ensureCameraPreview">打开视频预览</a-button>
+                          <a-button :disabled="!cameraActive && !streamRunning" @click="stopRealtimeDetection">停止检测</a-button>
+                          <a-button type="primary" :loading="streamPreparing" :disabled="streamRunning" @click="startRealtimeDetection">
+                            开始检测
+                          </a-button>
+                          <a-button type="primary" ghost :loading="snapshotSaving" :disabled="!streamRunning" @click="saveCurrentFrameSnapshot">
+                            保存当前帧
+                          </a-button>
+                        </div>
                       </div>
                     </div>
                   </div>
-                </a-form>
-              </a-spin>
+                </a-spin>
             </a-card>
 
             <a-card class="page-card" :bordered="false" title="实时结果与关键帧">
@@ -1276,21 +1129,6 @@ onBeforeUnmount(() => {
                   </div>
                 </div>
 
-                <a-card size="small" title="实时状态" class="inner-card">
-                  <a-descriptions :column="1" size="small" bordered>
-                    <a-descriptions-item label="状态">{{ streamStatusText }}</a-descriptions-item>
-                    <a-descriptions-item label="错误信息">{{ streamErrorText || '-' }}</a-descriptions-item>
-                    <a-descriptions-item label="实时消息数">{{ streamMessageCount }}</a-descriptions-item>
-                    <a-descriptions-item label="最近延迟">
-                      {{ latestFrameLatency !== null ? `${latestFrameLatency} ms` : '-' }}
-                    </a-descriptions-item>
-                    <a-descriptions-item label="当前帧大小">
-                      {{ latestFramePayloadSize ? `${Math.round(latestFramePayloadSize / 1024)} KB` : '-' }}
-                    </a-descriptions-item>
-                    <a-descriptions-item label="渲染模式">{{ renderMode }}</a-descriptions-item>
-                  </a-descriptions>
-                </a-card>
-
                 <a-card size="small" title="关键帧留档" class="inner-card">
                   <div class="image-grid">
                     <a-card size="small" title="关键帧原图">
@@ -1301,13 +1139,13 @@ onBeforeUnmount(() => {
                     </a-card>
                     <a-card size="small" title="关键帧结果图">
                       <div class="image-frame">
-                        <a-image v-if="resultPreviewUrl" :src="resultPreviewUrl" alt="关键帧结果图" />
+                        <a-image v-if="streamResultPreviewUrl" :src="streamResultPreviewUrl" alt="关键帧结果图" />
                         <a-empty v-else description="后端生成结果图后显示" />
                       </div>
                     </a-card>
                   </div>
                   <div class="path-text">
-                    {{ latestSavedFrameTime ? `最近保存时间：${latestSavedFrameTime}` : '“保存当前帧”会调用 /api/qc-stream-sessions/{sessionId}/snapshot 落库' }}
+                    {{ latestSavedFrameTime ? `最近保存时间：${latestSavedFrameTime}` : '检测到缺陷后会自动保存原图和结果图到 photo' }}
                   </div>
                 </a-card>
 
@@ -1329,11 +1167,60 @@ onBeforeUnmount(() => {
                   />
                   <a-empty v-else description="当前帧未返回 boxes，主展示以视频叠框状态为准" />
                 </a-card>
+
+              </div>
+            </a-card>
+
+            <a-card class="page-card image-inspection-card" :bordered="false" title="单张图片质检">
+              <div class="image-check-section">
+                <div class="image-check-grid">
+                  <div class="image-check-upload">
+                    <input type="file" accept="image/*" @change="handleFileChange" />
+                    <div class="compact-preview-box">
+                      <a-image v-if="localSourcePreview" :src="localSourcePreview" alt="本地原图预览" />
+                      <a-empty v-else description="需要单张复检时选择图片" />
+                    </div>
+                    <div class="path-text">
+                      {{ selectedFile?.name || `支持单张图片，建议小于 ${MAX_UPLOAD_SIZE_MB}MB` }}
+                    </div>
+                  </div>
+
+                  <div class="image-check-actions">
+                    <div class="path-text">
+                      图片质检复用设置中的工序计划、检测标准、检验人和备注，结果会在下方归档详情里展示。
+                    </div>
+                    <div class="camera-actions compact-actions">
+                      <a-button @click="resetImageInspection">清空图片</a-button>
+                      <a-button type="primary" :loading="detecting" @click="handleOfflineDetect">上传并检测</a-button>
+                    </div>
+                  </div>
+                </div>
+
+                <a-card size="small" title="归档结果详情" class="image-result-card">
+                  <QcDetectionResultPanel
+                    v-model:close-remark="closeRemark"
+                    :detail-loading="detailLoading"
+                    :active-record="activeRecord"
+                    :detection-result="detectionResult"
+                    :active-plan-step="selectedMonitorPlanStep"
+                    :current-judge="currentJudge"
+                    :current-confidence="currentConfidence"
+                    :current-defect-type="currentDefectType"
+                    :current-result-value="currentResultValue"
+                    :source-preview-url="streamSnapshotSourcePreviewUrl || offlineSourcePreviewUrl"
+                    :result-preview-url="resultPreviewUrl"
+                    :source-image-path="sourceImagePath"
+                    :result-image-path="resultImagePath"
+                    :current-boxes="currentBoxes"
+                    :active-attachments="activeAttachments"
+                    :close-submitting="closeSubmitting"
+                    @review="openReviewModal"
+                    @close="handleCloseRecord"
+                  />
+                </a-card>
               </div>
             </a-card>
           </div>
-        </a-tab-pane>
-      </a-tabs>
     </div>
 
     <a-card class="page-card" :bordered="false" title="最近质检记录">
@@ -1349,6 +1236,127 @@ onBeforeUnmount(() => {
         </div>
       </div>
     </a-card>
+
+    <a-modal
+      v-model:open="settingsModalOpen"
+      title="实时质检设置"
+      width="760px"
+      :footer="null"
+      :force-render="true"
+    >
+      <a-form ref="monitorFormRef" :model="monitorForm" :rules="monitorRules" layout="vertical">
+        <div class="form-grid settings-form-grid">
+          <a-form-item label="工序计划" name="planStepId">
+            <a-select
+              v-model:value="monitorForm.planStepId"
+              :options="planStepOptions"
+              placeholder="请选择工序计划"
+              show-search
+              option-filter-prop="label"
+            />
+          </a-form-item>
+
+          <a-form-item label="检测标准（质检项）" name="qcItemId">
+            <a-select
+              v-model:value="monitorForm.qcItemId"
+              :options="qcItemOptions"
+              placeholder="请选择检测标准"
+              show-search
+              option-filter-prop="label"
+            />
+          </a-form-item>
+
+          <a-form-item label="摄像头" name="cameraId">
+            <a-select
+              v-model:value="monitorForm.cameraId"
+              :options="cameraOptions"
+              placeholder="请选择摄像头"
+              show-search
+              option-filter-prop="label"
+            />
+          </a-form-item>
+
+          <a-form-item label="检验人" name="inspector">
+            <a-input v-model:value="monitorForm.inspector" placeholder="请输入检验人" />
+          </a-form-item>
+
+          <a-form-item label="备注" name="remark" class="full-field">
+            <a-input v-model:value="monitorForm.remark" placeholder="可填写实时检测会话备注" />
+          </a-form-item>
+        </div>
+      </a-form>
+
+      <div class="motion-settings">
+        <div class="section-heading">移动补偿</div>
+        <div class="motion-settings-grid">
+          <a-form-item label="启用补偿">
+            <a-switch v-model:checked="motionCompensationEnabled" @change="redrawOverlay" />
+          </a-form-item>
+          <a-form-item label="移动方向">
+            <a-select
+              v-model:value="motionCompensationDirection"
+              :options="motionDirectionOptions"
+              @change="redrawOverlay"
+            />
+          </a-form-item>
+          <a-form-item label="像素速度">
+            <a-input-number
+              v-model:value="motionCompensationSpeed"
+              :min="0"
+              :max="3000"
+              :step="10"
+              addon-after="px/s"
+              style="width: 100%"
+              @change="redrawOverlay"
+            />
+          </a-form-item>
+          <div class="motion-readout">
+            <span>最近延迟</span>
+            <strong>{{ latestFrameLatency !== null ? `${latestFrameLatency} ms` : '-' }}</strong>
+          </div>
+          <div class="motion-readout">
+            <span>当前补偿</span>
+            <strong>{{ motionCompensationSummary }}</strong>
+          </div>
+        </div>
+        <div class="form-hint">按检测帧像素速度补偿：偏移距离 = 像素速度 × 最近延迟。</div>
+      </div>
+
+      <div class="settings-session">
+        <div class="section-heading">实时会话</div>
+        <a-descriptions :column="1" size="small" bordered>
+          <a-descriptions-item label="计划ID">{{ selectedMonitorPlanStep?.planId || '-' }}</a-descriptions-item>
+          <a-descriptions-item label="工序计划ID">{{ selectedMonitorPlanStep?.planStepId || '-' }}</a-descriptions-item>
+          <a-descriptions-item label="工序">{{ selectedMonitorPlanStep?.stepName || '未选择' }}</a-descriptions-item>
+          <a-descriptions-item label="当前摄像头">{{ selectedCamera?.cameraName || '未选择' }}</a-descriptions-item>
+          <a-descriptions-item label="摄像头类型">{{ selectedCamera?.cameraType || '-' }}</a-descriptions-item>
+          <a-descriptions-item label="会话 ID">{{ streamSession?.sessionId || '-' }}</a-descriptions-item>
+          <a-descriptions-item label="连接状态">{{ streamSocketStateLabel }}</a-descriptions-item>
+          <a-descriptions-item label="会话开始时间">{{ streamSession?.startedAt || '-' }}</a-descriptions-item>
+          <a-descriptions-item label="最近帧时间">{{ latestFrameTime || '-' }}</a-descriptions-item>
+          <a-descriptions-item label="推流频率">{{ STREAM_FRAME_INTERVAL_MS }}ms / 次</a-descriptions-item>
+          <a-descriptions-item label="提交链路">POST /api/qc-stream-sessions + WebSocket /ws/qc-stream/{sessionId}</a-descriptions-item>
+        </a-descriptions>
+        <a-card size="small" title="实时状态" class="settings-status-card">
+          <a-descriptions :column="1" size="small" bordered>
+            <a-descriptions-item label="状态">{{ streamStatusText }}</a-descriptions-item>
+            <a-descriptions-item label="错误信息">{{ streamErrorText || '-' }}</a-descriptions-item>
+            <a-descriptions-item label="实时消息数">{{ streamMessageCount }}</a-descriptions-item>
+            <a-descriptions-item label="最近延迟">
+              {{ latestFrameLatency !== null ? `${latestFrameLatency} ms` : '-' }}
+            </a-descriptions-item>
+            <a-descriptions-item label="当前帧大小">
+              {{ latestFramePayloadSize ? `${Math.round(latestFramePayloadSize / 1024)} KB` : '-' }}
+            </a-descriptions-item>
+            <a-descriptions-item label="渲染模式">{{ renderMode }}</a-descriptions-item>
+          </a-descriptions>
+        </a-card>
+        <div class="summary-actions">
+          <a-button size="small" :loading="cameraLoading" @click="reloadCameras">刷新摄像头列表</a-button>
+          <a-button size="small" @click="resetMonitorForm">重置实时模式</a-button>
+        </div>
+      </div>
+    </a-modal>
 
     <a-modal
       v-model:open="reviewModalOpen"
@@ -1390,20 +1398,54 @@ onBeforeUnmount(() => {
   padding: 0 0 4px;
 }
 
-.mode-tabs :deep(.ant-tabs-nav) {
-  margin-bottom: 16px;
+.settings-button {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
 }
 
-.mode-tabs :deep(.ant-tabs-tab) {
-  padding: 10px 18px;
-  border-radius: 999px;
-  background: #fff;
+.video-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.video-toolbar .section-heading {
+  margin-bottom: 0;
 }
 
 .workbench-grid {
   display: grid;
-  grid-template-columns: minmax(0, 1.06fr) minmax(0, 0.94fr);
+  grid-template-columns: minmax(0, 1.2fr) minmax(420px, 0.8fr);
+  align-items: stretch;
   gap: 16px;
+}
+
+.realtime-capture-card {
+  display: flex;
+  flex-direction: column;
+  min-height: 100%;
+}
+
+.realtime-capture-card :deep(.ant-card-body) {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+}
+
+.realtime-capture-card :deep(.ant-spin-nested-loading),
+.realtime-capture-card :deep(.ant-spin-container),
+.capture-workspace,
+.camera-section,
+.camera-preview {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+}
+
+.realtime-capture-card .capture-workspace {
+  justify-content: center;
 }
 
 .form-grid {
@@ -1416,12 +1458,70 @@ onBeforeUnmount(() => {
   grid-column: 1 / -1;
 }
 
-.upload-section,
+.image-check-section {
+  margin-top: 18px;
+  padding-top: 16px;
+  border-top: 1px solid rgba(145, 158, 171, 0.14);
+}
+
+.image-inspection-card {
+  grid-column: 1 / -1;
+}
+
+.image-inspection-card .image-check-section {
+  margin-top: 0;
+  padding-top: 0;
+  border-top: 0;
+}
+
+.image-check-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 0.9fr) minmax(220px, 0.7fr);
+  gap: 16px;
+}
+
+.image-check-actions {
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  min-height: 100%;
+}
+
+.image-result-card {
+  margin-top: 16px;
+}
+
+.compact-preview-box {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 160px;
+  margin-top: 10px;
+  border: 1px dashed rgba(145, 158, 171, 0.35);
+  border-radius: 12px;
+  background: #f8fafc;
+  overflow: hidden;
+}
+
+.compact-actions {
+  justify-content: flex-end;
+}
+
 .camera-section {
   display: grid;
-  grid-template-columns: minmax(0, 1.05fr) minmax(280px, 0.75fr);
+  grid-template-columns: minmax(0, 1fr) minmax(280px, 0.72fr);
   gap: 16px;
   margin-top: 4px;
+}
+
+.realtime-capture-card .camera-section {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+}
+
+.camera-preview {
+  grid-column: 1 / -1;
 }
 
 .section-heading {
@@ -1435,7 +1535,6 @@ onBeforeUnmount(() => {
   margin-bottom: 16px;
 }
 
-.preview-box,
 .image-frame,
 .video-frame {
   display: flex;
@@ -1451,7 +1550,8 @@ onBeforeUnmount(() => {
 
 .video-frame {
   position: relative;
-  min-height: 360px;
+  height: clamp(420px, calc(100vh - 420px), 560px);
+  min-height: 0;
   background: radial-gradient(circle at top left, rgba(59, 130, 246, 0.18), transparent 38%),
     linear-gradient(145deg, #111827, #293241);
 }
@@ -1459,7 +1559,7 @@ onBeforeUnmount(() => {
 .video-frame video {
   width: 100%;
   height: 100%;
-  min-height: 360px;
+  min-height: 0;
   object-fit: contain;
 }
 
@@ -1496,7 +1596,7 @@ onBeforeUnmount(() => {
   display: none;
 }
 
-:deep(.preview-box img),
+:deep(.compact-preview-box img),
 :deep(.image-frame img) {
   width: 100%;
   height: 100%;
@@ -1514,6 +1614,63 @@ onBeforeUnmount(() => {
 
 .summary-actions {
   justify-content: flex-end;
+}
+
+.settings-session {
+  margin-top: 18px;
+  padding-top: 16px;
+  border-top: 1px solid rgba(145, 158, 171, 0.14);
+}
+
+.motion-settings {
+  margin-top: 18px;
+  padding-top: 16px;
+  border-top: 1px solid rgba(145, 158, 171, 0.14);
+}
+
+.motion-settings-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+  align-items: end;
+}
+
+.motion-settings-grid :deep(.ant-form-item) {
+  margin-bottom: 0;
+}
+
+.motion-readout {
+  min-height: 56px;
+  padding: 8px 12px;
+  border: 1px solid rgba(145, 158, 171, 0.16);
+  border-radius: 8px;
+  background: #f8fafc;
+}
+
+.motion-readout span {
+  display: block;
+  margin-bottom: 6px;
+  color: #667085;
+  font-size: 12px;
+}
+
+.motion-readout strong {
+  color: #172033;
+  font-size: 15px;
+}
+
+.form-hint {
+  margin-top: 10px;
+  color: #667085;
+  font-size: 12px;
+}
+
+.settings-session :deep(.ant-descriptions-item-content) {
+  word-break: break-word;
+}
+
+.settings-status-card {
+  margin-top: 14px;
 }
 
 .submit-row {
@@ -1607,8 +1764,8 @@ onBeforeUnmount(() => {
 
 @media (max-width: 1280px) {
   .workbench-grid,
-  .upload-section,
   .camera-section,
+  .image-check-grid,
   .image-grid {
     grid-template-columns: 1fr;
   }
@@ -1620,6 +1777,7 @@ onBeforeUnmount(() => {
 
 @media (max-width: 900px) {
   .form-grid,
+  .motion-settings-grid,
   .recent-list {
     grid-template-columns: 1fr;
   }

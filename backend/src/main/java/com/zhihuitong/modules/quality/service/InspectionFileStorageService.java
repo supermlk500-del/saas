@@ -9,6 +9,7 @@ import org.springframework.web.multipart.MultipartFile;
 
 import java.io.IOException;
 import java.awt.image.BufferedImage;
+import java.nio.file.StandardOpenOption;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.StandardCopyOption;
@@ -32,6 +33,10 @@ public class InspectionFileStorageService {
 
     public StoredInspectionFile storeSourceImage(MultipartFile file) {
         return store(file, Path.of(storageProperties.getUploadRoot()), "photo/upload", "source");
+    }
+
+    public StoredInspectionFile storeSourceImage(byte[] imageBytes, String extension) {
+        return store(imageBytes, Path.of(storageProperties.getUploadRoot()), "photo/upload", "source", extension);
     }
 
     public StoredInspectionFile prepareResultImageTarget(String extension) {
@@ -71,6 +76,24 @@ public class InspectionFileStorageService {
         try {
             Files.createDirectories(targetFile.getAbsolutePath().getParent());
             Files.copy(file.getInputStream(), targetFile.getAbsolutePath(), StandardCopyOption.REPLACE_EXISTING);
+        } catch (IOException exception) {
+            throw new BusinessException(500, "Failed to store inspection file: " + exception.getMessage());
+        }
+        return targetFile;
+    }
+
+    private StoredInspectionFile store(byte[] imageBytes,
+                                       Path rootPath,
+                                       String relativePrefix,
+                                       String logicalPrefix,
+                                       String extension) {
+        if (imageBytes == null || imageBytes.length == 0) {
+            throw new BusinessException(400, "image bytes must not be empty");
+        }
+        StoredInspectionFile targetFile = prepareTarget(rootPath, relativePrefix, logicalPrefix, extension);
+        try {
+            Files.createDirectories(targetFile.getAbsolutePath().getParent());
+            Files.write(targetFile.getAbsolutePath(), imageBytes, StandardOpenOption.CREATE, StandardOpenOption.TRUNCATE_EXISTING);
         } catch (IOException exception) {
             throw new BusinessException(500, "Failed to store inspection file: " + exception.getMessage());
         }

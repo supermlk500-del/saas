@@ -125,6 +125,15 @@ public class QcStreamSessionService {
         response.setResultValue(detectResult.getResultValue());
         response.setBoxes(detectResult.getBoxes());
         response.setRenderMode("overlay");
+        response.setAutoSaved(false);
+
+        InspectionIntegrationResultVo savedResult = autoSaveDefectFrameIfNeeded(context, frameBytes, response.getFrameTime(), detectResult, now);
+        if (savedResult != null) {
+            response.setInspectionId(savedResult.getInspectionId());
+            response.setImageUrl(savedResult.getImageUrl());
+            response.setSourceImageUrl(savedResult.getSourceImageUrl());
+            response.setAutoSaved(true);
+        }
 
         context.setLatestResult(response);
         context.setLastProcessedAt(now);
@@ -205,5 +214,47 @@ public class QcStreamSessionService {
 
     private void touch(QcStreamSessionContext context) {
         context.setLastActiveAt(LocalDateTime.now());
+    }
+
+    private InspectionIntegrationResultVo autoSaveDefectFrameIfNeeded(QcStreamSessionContext context,
+                                                                      byte[] frameBytes,
+                                                                      LocalDateTime frameTime,
+                                                                      YoloDetectResult detectResult,
+                                                                      LocalDateTime now) {
+        if (!isDefectFrame(detectResult) || !autoSaveIntervalElapsed(context, now)) {
+            return null;
+        }
+        context.setLastAutoSavedAt(now);
+        try {
+            return inspectionIntegrationService.persistStreamDetection(
+                    context,
+                    frameBytes,
+                    frameTime,
+                    detectResult
+            );
+        } catch (RuntimeException exception) {
+            log.warn("Failed to auto-save QC stream defect frame: sessionId={}, message={}",
+                    context.getSessionId(),
+                    exception.getMessage());
+            return null;
+        }
+    }
+
+    private boolean isDefectFrame(YoloDetectResult detectResult) {
+        if (detectResult == null) {
+            return false;
+        }
+        if ("FAIL".equalsIgnoreCase(detectResult.getResultJudge()) || "RECHECK".equalsIgnoreCase(detectResult.getResultJudge())) {
+            return true;
+        }
+        return detectResult.getBoxes() != null && !detectResult.getBoxes().isEmpty();
+    }
+
+    private boolean autoSaveIntervalElapsed(QcStreamSessionContext context, LocalDateTime now) {
+        if (context.getLastAutoSavedAt() == null) {
+            return true;
+        }
+        long elapsedMillis = java.time.Duration.between(context.getLastAutoSavedAt(), now).toMillis();
+        return elapsedMillis >= qcStreamProperties.getAutoSaveDefectIntervalMs();
     }
 }
