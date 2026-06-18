@@ -122,18 +122,14 @@ const searchFields = [
 ]
 
 const columns = [
-  { title: '计划ID', dataIndex: 'planId', key: 'planId', width: 100 },
-  { title: '订单号', dataIndex: 'orderNo', key: 'orderNo', width: 160 },
-  { title: '客户', dataIndex: 'customerName', key: 'customerName', width: 180 },
-  { title: '产品/规格', dataIndex: 'productSummary', key: 'productSummary', width: 220 },
-  { title: '批次编号', dataIndex: 'batchNo', key: 'batchNo', width: 180 },
-  { title: '路线名称', dataIndex: 'routeName', key: 'routeName', width: 180 },
-  { title: '计划开始', dataIndex: 'planStartTime', key: 'planStartTime', width: 180 },
-  { title: '计划结束', dataIndex: 'planEndTime', key: 'planEndTime', width: 180 },
-  { title: '状态', dataIndex: 'status', key: 'status', width: 120 },
-  { title: '创建时间', dataIndex: 'createTime', key: 'createTime', width: 180 },
-  { title: '备注', dataIndex: 'remark', key: 'remark' },
-  { title: '操作', key: 'action', width: 320, fixed: 'right' as const },
+  { title: '计划ID', dataIndex: 'planId', key: 'planId', width: 96 },
+  { title: '订单信息', key: 'orderSummary', width: 142 },
+  { title: '生产对象', key: 'productionTarget', width: 190 },
+  { title: '工艺路线', dataIndex: 'routeName', key: 'routeName', width: 148 },
+  { title: '计划时段', key: 'scheduleWindow', width: 190 },
+  { title: '状态', dataIndex: 'status', key: 'status', width: 78 },
+  { title: '备注', dataIndex: 'remark', key: 'remark', width: 126 },
+  { title: '操作', key: 'action', width: 120 },
 ]
 
 const planStepColumns = [
@@ -147,6 +143,14 @@ const planStepColumns = [
   { title: '备注', dataIndex: 'remark', key: 'remark' },
   { title: '操作', key: 'action', width: 220 },
 ]
+
+const formatShortId = (value?: IdValue) => {
+  const text = String(value ?? '')
+  if (!text) {
+    return '-'
+  }
+  return text.length > 10 ? `...${text.slice(-8)}` : text
+}
 
 const { data, loading, pagination } = useTable<ProductionPlanItem>()
 const displayRows = computed(() =>
@@ -704,7 +708,15 @@ onMounted(() => {
 </script>
 
 <template>
-  <TablePage title="生产计划" :columns="columns" :data="displayRows" :loading="loading" :pagination="pagination">
+  <TablePage
+    title="生产计划"
+    :columns="columns"
+    :data="displayRows"
+    :loading="loading"
+    :pagination="pagination"
+    table-layout="fixed"
+    class="production-plan-page"
+  >
     <template #search>
       <SearchBar :model="searchForm" :fields="searchFields" @search="loadData" @reset="resetSearch" />
     </template>
@@ -714,26 +726,51 @@ onMounted(() => {
     </template>
 
     <template #bodyCell="{ column, record }">
-      <template v-if="column.key === 'orderNo'">
-        {{ record.orderNo || '-' }}
+      <template v-if="column.key === 'planId'">
+        <a-tooltip :title="String(record.planId)">
+          <span class="plan-id">{{ formatShortId(record.planId) }}</span>
+        </a-tooltip>
       </template>
-      <template v-else-if="column.key === 'customerName'">
-        {{ record.customerName || '-' }}
+      <template v-else-if="column.key === 'orderSummary'">
+        <a-tooltip :title="[record.orderNo, record.customerName].filter(Boolean).join(' / ') || '-'">
+          <div class="plan-stacked-cell">
+            <strong>{{ record.orderNo || '-' }}</strong>
+            <span>{{ record.customerName || '未记录客户' }}</span>
+          </div>
+        </a-tooltip>
       </template>
-      <template v-else-if="column.key === 'productSummary'">
-        {{ [record.productCode || record.productName, record.specification, record.color].filter(Boolean).join(' / ') || '-' }}
-      </template>
-      <template v-else-if="column.key === 'batchNo'">
-        {{ record.batchNo || '-' }}
+      <template v-else-if="column.key === 'productionTarget'">
+        <a-tooltip
+          :title="[
+            [record.productCode || record.productName, record.specification, record.color].filter(Boolean).join(' / '),
+            record.batchNo,
+          ].filter(Boolean).join('；') || '-'"
+        >
+          <div class="plan-stacked-cell">
+            <strong>
+              {{ [record.productCode || record.productName, record.specification, record.color].filter(Boolean).join(' / ') || '-' }}
+            </strong>
+            <span>批次 {{ record.batchNo || '-' }}</span>
+          </div>
+        </a-tooltip>
       </template>
       <template v-else-if="column.key === 'routeName'">
-        {{ record.routeName || '-' }}
+        <a-tooltip :title="record.routeName || '-'">
+          <span class="cell-text cell-text-two-line">{{ record.routeName || '-' }}</span>
+        </a-tooltip>
       </template>
-      <template v-else-if="column.key === 'planEndTime'">
-        {{ record.planEndTime || '-' }}
-      </template>
-      <template v-else-if="column.key === 'createTime'">
-        {{ record.createTime || '-' }}
+      <template v-else-if="column.key === 'scheduleWindow'">
+        <div class="plan-time-stack">
+          <a-tooltip :title="record.planStartTime || '-'">
+            <span><em>开始</em>{{ record.planStartTime || '-' }}</span>
+          </a-tooltip>
+          <a-tooltip :title="record.planEndTime || '-'">
+            <span><em>结束</em>{{ record.planEndTime || '-' }}</span>
+          </a-tooltip>
+          <a-tooltip :title="record.createTime || '-'">
+            <span><em>创建</em>{{ record.createTime || '-' }}</span>
+          </a-tooltip>
+        </div>
       </template>
       <template v-else-if="column.key === 'status'">
         <a-tag :color="getPlanStatusMeta(record.status)?.color">
@@ -741,16 +778,18 @@ onMounted(() => {
         </a-tag>
       </template>
       <template v-else-if="column.key === 'remark'">
-        {{ record.remark || '-' }}
+        <a-tooltip :title="record.remark || '-'">
+          <span class="cell-text cell-text-two-line">{{ record.remark || '-' }}</span>
+        </a-tooltip>
       </template>
       <template v-else-if="column.key === 'action'">
-        <a-space>
-          <a-button type="link" @click="openDetailDrawer(record)">详情</a-button>
-          <a-button type="link" @click="openEditModal(record)">编辑</a-button>
-          <a-button type="link" @click="openStatusModal(record)">状态</a-button>
-          <a-button type="link" @click="openRescheduleModal(record)">重排</a-button>
-          <a-button type="link" @click="jumpToGantt(record)">甘特图</a-button>
-        </a-space>
+        <div class="plan-action-grid">
+          <a-button type="link" size="small" @click="openDetailDrawer(record)">详情</a-button>
+          <a-button type="link" size="small" @click="openEditModal(record)">编辑</a-button>
+          <a-button type="link" size="small" @click="openStatusModal(record)">状态</a-button>
+          <a-button type="link" size="small" @click="openRescheduleModal(record)">重排</a-button>
+          <a-button type="link" size="small" @click="jumpToGantt(record)">甘特图</a-button>
+        </div>
       </template>
     </template>
   </TablePage>
@@ -1079,6 +1118,116 @@ onMounted(() => {
 
 .plan-step-table {
   margin-top: 8px;
+}
+
+.plan-id,
+.cell-nowrap,
+.cell-time,
+.cell-text {
+  display: block;
+  min-width: 0;
+  color: #1e293b;
+  line-height: 1.45;
+  word-break: keep-all;
+  overflow-wrap: normal;
+}
+
+.plan-id {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: 13px;
+  color: #334155;
+  white-space: nowrap;
+}
+
+.cell-nowrap,
+.cell-time {
+  white-space: nowrap;
+}
+
+.cell-time {
+  font-size: 13px;
+}
+
+.cell-text {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.cell-text-two-line {
+  display: -webkit-box;
+  white-space: normal;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+}
+
+.production-plan-page :deep(.ant-table-content) {
+  overflow-x: clip !important;
+}
+
+.plan-stacked-cell {
+  display: grid;
+  min-width: 0;
+  gap: 4px;
+}
+
+.plan-stacked-cell strong,
+.plan-stacked-cell span {
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.plan-stacked-cell span {
+  color: #64748b;
+  font-size: 12px;
+}
+
+.plan-time-stack {
+  display: grid;
+  gap: 3px;
+  font-size: 12px;
+}
+
+.plan-time-stack span {
+  display: grid;
+  grid-template-columns: 36px 1fr;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.plan-time-stack em {
+  color: #94a3b8;
+  font-style: normal;
+}
+
+.plan-action-grid {
+  display: grid;
+  grid-template-columns: repeat(3, max-content);
+  gap: 4px 8px;
+  align-items: center;
+}
+
+.plan-action-grid :deep(.ant-btn) {
+  height: 24px;
+  padding: 0;
+  line-height: 24px;
+}
+
+:deep(.ant-table-wrapper .ant-table-thead > tr > th),
+:deep(.ant-table-wrapper .ant-table-tbody > tr > td) {
+  padding: 14px 12px;
+  vertical-align: middle;
+  word-break: keep-all;
+}
+
+:deep(.ant-table-wrapper .ant-table-thead > tr > th) {
+  white-space: nowrap;
+}
+
+:deep(.ant-table-wrapper .ant-table-tbody > tr > td) {
+  overflow-wrap: normal;
 }
 
 .form-grid {

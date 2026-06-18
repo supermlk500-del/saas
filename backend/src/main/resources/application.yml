@@ -40,13 +40,13 @@ logging:
 
 inspection:
   storage:
-    upload-root: D:\lhr\Desktop\saas\photo\upload
-    result-root: D:\lhr\Desktop\saas\photo\results
+    upload-root: /app/data/upload
+    result-root: /app/data/results
 
 ai:
   yolo:
     enabled: true
-    model-path: D:\lhr\Desktop\saas\docs\best.onnx
+    model-path: /app/docs/best.onnx
     conf-threshold: 0.5
     iou-threshold: 0.45
     video-conf-threshold: 0.25

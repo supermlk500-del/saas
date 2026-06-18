@@ -1,6 +1,6 @@
 # Zhihuitong Backend
 
-Initial backend scaffold for `Zhihuitong` based on `Spring Boot + MyBatis-Plus + MySQL`.
+Java backend for Zhihuitong, based on Spring Boot, MyBatis-Plus, MySQL, WebSocket, and ONNX Runtime.
 
 ## Conventions
 
@@ -12,7 +12,7 @@ Initial backend scaffold for `Zhihuitong` based on `Spring Boot + MyBatis-Plus +
 ## Run locally
 
 1. Create database `zhihuitong`
-2. Import `zhihuitong_db.sql` from the repository root
+2. Import `../docs/zhihuitong.sql`
 3. Set environment variables if needed:
    - `MYSQL_HOST`
    - `MYSQL_PORT`
@@ -25,19 +25,25 @@ Initial backend scaffold for `Zhihuitong` based on `Spring Boot + MyBatis-Plus +
 mvn spring-boot:run
 ```
 
-## Included in this scaffold
+## Implemented modules
 
-- Spring Boot app bootstrap
-- MyBatis-Plus pagination config
-- Global exception handler
-- Unified response model
-- CORS config
-- Health check endpoint
-- Placeholder auth endpoints compatible with the current frontend flow
+- Order and order-item management
+- Batch resource pool
+- Process routes, process steps, machines, and capabilities
+- Production planning and scheduling
+- Offline image and realtime WebSocket quality inspection
+- Exception and rework workflow
+- Unified response, validation, pagination, CORS, and health checks
+
+## Current boundaries
+
+- No authentication or authorization module is implemented yet
+- Database schema changes are not managed by Flyway or Liquibase
+- Production deployment and CI/CD configuration are not included
 
 ## Suggested next steps
 
-- Replace placeholder auth with JWT-based auth
-- Split business modules by controller/service/mapper/entity
+- Add authentication and role-based authorization
 - Add Flyway or Liquibase for schema migrations
-- Implement real database-backed APIs
+- Add integration tests for the main order-to-quality workflow
+- Add production deployment and CI/CD configuration

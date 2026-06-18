@@ -45,7 +45,10 @@ import java.util.List;
 import java.util.Map;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
@@ -423,5 +426,55 @@ class OrderServiceTest {
         assertThat(row.getActivePlanCount()).isEqualTo(1L);
         assertThat(row.isReadyForSchedule()).isFalse();
         assertThat(row.getScheduleBlockedReason()).contains("active production plan");
+    }
+
+    @Test
+    void deleteShouldRemoveCancelledPlansAndOrder() {
+        OrderInfo orderInfo = new OrderInfo();
+        orderInfo.setOrderId(101L);
+
+        ProductionPlan cancelledPlan = new ProductionPlan();
+        cancelledPlan.setPlanId(501L);
+        cancelledPlan.setOrderId(101L);
+        cancelledPlan.setStatus("CANCELLED");
+
+        PlanStep planStep = new PlanStep();
+        planStep.setPlanStepId(701L);
+        planStep.setPlanId(501L);
+
+        when(orderInfoMapper.selectById(101L)).thenReturn(orderInfo);
+        when(productionPlanMapper.selectList(any())).thenReturn(List.of(cancelledPlan));
+        when(planStepMapper.selectList(any())).thenReturn(List.of(planStep));
+        when(qcRecordMapper.selectCount(any())).thenReturn(0L);
+        when(exceptionRecordMapper.selectCount(any())).thenReturn(0L);
+
+        orderService.delete(101L);
+
+        verify(planStepMapper).delete(any());
+        verify(productionPlanMapper).delete(any());
+        verify(orderBatchLinkMapper).delete(any());
+        verify(orderItemMapper).delete(any());
+        verify(orderInfoMapper).deleteById(101L);
+    }
+
+    @Test
+    void deleteShouldRejectActiveOrCompletedPlans() {
+        OrderInfo orderInfo = new OrderInfo();
+        orderInfo.setOrderId(101L);
+
+        ProductionPlan completedPlan = new ProductionPlan();
+        completedPlan.setPlanId(501L);
+        completedPlan.setOrderId(101L);
+        completedPlan.setStatus("COMPLETED");
+
+        when(orderInfoMapper.selectById(101L)).thenReturn(orderInfo);
+        when(productionPlanMapper.selectList(any())).thenReturn(List.of(completedPlan));
+
+        assertThatThrownBy(() -> orderService.delete(101L))
+                .hasMessageContaining("active or completed production plans");
+
+        verify(planStepMapper, never()).delete(any());
+        verify(productionPlanMapper, never()).delete(any());
+        verify(orderInfoMapper, never()).deleteById(101L);
     }
 }

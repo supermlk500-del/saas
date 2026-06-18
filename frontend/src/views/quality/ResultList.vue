@@ -51,17 +51,14 @@ const searchFields = computed(() => [
 ])
 
 const columns = [
-  { title: '记录ID', dataIndex: 'inspectionId', key: 'inspectionId', width: 100 },
-  { title: '工序计划ID', dataIndex: 'planStepId', key: 'planStepId', width: 120 },
-  { title: '质检项', dataIndex: 'qcItemId', key: 'qcItemId', width: 170 },
-  { title: '检测方式', dataIndex: 'inspectType', key: 'inspectType', width: 110 },
-  { title: '摄像头ID', dataIndex: 'cameraId', key: 'cameraId', width: 100 },
-  { title: '置信度', dataIndex: 'confidenceScore', key: 'confidenceScore', width: 100 },
-  { title: '结果值', dataIndex: 'resultValue', key: 'resultValue', width: 160 },
-  { title: '判定', dataIndex: 'resultJudge', key: 'resultJudge', width: 110 },
-  { title: '检验人', dataIndex: 'inspector', key: 'inspector', width: 120 },
-  { title: '检测时间', dataIndex: 'inspectTime', key: 'inspectTime', width: 180 },
-  { title: '操作', key: 'action', width: 190, fixed: 'right' as const },
+  { title: '记录ID', dataIndex: 'inspectionId', key: 'inspectionId', width: 84 },
+  { title: '工序计划ID', dataIndex: 'planStepId', key: 'planStepId', width: 104 },
+  { title: '质检项', dataIndex: 'qcItemId', key: 'qcItemId', width: 156 },
+  { title: '检测方式', dataIndex: 'inspectType', key: 'inspectType', width: 92 },
+  { title: '检测信息', key: 'detectionMeta', width: 122 },
+  { title: '检测结果', key: 'resultSummary', width: 180 },
+  { title: '检验信息', key: 'inspectionMeta', width: 168 },
+  { title: '操作', key: 'action', width: 88 },
 ]
 
 const { data, loading, pagination } = useTable<QcRecordItem>()
@@ -259,41 +256,59 @@ onMounted(async () => {
 </script>
 
 <template>
-  <TablePage title="质检结果" :columns="columns" :data="data" :loading="loading" :pagination="pagination" row-key="inspectionId" :scroll="{ x: 1480 }">
+  <TablePage
+    title="质检结果"
+    :columns="columns"
+    :data="data"
+    :loading="loading"
+    :pagination="pagination"
+    row-key="inspectionId"
+    table-layout="fixed"
+    class="iqc-result-page"
+  >
     <template #search>
       <SearchBar :model="searchForm" :fields="searchFields" @search="loadData" @reset="resetSearch" />
     </template>
 
     <template #bodyCell="{ column, record }">
       <template v-if="column.key === 'qcItemId'">
-        {{ getQcItemLabel(record.qcItemId) }}
+        <a-tooltip :title="getQcItemLabel(record.qcItemId)" placement="topLeft">
+          <span class="single-line-cell">{{ getQcItemLabel(record.qcItemId) }}</span>
+        </a-tooltip>
       </template>
       <template v-else-if="column.key === 'inspectType'">
         {{ getInspectTypeLabel(record.inspectType) }}
       </template>
-      <template v-else-if="column.key === 'cameraId'">
-        {{ record.cameraId ?? '-' }}
+      <template v-else-if="column.key === 'detectionMeta'">
+        <div class="stacked-meta">
+          <span><em>摄像头</em>{{ record.cameraId ?? '-' }}</span>
+          <span><em>置信度</em>{{ record.confidenceScore ?? '-' }}</span>
+        </div>
       </template>
-      <template v-else-if="column.key === 'confidenceScore'">
-        {{ record.confidenceScore ?? '-' }}
+      <template v-else-if="column.key === 'resultSummary'">
+        <div class="result-summary-cell">
+          <a-tooltip :title="record.resultValue || '-'">
+            <span class="result-value">{{ record.resultValue || '-' }}</span>
+          </a-tooltip>
+          <a-tag :color="getJudgeMeta(record.resultJudge)?.color">
+            {{ getJudgeMeta(record.resultJudge)?.label || record.resultJudge || '-' }}
+          </a-tag>
+        </div>
       </template>
-      <template v-else-if="column.key === 'resultValue'">
-        {{ record.resultValue || '-' }}
-      </template>
-      <template v-else-if="column.key === 'resultJudge'">
-        <a-tag :color="getJudgeMeta(record.resultJudge)?.color">
-          {{ getJudgeMeta(record.resultJudge)?.label || record.resultJudge }}
-        </a-tag>
-      </template>
-      <template v-else-if="column.key === 'inspectTime'">
-        {{ formatDateTime(record.inspectTime) }}
+      <template v-else-if="column.key === 'inspectionMeta'">
+        <div class="inspection-meta">
+          <strong>{{ record.inspector || '未记录检验人' }}</strong>
+          <a-tooltip :title="formatDateTime(record.inspectTime)">
+            <span>{{ formatDateTime(record.inspectTime) }}</span>
+          </a-tooltip>
+        </div>
       </template>
       <template v-else-if="column.key === 'action'">
-        <a-space>
-          <a-button type="link" @click="openDetailDrawer(record)">详情</a-button>
-          <a-button type="link" @click="openReviewModal(record)">复核</a-button>
-          <a-button type="link" @click="openCloseModal(record)">关闭</a-button>
-        </a-space>
+        <div class="result-actions">
+          <a-button type="link" size="small" @click="openDetailDrawer(record)">详情</a-button>
+          <a-button type="link" size="small" @click="openReviewModal(record)">复核</a-button>
+          <a-button type="link" size="small" @click="openCloseModal(record)">关闭</a-button>
+        </div>
       </template>
     </template>
   </TablePage>
@@ -421,6 +436,79 @@ onMounted(async () => {
 </template>
 
 <style scoped>
+.iqc-result-page :deep(.ant-table-cell) {
+  overflow-wrap: normal;
+  word-break: normal;
+}
+
+.iqc-result-page :deep(.ant-table-content) {
+  overflow-x: clip !important;
+}
+
+.iqc-result-page :deep(.ant-table-tbody > tr > td) {
+  padding-top: 12px;
+  padding-bottom: 12px;
+  vertical-align: middle;
+}
+
+.single-line-cell,
+.result-value {
+  display: block;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.stacked-meta,
+.inspection-meta {
+  display: grid;
+  gap: 4px;
+  font-size: 12px;
+}
+
+.stacked-meta span {
+  display: grid;
+  grid-template-columns: 50px 1fr;
+}
+
+.stacked-meta em {
+  color: #94a3b8;
+  font-style: normal;
+}
+
+.result-summary-cell {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 6px;
+}
+
+.result-summary-cell .ant-tag {
+  margin-inline-end: 0;
+}
+
+.inspection-meta strong,
+.inspection-meta span {
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.inspection-meta span {
+  color: #64748b;
+}
+
+.result-actions {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  column-gap: 6px;
+}
+
+.result-actions :deep(.ant-btn) {
+  height: 26px;
+  padding-inline: 0;
+}
+
 .detail-layout {
   display: flex;
   flex-direction: column;

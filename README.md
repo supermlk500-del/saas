@@ -53,9 +53,7 @@
 
 ## 项目目录怎么理解
 
-项目根目录：
-
-`C:\Users\lhr\Desktop\saas`
+项目根目录就是当前仓库目录。文档和业务数据路径优先使用仓库相对路径，避免绑定某一台电脑。
 
 主要目录说明：
 
@@ -78,11 +76,6 @@
   - 存放质检图片
   - `upload/`：原始上传图
   - `results/`：后端生成的结果图
-
-- `python-backend/`
-  - 历史遗留目录
-  - 当前正式运行方案 **不依赖** 这个目录
-  - 现在质检推理由 Java 后端内部 ONNX Runtime 完成
 
 ---
 
@@ -107,9 +100,11 @@
 
 ### 模型
 
-当前质检模型路径：
+当前质检模型位于：
 
-`C:\Users\lhr\Desktop\saas\docs\best.onnx`
+`docs/best.onnx`
+
+后端实际加载路径以 `backend/src/main/resources/application.yml` 中的 `ai.yolo.model-path` 为准。
 
 ---
 
@@ -165,17 +160,11 @@
 
 ### 2. 导入 SQL
 
-建议优先使用：
+导入：
 
 - `docs/zhihuitong.sql`
-- `docs/order_schema_upgrade.sql`
 
-建议导入顺序：
-
-1. 先导入 `docs/zhihuitong.sql` 作为 14 张基础表基线
-2. 再执行 `docs/order_schema_upgrade.sql`，补齐 `orderinfo`、`orderitem`、`orderbatchlink`，以及 `productionplan.orderId / orderItemId`
-
-当前后端代码已经依赖上述订单域增量结构；如果只导入 `docs/zhihuitong.sql`，订单、订单排产池、订单详情聚合等功能不会完整可用。
+该文件当前包含 17 张表，已经覆盖 `orderinfo`、`orderitem`、`orderbatchlink`，以及带订单关联字段的 `productionplan`。仓库中不存在独立的 `docs/order_schema_upgrade.sql`，无需执行第二份升级脚本。
 
 ---
 
@@ -247,10 +236,12 @@ http://localhost:8080
 - ONNX 模型路径
 - WebSocket 视频流检测配置
 
-当前默认图片路径：
+当前默认图片目录位于仓库的：
 
-- 原图：`C:\Users\lhr\Desktop\saas\photo\upload`
-- 结果图：`C:\Users\lhr\Desktop\saas\photo\results`
+- 原图：`photo/upload`
+- 结果图：`photo/results`
+
+物理路径以 `application.yml` 的 `inspection.storage` 配置为准，迁移工作区后需要同步调整配置或通过环境配置覆盖。
 
 ---
 
@@ -361,27 +352,15 @@ http://localhost:8080
 
 ## 你可能最容易困惑的几个点
 
-### 1. 为什么有 `python-backend` 目录，但现在又不用它？
+### 1. 这个系统是订单驱动还是批次驱动？
 
-因为这个项目中途经历过方案调整。
+当前采用的是：
 
-现在最终采用的是：
+**订单驱动计划 + 批次驱动执行**
 
-**Java 后端 + ONNX Runtime 本地推理**
+订单和订单明细定义生产需求，订单与来料批次完成资源分配后进入排产；生产计划、工序执行、质检和异常则围绕具体批次展开。
 
-所以 `python-backend/` 只是历史遗留目录，不是当前主运行方案。
-
-### 2. 这个系统是订单驱动还是批次驱动？
-
-当前核心主链路更偏向：
-
-**来料批次驱动**
-
-也就是说，现在主要是根据来料批次做排产和质检，不是完整订单驱动系统。
-
-订单管理在当前版本中不是最核心的已落地主链路。
-
-### 3. 为什么有些页面看起来比另一些页面更完整？
+### 2. 为什么有些页面看起来比另一些页面更完整？
 
 因为当前版本是按“主业务链路优先”做的。
 

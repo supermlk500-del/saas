@@ -6,6 +6,7 @@ import {
   createProcessStep,
   createRouteStep,
   deleteProcessRoute,
+  deleteProcessStep,
   patchProcessStepStatus,
   fetchProcesses,
   fetchProcessSteps,
@@ -75,12 +76,12 @@ const searchFields = [
 ]
 
 const columns = [
-  { title: '路线ID', dataIndex: 'routeId', key: 'routeId', width: 120 },
-  { title: '路线名称', dataIndex: 'routeName', key: 'routeName', width: 240 },
+  { title: '路线ID', dataIndex: 'routeId', key: 'routeId', width: 90, responsive: ['xl'] },
+  { title: '路线名称', dataIndex: 'routeName', key: 'routeName', width: 190 },
   { title: '描述', dataIndex: 'description', key: 'description' },
-  { title: '启用状态', dataIndex: 'isActive', key: 'isActive', width: 120 },
-  { title: '创建时间', dataIndex: 'createTime', key: 'createTime', width: 180 },
-  { title: '操作', key: 'action', width: 300, fixed: 'right' as const },
+  { title: '启用状态', dataIndex: 'isActive', key: 'isActive', width: 90, align: 'center' as const },
+  { title: '创建时间', dataIndex: 'createTime', key: 'createTime', width: 160 },
+  { title: '操作', key: 'action', width: 220 },
 ]
 
 const routeStepColumns = [
@@ -99,7 +100,7 @@ const processStepColumns = [
   { title: '默认顺序', dataIndex: 'sortOrder', key: 'sortOrder', width: 100 },
   { title: '默认工时', dataIndex: 'defaultHours', key: 'defaultHours', width: 100 },
   { title: '启用状态', dataIndex: 'isActive', key: 'isActive', width: 100 },
-  { title: '操作', key: 'action', width: 180 },
+  { title: '操作', key: 'action', width: 230 },
 ]
 
 const { data, loading, pagination } = useTable<ProcessRouteItem>()
@@ -454,13 +455,27 @@ const handlePatchProcessStepStatus = async (record: ProcessStepItem) => {
   await loadProcessStepLibrary()
 }
 
+const handleDeleteProcessStep = async (record: ProcessStepItem) => {
+  await deleteProcessStep(record.stepId)
+  message.success('删除工序模板成功')
+  await loadProcessStepLibrary()
+}
+
 onMounted(() => {
   void loadData()
 })
 </script>
 
 <template>
-  <TablePage title="工艺路线" :columns="columns" :data="data" :loading="loading" :pagination="pagination">
+  <TablePage
+    title="工艺路线"
+    :columns="columns"
+    :data="data"
+    :loading="loading"
+    :pagination="pagination"
+    table-layout="fixed"
+    class="process-route-page"
+  >
     <template #search>
       <SearchBar :model="searchForm" :fields="searchFields" @search="loadData" @reset="resetSearch" />
     </template>
@@ -473,11 +488,18 @@ onMounted(() => {
     </template>
 
     <template #bodyCell="{ column, record }">
-      <template v-if="column.key === 'description'">
-        {{ record.description || '-' }}
+      <template v-if="column.key === 'routeName'">
+        <a-tooltip :title="record.routeName">
+          <span class="route-name-cell">{{ record.routeName }}</span>
+        </a-tooltip>
+      </template>
+      <template v-else-if="column.key === 'description'">
+        <a-tooltip :title="record.description || '-'">
+          <span class="route-description-cell">{{ record.description || '-' }}</span>
+        </a-tooltip>
       </template>
       <template v-else-if="column.key === 'isActive'">
-        <a-tag :color="getEnabledLabel(record.isActive)?.color">
+        <a-tag class="route-status-tag" :color="getEnabledLabel(record.isActive)?.color">
           {{ getEnabledLabel(record.isActive)?.label || record.isActive }}
         </a-tag>
       </template>
@@ -657,6 +679,12 @@ onMounted(() => {
                 {{ record.isActive === 1 ? '停用' : '启用' }}
               </a-button>
             </a-popconfirm>
+            <a-popconfirm
+              title="确认删除该工序模板吗？已被路线、设备能力或生产计划引用时将无法删除。"
+              @confirm="handleDeleteProcessStep(record)"
+            >
+              <a-button type="link" danger>删除</a-button>
+            </a-popconfirm>
           </a-space>
         </template>
       </template>
@@ -746,6 +774,58 @@ onMounted(() => {
 
 .route-step-table {
   margin-top: 4px;
+}
+
+.process-route-page {
+  width: 100%;
+  min-width: 0;
+}
+
+.process-route-page :deep(.table-card),
+.process-route-page :deep(.ant-card-body),
+.process-route-page :deep(.ant-table-wrapper),
+.process-route-page :deep(.ant-spin-nested-loading),
+.process-route-page :deep(.ant-spin-container) {
+  min-width: 0;
+}
+
+.process-route-page :deep(.ant-table-tbody > tr > td) {
+  height: 68px;
+  vertical-align: middle;
+}
+
+.route-name-cell {
+  display: block;
+  overflow: hidden;
+  color: #253248;
+  font-weight: 600;
+  line-height: 1.5;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.route-description-cell {
+  display: -webkit-box;
+  overflow: hidden;
+  color: #526074;
+  line-height: 1.65;
+  overflow-wrap: anywhere;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+}
+
+.route-status-tag {
+  min-width: 48px;
+  margin-inline-end: 0;
+  text-align: center;
+}
+
+.process-route-page :deep(.ant-table-cell) {
+  overflow: hidden;
+}
+
+.process-route-page :deep(.ant-table-tbody .ant-space) {
+  flex-wrap: nowrap;
 }
 
 .process-step-toolbar {

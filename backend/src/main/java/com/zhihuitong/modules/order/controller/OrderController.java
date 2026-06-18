@@ -71,6 +71,12 @@ public class OrderController {
         return AjaxResult.success(order);
     }
 
+    @DeleteMapping("/{orderId}")
+    public AjaxResult delete(@PathVariable @Min(value = 1, message = "orderId must be greater than 0") Long orderId) {
+        orderService.delete(orderId);
+        return AjaxResult.success();
+    }
+
     @PatchMapping("/{orderId}/status")
     public AjaxResult patchStatus(@PathVariable @Min(value = 1, message = "orderId must be greater than 0") Long orderId,
                                   @Valid @RequestBody OrderStatusPatchRequest request) {
@@ -146,6 +152,14 @@ public class OrderController {
     public AjaxResult createBatchLink(@PathVariable @Min(value = 1, message = "orderId must be greater than 0") Long orderId,
                                       @Valid @RequestBody OrderBatchLinkUpsertRequest request) {
         OrderBatchLink link = orderService.createBatchLink(orderId, request);
+        return AjaxResult.success(link);
+    }
+
+    @PutMapping("/{orderId}/batches/{linkId}")
+    public AjaxResult updateBatchLink(@PathVariable @Min(value = 1, message = "orderId must be greater than 0") Long orderId,
+                                      @PathVariable @Min(value = 1, message = "linkId must be greater than 0") Long linkId,
+                                      @Valid @RequestBody OrderBatchLinkUpsertRequest request) {
+        OrderBatchLink link = orderService.updateBatchLink(orderId, linkId, request);
         return AjaxResult.success(link);
     }
 

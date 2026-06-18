@@ -4,7 +4,13 @@
 
 前端只调用 Java 主后端，不直接调用 Python、ONNX 或任何模型服务。
 
-当前实时质检工作台通过 `POST /api/qc-records/detect` 提交 `multipart/form-data`，由 Java 主后端完成图片保存、ONNX Runtime 本地推理、质检记录落库和附件证据落库。
+当前前端只调用 Java 主后端：
+
+- 图片离线检测：`POST /api/qc-records/detect-image`
+- 单帧视频检测：`POST /api/qc-records/detect-frame`
+- 实时视频检测：先 `POST /api/qc-stream-sessions` 创建会话，再连接 `WebSocket /ws/qc-stream/{sessionId}`
+
+Java 主后端负责图片保存、ONNX Runtime 本地推理、质检记录落库和附件证据落库。
 
 ## 请求字段
 

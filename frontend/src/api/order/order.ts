@@ -94,6 +94,12 @@ export const updateOrder = (orderId: IdValue, payload: OrderUpsertRequest) =>
     data: payload,
   })
 
+export const deleteOrder = (orderId: IdValue) =>
+  request<ApiSuccessResponse<null>>({
+    url: `/api/orders/${orderId}`,
+    method: 'delete',
+  })
+
 export const patchOrderStatus = (orderId: IdValue, payload: OrderStatusPatchRequest) =>
   request<ApiSuccessResponse<OrderSummaryItem>>({
     url: `/api/orders/${orderId}/status`,
@@ -137,6 +143,13 @@ export const createOrderBatchLink = (orderId: IdValue, payload: OrderBatchLinkUp
   request<ApiSuccessResponse<OrderBatchLinkItem>>({
     url: `/api/orders/${orderId}/batches`,
     method: 'post',
+    data: payload,
+  })
+
+export const updateOrderBatchLink = (orderId: IdValue, linkId: IdValue, payload: OrderBatchLinkUpsertRequest) =>
+  request<ApiSuccessResponse<OrderBatchLinkItem>>({
+    url: `/api/orders/${orderId}/batches/${linkId}`,
+    method: 'put',
     data: payload,
   })
 

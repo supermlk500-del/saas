@@ -1,6 +1,18 @@
 <script setup lang="ts">
-import { computed, onMounted, ref } from 'vue'
+import { computed, onMounted, reactive, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
+import { message, Modal } from 'ant-design-vue'
+import { fetchBatchResourcePool } from '@/api/batch/batch'
+import {
+  createOrderBatchLink,
+  createOrderItem,
+  deleteOrderBatchLink,
+  deleteOrderItem,
+  type OrderBatchLinkUpsertRequest,
+  type OrderItemUpsertRequest,
+  updateOrderBatchLink,
+  updateOrderItem,
+} from '@/api/order/order'
 import { fetchOrderDetail, buildOrderPlanStepGroups, type OrderPlanStepGroup } from '@/api/order/orderDetail'
 import {
   exceptionStatusOptions,
@@ -9,7 +21,14 @@ import {
   planStepStatusOptions,
   resultJudgeOptions,
 } from '@/constants/dictionaries'
-import type { OrderDetailAggregate, OrderPlanSummaryItem } from '@/types/domain'
+import type {
+  BatchItem,
+  IdValue,
+  OrderBatchLinkItem,
+  OrderDetailAggregate,
+  OrderLineItem,
+  OrderPlanSummaryItem,
+} from '@/types/domain'
 
 type RouteStepFlowItem = {
   key: string
@@ -27,6 +46,26 @@ type MachineTimelineRow = {
   stepNames: string
 }
 
+type OrderItemForm = {
+  productCode: string
+  productName: string
+  specification: string
+  color: string
+  quantity: number | null
+  unit: string
+  requiredWidth: number | null
+  requiredWeight: number | null
+  remark: string
+}
+
+type BatchLinkForm = {
+  orderItemId?: IdValue
+  batchId?: IdValue
+  allocatedWeight: number | null
+  allocatedQuantity: number | null
+  remark: string
+}
+
 const route = useRoute()
 const router = useRouter()
 
@@ -34,38 +73,83 @@ const orderId = route.params.id as string
 const loading = ref(false)
 const loadFailed = ref(false)
 const detail = ref<OrderDetailAggregate | null>(null)
+const orderItemModalOpen = ref(false)
+const orderItemSubmitting = ref(false)
+const orderItemFormRef = ref()
+const orderItemModalMode = ref<'create' | 'edit'>('create')
+const editingOrderItemId = ref<IdValue>()
+const batchLinkModalOpen = ref(false)
+const batchLinkSubmitting = ref(false)
+const batchLinkFormRef = ref()
+const batchLinkModalMode = ref<'create' | 'edit'>('create')
+const editingBatchLinkId = ref<IdValue>()
+const batchResourceOptions = ref<BatchItem[]>([])
 
 const itemColumns = [
-  { title: '产品编码', dataIndex: 'productCode', key: 'productCode', width: 140 },
-  { title: '产品名称', dataIndex: 'productName', key: 'productName', width: 180 },
-  { title: '规格', dataIndex: 'specification', key: 'specification', width: 160 },
-  { title: '颜色', dataIndex: 'color', key: 'color', width: 120 },
-  { title: '数量', dataIndex: 'quantity', key: 'quantity', width: 120 },
-  { title: '单位', dataIndex: 'unit', key: 'unit', width: 100 },
-  { title: '要求门幅(cm)', dataIndex: 'requiredWidth', key: 'requiredWidth', width: 130 },
-  { title: '要求重量(kg)', dataIndex: 'requiredWeight', key: 'requiredWeight', width: 130 },
+  { title: '产品编码', dataIndex: 'productCode', key: 'productCode', width: 108 },
+  { title: '产品名称', dataIndex: 'productName', key: 'productName', width: 150 },
+  { title: '规格', dataIndex: 'specification', key: 'specification', width: 82 },
+  { title: '颜色', dataIndex: 'color', key: 'color', width: 64 },
+  { title: '数量', dataIndex: 'quantity', key: 'quantity', width: 74 },
+  { title: '单位', dataIndex: 'unit', key: 'unit', width: 54 },
+  { title: '门幅(cm)', dataIndex: 'requiredWidth', key: 'requiredWidth', width: 86 },
+  { title: '重量(kg)', dataIndex: 'requiredWeight', key: 'requiredWeight', width: 86 },
+  { title: '操作', key: 'action', width: 82 },
 ]
 
 const batchColumns = [
-  { title: '批次编号', dataIndex: 'batchNo', key: 'batchNo', width: 160 },
-  { title: '供应商', dataIndex: 'supplier', key: 'supplier', width: 220 },
-  { title: '重量(kg)', dataIndex: 'weight', key: 'weight', width: 120 },
-  { title: '门幅(cm)', dataIndex: 'width', key: 'width', width: 120 },
-  { title: '成分', dataIndex: 'composition', key: 'composition', width: 180 },
-  { title: '本订单分配', dataIndex: 'allocatedWeight', key: 'allocatedWeight', width: 150 },
-  { title: '批次剩余', dataIndex: 'remainingWeight', key: 'remainingWeight', width: 150 },
-  { title: '资源状态', dataIndex: 'resourceStatus', key: 'resourceStatus', width: 130 },
-  { title: '计划占用', dataIndex: 'lockedByPlan', key: 'lockedByPlan', width: 130 },
+  { title: '批次编号', dataIndex: 'batchNo', key: 'batchNo', width: 138 },
+  { title: '供应商', dataIndex: 'supplier', key: 'supplier', width: 126 },
+  { title: '重量(kg)', dataIndex: 'weight', key: 'weight', width: 82 },
+  { title: '门幅(cm)', dataIndex: 'width', key: 'width', width: 78 },
+  { title: '成分', dataIndex: 'composition', key: 'composition', width: 88 },
+  { title: '本单分配', dataIndex: 'allocatedWeight', key: 'allocatedWeight', width: 98 },
+  { title: '批次剩余', dataIndex: 'remainingWeight', key: 'remainingWeight', width: 92 },
+  { title: '状态', dataIndex: 'resourceStatus', key: 'resourceStatus', width: 84 },
+  { title: '占用', dataIndex: 'lockedByPlan', key: 'lockedByPlan', width: 92 },
+  { title: '操作', key: 'action', width: 82 },
 ]
 
+const orderItemForm = reactive<OrderItemForm>({
+  productCode: '',
+  productName: '',
+  specification: '',
+  color: '',
+  quantity: null,
+  unit: 'm',
+  requiredWidth: null,
+  requiredWeight: null,
+  remark: '',
+})
+
+const batchLinkForm = reactive<BatchLinkForm>({
+  orderItemId: undefined,
+  batchId: undefined,
+  allocatedWeight: null,
+  allocatedQuantity: null,
+  remark: '',
+})
+
+const orderItemRules = {
+  productCode: [{ required: true, message: '请输入产品编码' }],
+  productName: [{ required: true, message: '请输入产品名称' }],
+  quantity: [{ required: true, message: '请输入数量' }],
+}
+
+const batchLinkRules = {
+  orderItemId: [{ required: true, message: '请选择订单明细' }],
+  batchId: [{ required: true, message: '请选择批次' }],
+  allocatedWeight: [{ required: true, message: '请输入分配重量' }],
+}
+
 const planColumns = [
-  { title: '计划ID', dataIndex: 'planId', key: 'planId', width: 100 },
-  { title: '工艺路线', dataIndex: 'routeName', key: 'routeName', width: 180 },
-  { title: '批次', dataIndex: 'batchNo', key: 'batchNo', width: 160 },
-  { title: '开始时间', dataIndex: 'planStartTime', key: 'planStartTime', width: 180 },
-  { title: '结束时间', dataIndex: 'planEndTime', key: 'planEndTime', width: 180 },
-  { title: '状态', dataIndex: 'status', key: 'status', width: 120 },
-  { title: '备注', dataIndex: 'remark', key: 'remark' },
+  { title: '计划ID', dataIndex: 'planId', key: 'planId', width: 118 },
+  { title: '工艺路线', dataIndex: 'routeName', key: 'routeName', width: 154 },
+  { title: '批次', dataIndex: 'batchNo', key: 'batchNo', width: 132 },
+  { title: '开始时间', dataIndex: 'planStartTime', key: 'planStartTime', width: 126 },
+  { title: '结束时间', dataIndex: 'planEndTime', key: 'planEndTime', width: 126 },
+  { title: '状态', dataIndex: 'status', key: 'status', width: 84 },
+  { title: '备注', dataIndex: 'remark', key: 'remark', width: 120 },
 ]
 
 const stepColumns = [
@@ -254,6 +338,102 @@ const qualitySummaryStats = computed(() => {
   }
 })
 
+const orderItemSelectOptions = computed(() =>
+  (detail.value?.items ?? []).map((item) => ({
+    label: [item.productCode || item.productName, item.specification, item.color].filter(Boolean).join(' / '),
+    value: item.orderItemId,
+  })),
+)
+
+const getBatchRemainingWeight = (item: BatchItem) => item.remainingWeight ?? item.weight ?? 0
+
+const getBatchRemainingQuantity = (item: BatchItem) => item.remainingQuantity ?? null
+
+const getLinkId = (item: OrderBatchLinkItem) => item.id || item.linkId
+
+const getAllocatedWeightForItem = (orderItemId?: IdValue) =>
+  (detail.value?.linkedBatches ?? [])
+    .filter((link) =>
+      String(link.orderItemId) === String(orderItemId)
+      && String(getLinkId(link) ?? '') !== String(editingBatchLinkId.value ?? ''),
+    )
+    .reduce((sum, link) => sum + Number(link.allocatedWeight ?? 0), 0)
+
+const getAllocatedQuantityForItem = (orderItemId?: IdValue) =>
+  (detail.value?.linkedBatches ?? [])
+    .filter((link) =>
+      String(link.orderItemId) === String(orderItemId)
+      && String(getLinkId(link) ?? '') !== String(editingBatchLinkId.value ?? ''),
+    )
+    .reduce((sum, link) => sum + Number(link.allocatedQuantity ?? 0), 0)
+
+const selectedOrderItem = computed(() =>
+  (detail.value?.items ?? []).find((item) => String(item.orderItemId) === String(batchLinkForm.orderItemId)),
+)
+
+const selectedBatch = computed(() =>
+  batchResourceOptions.value.find((item) => String(item.batchId) === String(batchLinkForm.batchId)),
+)
+
+const selectedItemRemainingWeight = computed(() => {
+  const item = selectedOrderItem.value
+  if (item?.requiredWeight == null) {
+    return null
+  }
+  return Math.max(Number(item.requiredWeight) - getAllocatedWeightForItem(item.orderItemId), 0)
+})
+
+const selectedItemRemainingQuantity = computed(() => {
+  const item = selectedOrderItem.value
+  if (item?.quantity == null) {
+    return null
+  }
+  return Math.max(Number(item.quantity) - getAllocatedQuantityForItem(item.orderItemId), 0)
+})
+
+const isBatchWidthMatched = (item: BatchItem, orderItem = selectedOrderItem.value) =>
+  orderItem?.requiredWidth == null || item.width == null || Number(item.width) >= Number(orderItem.requiredWidth)
+
+const isBatchTextMatched = (item: BatchItem, orderItem = selectedOrderItem.value) => {
+  const haystack = [item.composition, item.note, item.batchNo].filter(Boolean).join(' ').toLowerCase()
+  const needles = [orderItem?.productName, orderItem?.specification, orderItem?.color]
+    .filter(Boolean)
+    .map((value) => String(value).toLowerCase())
+  return needles.length > 0 && needles.some((value) => haystack.includes(value))
+}
+
+const getBatchRecommendLevel = (item: BatchItem) => {
+  if (!isBatchWidthMatched(item)) {
+    return 0
+  }
+  return isBatchTextMatched(item) ? 2 : 1
+}
+
+const batchSelectOptions = computed(() =>
+  batchResourceOptions.value
+    .filter((item) =>
+      String(item.batchId) === String(batchLinkForm.batchId)
+      || (
+        !item.lockedByPlan
+        && !['CONSUMED', 'CLOSED'].includes(item.resourceStatus || '')
+        && getBatchRemainingWeight(item) > 0
+        && isBatchWidthMatched(item)
+      ),
+    )
+    .sort((left, right) =>
+      getBatchRecommendLevel(right) - getBatchRecommendLevel(left)
+      || getBatchRemainingWeight(right) - getBatchRemainingWeight(left),
+    )
+    .map((item) => ({
+      label: `${getBatchRecommendLevel(item) === 2 ? '推荐 / ' : ''}${item.batchNo} / ${item.supplier} / 剩余 ${formatAllocation(getBatchRemainingWeight(item), getBatchRemainingQuantity(item))}`,
+      value: item.batchId,
+    })),
+)
+
+const selectedBatchResourceMeta = computed(() =>
+  getResourceStatusMeta(selectedBatch.value?.resourceStatus, selectedBatch.value?.resourceStatusLabel),
+)
+
 const exceptionSummaryStats = computed(() => {
   const records = detail.value?.exceptionSummary ?? []
   return {
@@ -310,6 +490,224 @@ const formatAllocation = (weight?: number | null, quantity?: number | null) => {
     return formatQuantity(quantity)
   }
   return '未分配'
+}
+
+const formatShortId = (value?: IdValue) => {
+  const text = String(value ?? '')
+  if (!text) {
+    return '-'
+  }
+  return text.length > 10 ? `...${text.slice(-8)}` : text
+}
+
+const resetOrderItemForm = () => {
+  orderItemForm.productCode = ''
+  orderItemForm.productName = ''
+  orderItemForm.specification = ''
+  orderItemForm.color = ''
+  orderItemForm.quantity = null
+  orderItemForm.unit = 'm'
+  orderItemForm.requiredWidth = null
+  orderItemForm.requiredWeight = null
+  orderItemForm.remark = ''
+}
+
+const resetBatchLinkForm = () => {
+  batchLinkForm.orderItemId = detail.value?.items?.[0]?.orderItemId
+  batchLinkForm.batchId = undefined
+  batchLinkForm.allocatedWeight = null
+  batchLinkForm.allocatedQuantity = null
+  batchLinkForm.remark = ''
+}
+
+const fillSuggestedAllocation = () => {
+  const batch = selectedBatch.value
+  if (!batch) {
+    batchLinkForm.allocatedWeight = null
+    batchLinkForm.allocatedQuantity = null
+    return
+  }
+  const remainingWeight = getBatchRemainingWeight(batch)
+  const remainingDemandWeight = selectedItemRemainingWeight.value
+  batchLinkForm.allocatedWeight = remainingDemandWeight == null
+    ? remainingWeight
+    : Math.min(remainingDemandWeight, remainingWeight)
+
+  const remainingBatchQuantity = getBatchRemainingQuantity(batch)
+  const remainingDemandQuantity = selectedItemRemainingQuantity.value
+  batchLinkForm.allocatedQuantity = remainingBatchQuantity == null
+    ? null
+    : remainingDemandQuantity == null
+      ? remainingBatchQuantity
+      : Math.min(remainingDemandQuantity, remainingBatchQuantity)
+}
+
+const handleBatchOrderItemChange = () => {
+  batchLinkForm.batchId = undefined
+  batchLinkForm.allocatedWeight = null
+  batchLinkForm.allocatedQuantity = null
+}
+
+const handleBatchSelectionChange = () => {
+  fillSuggestedAllocation()
+}
+
+const openOrderItemModal = () => {
+  orderItemModalMode.value = 'create'
+  editingOrderItemId.value = undefined
+  resetOrderItemForm()
+  orderItemModalOpen.value = true
+}
+
+const openOrderItemEditModal = (record: OrderLineItem) => {
+  orderItemModalMode.value = 'edit'
+  editingOrderItemId.value = record.orderItemId
+  orderItemForm.productCode = record.productCode || ''
+  orderItemForm.productName = record.productName || ''
+  orderItemForm.specification = record.specification || ''
+  orderItemForm.color = record.color || ''
+  orderItemForm.quantity = record.quantity ?? null
+  orderItemForm.unit = record.unit || 'm'
+  orderItemForm.requiredWidth = record.requiredWidth ?? null
+  orderItemForm.requiredWeight = record.requiredWeight ?? null
+  orderItemForm.remark = record.remark || ''
+  orderItemModalOpen.value = true
+}
+
+const openBatchLinkModal = async () => {
+  if (!detail.value?.items?.length) {
+    message.warning('请先新增订单明细，再分配批次')
+    return
+  }
+
+  batchLinkModalMode.value = 'create'
+  editingBatchLinkId.value = undefined
+  resetBatchLinkForm()
+  const response = await fetchBatchResourcePool({ pageNum: 1, pageSize: 200 })
+  batchResourceOptions.value = response.list
+  const firstOption = batchSelectOptions.value[0]
+  if (firstOption) {
+    batchLinkForm.batchId = firstOption.value
+    fillSuggestedAllocation()
+  }
+  batchLinkModalOpen.value = true
+}
+
+const openBatchLinkEditModal = async (record: OrderBatchLinkItem) => {
+  batchLinkModalMode.value = 'edit'
+  editingBatchLinkId.value = record.id || record.linkId
+  batchLinkForm.orderItemId = record.orderItemId
+  batchLinkForm.batchId = record.batchId
+  batchLinkForm.allocatedWeight = record.allocatedWeight ?? null
+  batchLinkForm.allocatedQuantity = record.allocatedQuantity ?? null
+  batchLinkForm.remark = record.remark || ''
+  const response = await fetchBatchResourcePool({ pageNum: 1, pageSize: 200 })
+  batchResourceOptions.value = response.list
+  if (!batchResourceOptions.value.some((item) => String(item.batchId) === String(record.batchId))) {
+    batchResourceOptions.value.push({
+      batchId: record.batchId,
+      batchNo: record.batchNo || String(record.batchId),
+      supplier: record.supplier || '-',
+      inDate: '',
+      weight: record.weight ?? undefined,
+      width: record.width ?? undefined,
+      composition: record.composition,
+      readyForSchedule: true,
+    })
+  }
+  batchLinkModalOpen.value = true
+}
+
+const handleOrderItemSubmit = async () => {
+  await orderItemFormRef.value?.validate()
+  orderItemSubmitting.value = true
+  try {
+    const payload: OrderItemUpsertRequest = {
+      productCode: orderItemForm.productCode.trim(),
+      productName: orderItemForm.productName.trim(),
+      specification: orderItemForm.specification.trim() || undefined,
+      color: orderItemForm.color.trim() || undefined,
+      quantity: orderItemForm.quantity,
+      unit: orderItemForm.unit.trim() || undefined,
+      requiredWidth: orderItemForm.requiredWidth,
+      requiredWeight: orderItemForm.requiredWeight,
+      remark: orderItemForm.remark.trim() || undefined,
+    }
+    if (orderItemModalMode.value === 'edit' && editingOrderItemId.value) {
+      await updateOrderItem(orderId, editingOrderItemId.value, payload)
+      message.success('订单明细已更新')
+    } else {
+      await createOrderItem(orderId, payload)
+      message.success('订单明细已新增')
+    }
+    orderItemModalOpen.value = false
+    await loadData()
+  } finally {
+    orderItemSubmitting.value = false
+  }
+}
+
+const handleBatchLinkSubmit = async () => {
+  await batchLinkFormRef.value?.validate()
+  batchLinkSubmitting.value = true
+  try {
+    if (!batchLinkForm.orderItemId || !batchLinkForm.batchId) {
+      return
+    }
+
+    const payload: OrderBatchLinkUpsertRequest = {
+      orderItemId: batchLinkForm.orderItemId,
+      batchId: batchLinkForm.batchId,
+      allocatedWeight: batchLinkForm.allocatedWeight,
+      allocatedQuantity: batchLinkForm.allocatedQuantity,
+      remark: batchLinkForm.remark.trim() || undefined,
+    }
+    if (batchLinkModalMode.value === 'edit' && editingBatchLinkId.value) {
+      await updateOrderBatchLink(orderId, editingBatchLinkId.value, payload)
+      message.success('批次分配已更新')
+    } else {
+      await createOrderBatchLink(orderId, payload)
+      message.success('批次已分配给订单明细')
+    }
+    batchLinkModalOpen.value = false
+    await loadData()
+  } finally {
+    batchLinkSubmitting.value = false
+  }
+}
+
+const handleDeleteOrderItem = (record: OrderLineItem) => {
+  Modal.confirm({
+    title: '删除订单明细',
+    content: `确定删除 ${record.productCode || record.productName || '该订单明细'} 吗？已分配批次或已排产的明细不能删除。`,
+    okText: '删除',
+    okType: 'danger',
+    cancelText: '取消',
+    async onOk() {
+      await deleteOrderItem(orderId, record.orderItemId)
+      message.success('订单明细已删除')
+      await loadData()
+    },
+  })
+}
+
+const handleDeleteBatchLink = (record: OrderBatchLinkItem) => {
+  const linkId = record.id || record.linkId
+  if (!linkId) {
+    return
+  }
+  Modal.confirm({
+    title: '删除批次分配',
+    content: `确定取消批次 ${record.batchNo || record.batchId} 的分配吗？已生成生产计划的分配不能删除。`,
+    okText: '删除',
+    okType: 'danger',
+    cancelText: '取消',
+    async onOk() {
+      await deleteOrderBatchLink(orderId, linkId)
+      message.success('批次分配已删除')
+      await loadData()
+    },
+  })
 }
 
 const goBack = () => {
@@ -413,25 +811,66 @@ onMounted(() => {
           </a-card>
 
           <a-card class="page-card" :bordered="false" title="订单明细">
+            <template #extra>
+              <a-button type="primary" @click="openOrderItemModal">新增明细</a-button>
+            </template>
             <a-table
               :columns="itemColumns"
               :data-source="detail.items || []"
               :pagination="false"
               row-key="orderItemId"
-              :scroll="{ x: 1100 }"
-            />
+              class="detail-fit-table"
+              table-layout="fixed"
+            >
+              <template #bodyCell="{ column, record }">
+                <template v-if="column.key === 'productCode'">
+                  <span class="detail-cell-nowrap">{{ record.productCode || '-' }}</span>
+                </template>
+                <template v-else-if="column.key === 'productName'">
+                  <a-tooltip :title="record.productName || '-'">
+                    <span class="detail-cell-text detail-cell-two-line">{{ record.productName || '-' }}</span>
+                  </a-tooltip>
+                </template>
+                <template v-else-if="column.key === 'specification'">
+                  <span class="detail-cell-nowrap">{{ record.specification || '-' }}</span>
+                </template>
+                <template v-else-if="column.key === 'action'">
+                  <div class="detail-action-grid">
+                    <a-button type="link" size="small" @click="openOrderItemEditModal(record)">编辑</a-button>
+                    <a-button type="link" size="small" danger @click="handleDeleteOrderItem(record)">删除</a-button>
+                  </div>
+                </template>
+              </template>
+            </a-table>
           </a-card>
 
           <a-card class="page-card" :bordered="false" title="关联批次资源">
+            <template #extra>
+              <a-button type="primary" @click="openBatchLinkModal">分配批次</a-button>
+            </template>
             <a-table
               :columns="batchColumns"
               :data-source="detail.linkedBatches || []"
               :pagination="false"
               row-key="id"
-              :scroll="{ x: 1200 }"
+              class="detail-fit-table"
+              table-layout="fixed"
             >
               <template #bodyCell="{ column, record }">
-                <template v-if="column.key === 'resourceStatus'">
+                <template v-if="column.key === 'batchNo'">
+                  <a-tooltip :title="record.batchNo || '-'">
+                    <span class="detail-cell-text detail-cell-two-line">{{ record.batchNo || '-' }}</span>
+                  </a-tooltip>
+                </template>
+                <template v-else-if="column.key === 'supplier'">
+                  <a-tooltip :title="record.supplier || '-'">
+                    <span class="detail-cell-text">{{ record.supplier || '-' }}</span>
+                  </a-tooltip>
+                </template>
+                <template v-else-if="column.key === 'composition'">
+                  <span class="detail-cell-nowrap">{{ record.composition || '-' }}</span>
+                </template>
+                <template v-else-if="column.key === 'resourceStatus'">
                   <a-tag :color="getResourceStatusMeta(record.resourceStatus, record.resourceStatusLabel)?.color">
                     {{ getResourceStatusMeta(record.resourceStatus, record.resourceStatusLabel)?.label || '-' }}
                   </a-tag>
@@ -443,9 +882,17 @@ onMounted(() => {
                   {{ formatAllocation(record.remainingWeight, record.remainingQuantity) }}
                 </template>
                 <template v-else-if="column.key === 'lockedByPlan'">
-                  <a-tag :color="record.lockedByPlan ? 'processing' : 'success'">
-                    {{ record.lockedByPlan ? `计划 ${record.currentPlanId || ''} 占用` : '可排产' }}
-                  </a-tag>
+                  <a-tooltip :title="record.lockedByPlan ? `计划 ${record.currentPlanId || ''} 占用` : '可排产'">
+                    <a-tag :color="record.lockedByPlan ? 'processing' : 'success'">
+                      {{ record.lockedByPlan ? '已占用' : '可排产' }}
+                    </a-tag>
+                  </a-tooltip>
+                </template>
+                <template v-else-if="column.key === 'action'">
+                  <div class="detail-action-grid">
+                    <a-button type="link" size="small" @click="openBatchLinkEditModal(record)">编辑</a-button>
+                    <a-button type="link" size="small" danger @click="handleDeleteBatchLink(record)">删除</a-button>
+                  </div>
                 </template>
               </template>
             </a-table>
@@ -491,7 +938,8 @@ onMounted(() => {
               :data-source="detail.planSummary || []"
               :pagination="false"
               row-key="planId"
-              :scroll="{ x: 1200 }"
+              class="detail-fit-table"
+              table-layout="fixed"
             >
               <template #bodyCell="{ column, record }">
                 <template v-if="column.key === 'status'">
@@ -500,13 +948,32 @@ onMounted(() => {
                   </a-tag>
                 </template>
                 <template v-else-if="column.key === 'planId'">
-                  <a-space>
-                    <a-button type="link" @click="jumpToPlanMain(record)">{{ record.planId }}</a-button>
-                    <a-button type="link" @click="jumpToPlanBoard(record)">甘特图</a-button>
-                  </a-space>
+                  <div class="detail-action-grid detail-plan-links">
+                    <a-tooltip :title="String(record.planId)">
+                      <a-button type="link" size="small" @click="jumpToPlanMain(record)">
+                        {{ formatShortId(record.planId) }}
+                      </a-button>
+                    </a-tooltip>
+                    <a-button type="link" size="small" @click="jumpToPlanBoard(record)">甘特图</a-button>
+                  </div>
+                </template>
+                <template v-else-if="column.key === 'routeName'">
+                  <a-tooltip :title="record.routeName || '-'">
+                    <span class="detail-cell-text detail-cell-two-line">{{ record.routeName || '-' }}</span>
+                  </a-tooltip>
+                </template>
+                <template v-else-if="column.key === 'batchNo'">
+                  <a-tooltip :title="record.batchNo || '-'">
+                    <span class="detail-cell-text detail-cell-two-line">{{ record.batchNo || '-' }}</span>
+                  </a-tooltip>
+                </template>
+                <template v-else-if="column.key === 'planStartTime' || column.key === 'planEndTime'">
+                  <span class="detail-cell-time">{{ record[column.key] || '-' }}</span>
                 </template>
                 <template v-else-if="column.key === 'remark'">
-                  {{ record.remark || '-' }}
+                  <a-tooltip :title="record.remark || '-'">
+                    <span class="detail-cell-text detail-cell-two-line">{{ record.remark || '-' }}</span>
+                  </a-tooltip>
                 </template>
               </template>
             </a-table>
@@ -633,6 +1100,130 @@ onMounted(() => {
         </div>
       </template>
     </a-spin>
+
+    <a-modal
+      v-model:open="orderItemModalOpen"
+      :title="orderItemModalMode === 'create' ? '新增订单明细' : '编辑订单明细'"
+      ok-text="保存"
+      cancel-text="取消"
+      :confirm-loading="orderItemSubmitting"
+      width="720px"
+      @ok="handleOrderItemSubmit"
+    >
+      <a-form ref="orderItemFormRef" :model="orderItemForm" :rules="orderItemRules" layout="vertical">
+        <div class="form-grid">
+          <a-form-item label="产品编码" name="productCode">
+            <a-input v-model:value="orderItemForm.productCode" placeholder="请输入产品编码" />
+          </a-form-item>
+          <a-form-item label="产品名称" name="productName">
+            <a-input v-model:value="orderItemForm.productName" placeholder="请输入产品名称" />
+          </a-form-item>
+          <a-form-item label="规格" name="specification">
+            <a-input v-model:value="orderItemForm.specification" placeholder="可选" />
+          </a-form-item>
+          <a-form-item label="颜色" name="color">
+            <a-input v-model:value="orderItemForm.color" placeholder="可选" />
+          </a-form-item>
+          <a-form-item label="数量" name="quantity">
+            <a-input-number v-model:value="orderItemForm.quantity" :min="0" class="full-control" placeholder="请输入数量" />
+          </a-form-item>
+          <a-form-item label="单位" name="unit">
+            <a-input v-model:value="orderItemForm.unit" placeholder="如 m、kg" />
+          </a-form-item>
+          <a-form-item label="要求门幅(cm)" name="requiredWidth">
+            <a-input-number v-model:value="orderItemForm.requiredWidth" :min="0" class="full-control" placeholder="可选" />
+          </a-form-item>
+          <a-form-item label="要求重量(kg)" name="requiredWeight">
+            <a-input-number v-model:value="orderItemForm.requiredWeight" :min="0" class="full-control" placeholder="可选" />
+          </a-form-item>
+        </div>
+        <a-form-item label="备注" name="remark">
+          <a-textarea v-model:value="orderItemForm.remark" :rows="3" placeholder="可选" />
+        </a-form-item>
+      </a-form>
+    </a-modal>
+
+    <a-modal
+      v-model:open="batchLinkModalOpen"
+      :title="batchLinkModalMode === 'create' ? '分配批次' : '编辑批次分配'"
+      ok-text="保存"
+      cancel-text="取消"
+      :confirm-loading="batchLinkSubmitting"
+      width="680px"
+      @ok="handleBatchLinkSubmit"
+    >
+      <a-form ref="batchLinkFormRef" :model="batchLinkForm" :rules="batchLinkRules" layout="vertical">
+        <a-form-item label="订单明细" name="orderItemId">
+          <a-select
+            v-model:value="batchLinkForm.orderItemId"
+            :options="orderItemSelectOptions"
+            placeholder="请选择订单明细"
+            show-search
+            option-filter-prop="label"
+            @change="handleBatchOrderItemChange"
+          />
+        </a-form-item>
+        <a-form-item label="来料批次资源" name="batchId">
+          <a-select
+            v-model:value="batchLinkForm.batchId"
+            :options="batchSelectOptions"
+            placeholder="从工厂来料资源池选择可用批次"
+            show-search
+            option-filter-prop="label"
+            @change="handleBatchSelectionChange"
+          />
+        </a-form-item>
+        <div v-if="selectedBatch" class="batch-resource-card">
+          <div class="batch-resource-main">
+            <div>
+              <div class="batch-resource-title">
+                {{ selectedBatch.batchNo }}
+                <a-tag v-if="getBatchRecommendLevel(selectedBatch) === 2" color="green">推荐</a-tag>
+                <a-tag v-else color="blue">可用</a-tag>
+              </div>
+              <div class="batch-resource-sub">{{ selectedBatch.supplier || '-' }}</div>
+            </div>
+            <a-tag :color="selectedBatchResourceMeta?.color">
+              {{ selectedBatchResourceMeta?.label || selectedBatch.resourceStatusLabel || selectedBatch.resourceStatus || '资源可用' }}
+            </a-tag>
+          </div>
+          <div class="batch-resource-grid">
+            <div>
+              <span>剩余重量</span>
+              <strong>{{ formatWeight(getBatchRemainingWeight(selectedBatch)) }}</strong>
+            </div>
+            <div>
+              <span>门幅</span>
+              <strong>{{ selectedBatch.width != null ? `${Number(selectedBatch.width).toFixed(2)} cm` : '-' }}</strong>
+            </div>
+            <div>
+              <span>成分</span>
+              <strong>{{ selectedBatch.composition || '-' }}</strong>
+            </div>
+            <div>
+              <span>订单占用</span>
+              <strong>{{ selectedBatch.linkedOrderCount ? `${selectedBatch.linkedOrderCount} 个订单` : '暂无其他占用' }}</strong>
+            </div>
+          </div>
+          <div class="batch-resource-hint">
+            <span>当前明细剩余需求：</span>
+            <strong>{{ selectedItemRemainingWeight == null ? '未设置目标重量' : formatWeight(selectedItemRemainingWeight) }}</strong>
+            <span v-if="selectedItemRemainingQuantity != null"> / {{ formatQuantity(selectedItemRemainingQuantity) }}</span>
+          </div>
+        </div>
+        <div class="form-grid">
+          <a-form-item label="分配重量(kg)" name="allocatedWeight">
+            <a-input-number v-model:value="batchLinkForm.allocatedWeight" :min="0" class="full-control" placeholder="请输入分配重量" />
+          </a-form-item>
+          <a-form-item label="分配数量" name="allocatedQuantity">
+            <a-input-number v-model:value="batchLinkForm.allocatedQuantity" :min="0" class="full-control" placeholder="可选" />
+          </a-form-item>
+        </div>
+        <a-form-item label="备注" name="remark">
+          <a-textarea v-model:value="batchLinkForm.remark" :rows="3" placeholder="可选" />
+        </a-form-item>
+      </a-form>
+    </a-modal>
   </div>
 </template>
 
@@ -673,6 +1264,167 @@ onMounted(() => {
 
 .page-card {
   border-radius: 12px;
+}
+
+.detail-fit-table {
+  width: 100%;
+}
+
+.detail-cell-nowrap,
+.detail-cell-time,
+.detail-cell-text {
+  display: block;
+  min-width: 0;
+  color: #1f2937;
+  line-height: 1.45;
+  word-break: keep-all;
+  overflow-wrap: normal;
+}
+
+.detail-cell-nowrap,
+.detail-cell-time {
+  white-space: nowrap;
+}
+
+.detail-cell-time {
+  font-size: 12px;
+}
+
+.detail-cell-text {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.detail-cell-two-line {
+  display: -webkit-box;
+  white-space: normal;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+}
+
+.detail-action-grid {
+  display: grid;
+  grid-template-columns: repeat(2, max-content);
+  gap: 4px 8px;
+  align-items: center;
+}
+
+.detail-plan-links {
+  grid-template-columns: 1fr;
+  justify-items: start;
+}
+
+.detail-action-grid :deep(.ant-btn) {
+  height: 22px;
+  padding: 0;
+  line-height: 22px;
+}
+
+:deep(.detail-fit-table .ant-table) {
+  overflow: hidden;
+}
+
+:deep(.detail-fit-table .ant-table-container),
+:deep(.detail-fit-table .ant-table-content) {
+  width: 100%;
+  overflow-x: hidden;
+}
+
+:deep(.detail-fit-table .ant-table-thead > tr > th),
+:deep(.detail-fit-table .ant-table-tbody > tr > td) {
+  padding: 12px 10px;
+  vertical-align: middle;
+  word-break: keep-all;
+  overflow-wrap: normal;
+}
+
+:deep(.detail-fit-table .ant-table-thead > tr > th) {
+  white-space: nowrap;
+}
+
+.form-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  column-gap: 16px;
+}
+
+.full-control {
+  width: 100%;
+}
+
+.batch-resource-card {
+  margin-bottom: 16px;
+  padding: 14px 16px;
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  background: #f8fafc;
+}
+
+.batch-resource-main {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 12px;
+}
+
+.batch-resource-title {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: #1f2937;
+  font-weight: 700;
+}
+
+.batch-resource-sub {
+  margin-top: 4px;
+  color: #64748b;
+  font-size: 12px;
+}
+
+.batch-resource-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.batch-resource-grid div {
+  min-width: 0;
+}
+
+.batch-resource-grid span,
+.batch-resource-hint span {
+  display: block;
+  color: #64748b;
+  font-size: 12px;
+}
+
+.batch-resource-grid strong,
+.batch-resource-hint strong {
+  display: block;
+  overflow: hidden;
+  margin-top: 4px;
+  color: #1f2937;
+  font-size: 13px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.batch-resource-hint {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 4px;
+  margin-top: 12px;
+  padding-top: 10px;
+  border-top: 1px solid #e5e7eb;
+}
+
+.batch-resource-hint span,
+.batch-resource-hint strong {
+  display: inline;
+  margin-top: 0;
 }
 
 .route-summary-grid {
@@ -791,7 +1543,9 @@ onMounted(() => {
 
 @media (max-width: 768px) {
   .top-metrics,
-  .route-summary-grid {
+  .route-summary-grid,
+  .batch-resource-grid,
+  .form-grid {
     grid-template-columns: 1fr;
   }
 }

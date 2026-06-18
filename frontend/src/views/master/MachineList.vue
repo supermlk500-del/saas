@@ -13,6 +13,7 @@ import SearchBar from '@/components/SearchBar.vue'
 import { machineStatusOptions } from '@/constants/dictionaries'
 import { useTable } from '@/hooks/useTable'
 import type { IdValue, MachineItem } from '@/types/domain'
+import { formatDateTime } from '@/utils/date'
 
 type MachineFormModel = {
   machineId?: IdValue
@@ -45,14 +46,14 @@ const searchFields = [
 ]
 
 const columns = [
-  { title: '设备ID', dataIndex: 'machineId', key: 'machineId', width: 100 },
-  { title: '设备编码', dataIndex: 'machineCode', key: 'machineCode', width: 160 },
-  { title: '设备名称', dataIndex: 'machineName', key: 'machineName', width: 180 },
-  { title: '设备类型', dataIndex: 'machineType', key: 'machineType', width: 180 },
-  { title: '描述', dataIndex: 'description', key: 'description' },
-  { title: '状态', dataIndex: 'status', key: 'status', width: 120 },
-  { title: '创建时间', dataIndex: 'createTime', key: 'createTime', width: 180 },
-  { title: '操作', key: 'action', width: 140, fixed: 'right' as const },
+  { title: '设备ID', dataIndex: 'machineId', key: 'machineId', width: 80 },
+  { title: '设备编码', dataIndex: 'machineCode', key: 'machineCode', width: 116 },
+  { title: '设备名称', dataIndex: 'machineName', key: 'machineName', width: 148 },
+  { title: '设备类型', dataIndex: 'machineType', key: 'machineType', width: 100 },
+  { title: '描述', dataIndex: 'description', key: 'description', width: 360 },
+  { title: '状态', dataIndex: 'status', key: 'status', width: 80 },
+  { title: '创建时间', dataIndex: 'createTime', key: 'createTime', width: 158 },
+  { title: '操作', key: 'action', width: 64 },
 ]
 
 const { data, loading, pagination } = useTable<MachineItem>()
@@ -181,7 +182,15 @@ onMounted(() => {
 </script>
 
 <template>
-  <TablePage title="设备管理" :columns="columns" :data="data" :loading="loading" :pagination="pagination">
+  <TablePage
+    title="设备管理"
+    :columns="columns"
+    :data="data"
+    :loading="loading"
+    :pagination="pagination"
+    table-layout="fixed"
+    class="machine-table-page"
+  >
     <template #search>
       <SearchBar :model="searchForm" :fields="searchFields" @search="loadData" @reset="resetSearch" />
     </template>
@@ -191,11 +200,18 @@ onMounted(() => {
     </template>
 
     <template #bodyCell="{ column, record }">
-      <template v-if="column.key === 'machineType'">
-        {{ record.machineType || '-' }}
+      <template v-if="column.key === 'machineName'">
+        <a-tooltip :title="record.machineName" placement="topLeft">
+          <span class="nowrap-cell">{{ record.machineName }}</span>
+        </a-tooltip>
+      </template>
+      <template v-else-if="column.key === 'machineType'">
+        <span class="nowrap-cell">{{ record.machineType || '-' }}</span>
       </template>
       <template v-else-if="column.key === 'description'">
-        {{ record.description || '-' }}
+        <a-tooltip :title="record.description || undefined" placement="topLeft">
+          <span class="description-cell">{{ record.description || '-' }}</span>
+        </a-tooltip>
       </template>
       <template v-else-if="column.key === 'status'">
         <a-tag :color="getStatusOption(record.status)?.color">
@@ -203,7 +219,9 @@ onMounted(() => {
         </a-tag>
       </template>
       <template v-else-if="column.key === 'createTime'">
-        {{ record.createTime || '-' }}
+        <a-tooltip :title="formatDateTime(record.createTime, false)">
+          <span class="nowrap-cell">{{ formatDateTime(record.createTime, false) }}</span>
+        </a-tooltip>
       </template>
       <template v-else-if="column.key === 'action'">
         <a-button type="link" @click="openEditModal(record)">编辑</a-button>
@@ -252,6 +270,39 @@ onMounted(() => {
 </template>
 
 <style scoped>
+.machine-table-page :deep(.ant-table-cell) {
+  overflow-wrap: normal;
+  word-break: normal;
+}
+
+.machine-table-page :deep(.ant-table-content) {
+  overflow-x: clip !important;
+}
+
+.machine-table-page :deep(.ant-table-tbody > tr > td) {
+  padding-top: 14px;
+  padding-bottom: 14px;
+  vertical-align: middle;
+}
+
+.nowrap-cell {
+  display: block;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.description-cell {
+  display: -webkit-box;
+  overflow: hidden;
+  line-height: 22px;
+  white-space: normal;
+  word-break: break-word;
+  overflow-wrap: break-word;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+}
+
 .form-grid {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));

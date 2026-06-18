@@ -11,6 +11,7 @@ import jakarta.validation.Valid;
 import jakarta.validation.constraints.Min;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.ModelAttribute;
 import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -56,5 +57,11 @@ public class ProcessStepController {
     public AjaxResult patchStatus(@PathVariable @Min(value = 1, message = "stepId must be greater than 0") Long stepId,
                                   @Valid @RequestBody IsActivePatchRequest request) {
         return AjaxResult.success(processStepService.patchStatus(stepId, request));
+    }
+
+    @DeleteMapping("/{stepId}")
+    public AjaxResult delete(@PathVariable @Min(value = 1, message = "stepId must be greater than 0") Long stepId) {
+        processStepService.delete(stepId);
+        return AjaxResult.success();
     }
 }

@@ -131,6 +131,12 @@ export const patchProcessStepStatus = (stepId: IdValue, isActive: number) =>
     data: { isActive },
   })
 
+export const deleteProcessStep = (stepId: IdValue) =>
+  request<ApiSuccessResponse<null>>({
+    url: `/api/process-steps/${stepId}`,
+    method: 'delete',
+  })
+
 export const fetchProcesses = async (query?: ProcessQuery): Promise<PageResult<ProcessItem>> => {
   const response = await listProcesses(query)
   return {

@@ -9,7 +9,13 @@ import com.zhihuitong.modules.process.dto.IsActivePatchRequest;
 import com.zhihuitong.modules.process.dto.ProcessStepQuery;
 import com.zhihuitong.modules.process.dto.ProcessStepUpsertRequest;
 import com.zhihuitong.modules.process.entity.ProcessStep;
+import com.zhihuitong.modules.process.entity.RouteStep;
+import com.zhihuitong.modules.process.entity.StepMachineCapability;
 import com.zhihuitong.modules.process.mapper.ProcessStepMapper;
+import com.zhihuitong.modules.process.mapper.RouteStepMapper;
+import com.zhihuitong.modules.process.mapper.StepMachineCapabilityMapper;
+import com.zhihuitong.modules.plan.entity.PlanStep;
+import com.zhihuitong.modules.plan.mapper.PlanStepMapper;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
@@ -18,9 +24,18 @@ import org.springframework.util.StringUtils;
 public class ProcessStepService {
 
     private final ProcessStepMapper processStepMapper;
+    private final RouteStepMapper routeStepMapper;
+    private final StepMachineCapabilityMapper stepMachineCapabilityMapper;
+    private final PlanStepMapper planStepMapper;
 
-    public ProcessStepService(ProcessStepMapper processStepMapper) {
+    public ProcessStepService(ProcessStepMapper processStepMapper,
+                              RouteStepMapper routeStepMapper,
+                              StepMachineCapabilityMapper stepMachineCapabilityMapper,
+                              PlanStepMapper planStepMapper) {
         this.processStepMapper = processStepMapper;
+        this.routeStepMapper = routeStepMapper;
+        this.stepMachineCapabilityMapper = stepMachineCapabilityMapper;
+        this.planStepMapper = planStepMapper;
     }
 
     public TableDataInfo<ProcessStep> list(ProcessStepQuery query) {
@@ -64,6 +79,26 @@ public class ProcessStepService {
         return entity;
     }
 
+    @Transactional
+    public void delete(Long stepId) {
+        requireStep(stepId);
+
+        if (hasReferences(routeStepMapper.selectCount(Wrappers.<RouteStep>lambdaQuery()
+                .eq(RouteStep::getStepId, stepId)))) {
+            throw new BusinessException(409, "工序模板已被工艺路线引用，请先移除路线中的工序配置");
+        }
+        if (hasReferences(stepMachineCapabilityMapper.selectCount(Wrappers.<StepMachineCapability>lambdaQuery()
+                .eq(StepMachineCapability::getStepId, stepId)))) {
+            throw new BusinessException(409, "工序模板已配置设备能力，请先删除相关设备能力");
+        }
+        if (hasReferences(planStepMapper.selectCount(Wrappers.<PlanStep>lambdaQuery()
+                .eq(PlanStep::getStepId, stepId)))) {
+            throw new BusinessException(409, "工序模板已生成生产计划工序，不能删除");
+        }
+
+        processStepMapper.deleteById(stepId);
+    }
+
     public ProcessStep requireStep(Long stepId) {
         ProcessStep entity = processStepMapper.selectById(stepId);
         if (entity == null) {
@@ -89,5 +124,9 @@ public class ProcessStepService {
         if (count != null && count > 0) {
             throw new BusinessException(409, "Process step code already exists");
         }
+    }
+
+    private boolean hasReferences(Long count) {
+        return count != null && count > 0;
     }
 }

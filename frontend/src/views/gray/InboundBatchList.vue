@@ -30,18 +30,14 @@ const searchFields = [
 ]
 
 const columns = [
-  { title: '批次编号', dataIndex: 'batchNo', key: 'batchNo', width: 180 },
-  { title: '供应商', dataIndex: 'supplier', key: 'supplier', width: 220 },
-  { title: '入厂时间', dataIndex: 'inDate', key: 'inDate', width: 180 },
-  { title: '重量(kg)', dataIndex: 'weight', key: 'weight', width: 120 },
-  { title: '门幅(cm)', dataIndex: 'width', key: 'width', width: 120 },
-  { title: '成分', dataIndex: 'composition', key: 'composition', width: 180 },
-  { title: '关联订单', dataIndex: 'linkedOrders', key: 'linkedOrders', width: 260 },
-  { title: '已分配', dataIndex: 'allocatedWeight', key: 'allocatedWeight', width: 150 },
-  { title: '剩余可用', dataIndex: 'remainingWeight', key: 'remainingWeight', width: 150 },
-  { title: '计划占用', dataIndex: 'lockedByPlan', key: 'lockedByPlan', width: 120 },
-  { title: '资源状态', dataIndex: 'resourceStatus', key: 'resourceStatus', width: 130 },
-  { title: '操作', key: 'action', width: 220, fixed: 'right' as const },
+  { title: '批次编号', dataIndex: 'batchNo', key: 'batchNo', width: 132 },
+  { title: '供应商', dataIndex: 'supplier', key: 'supplier', width: 140 },
+  { title: '入厂时间', dataIndex: 'inDate', key: 'inDate', width: 142 },
+  { title: '物料规格', key: 'materialSpec', width: 168 },
+  { title: '库存分配', key: 'inventory', width: 174 },
+  { title: '关联订单', dataIndex: 'linkedOrders', key: 'linkedOrders', width: 124 },
+  { title: '排产状态', key: 'scheduleStatus', width: 118 },
+  { title: '操作', key: 'action', width: 94 },
 ]
 
 const { data, loading, pagination } = useTable<BatchItem>()
@@ -137,22 +133,13 @@ const getStatusOption = (status?: string, label?: string) => {
   return local ? { ...local, label: label || local.label } : { label: label || status, color: 'default' }
 }
 
-const formatWeight = (value?: number | null) => (value != null ? `${Number(value).toFixed(2)} kg` : '未记录重量')
+const formatCompactWeight = (value?: number | null) =>
+  value != null ? `${Number(value).toFixed(2)} kg` : '-'
 
-const formatQuantity = (value?: number | null) => (value != null ? `${Number(value).toFixed(2)}` : '未记录数量')
-
-const formatAllocation = (weight?: number | null, quantity?: number | null) => {
-  if (weight != null && quantity != null) {
-    return `${formatWeight(weight)} / ${formatQuantity(quantity)}`
-  }
-  if (weight != null) {
-    return formatWeight(weight)
-  }
-  if (quantity != null) {
-    return formatQuantity(quantity)
-  }
-  return '未分配'
-}
+const formatLinkedOrders = (record: BatchItem) =>
+  (record.linkedOrders ?? [])
+    .map((item) => item.orderNo || `订单 ${item.orderId}`)
+    .join('、')
 
 const resetFormModel = () => {
   formModel.batchId = undefined
@@ -237,7 +224,8 @@ onMounted(() => {
     :loading="loading"
     :pagination="pagination"
     row-key="batchId"
-    :scroll="{ x: 1750 }"
+    table-layout="fixed"
+    class="batch-resource-page"
   >
     <template #search>
       <div class="search-stack">
@@ -259,45 +247,59 @@ onMounted(() => {
     </template>
 
     <template #bodyCell="{ column, record }">
-      <template v-if="column.key === 'weight'">
-        {{ record.weight ?? '-' }}
+      <template v-if="column.key === 'batchNo'">
+        <a-tooltip :title="record.note || record.batchNo" placement="topLeft">
+          <span class="single-line-cell">{{ record.batchNo }}</span>
+        </a-tooltip>
       </template>
-      <template v-else-if="column.key === 'width'">
-        {{ record.width ?? '-' }}
+      <template v-else-if="column.key === 'supplier'">
+        <a-tooltip :title="record.supplier" placement="topLeft">
+          <span class="single-line-cell">{{ record.supplier }}</span>
+        </a-tooltip>
       </template>
-      <template v-else-if="column.key === 'composition'">
-        {{ record.composition || '-' }}
+      <template v-else-if="column.key === 'inDate'">
+        <span class="date-cell">{{ record.inDate || '-' }}</span>
+      </template>
+      <template v-else-if="column.key === 'materialSpec'">
+        <div class="stacked-cell">
+          <strong>{{ record.composition || '未记录成分' }}</strong>
+          <span>门幅 {{ record.width != null ? `${record.width} cm` : '-' }}</span>
+        </div>
+      </template>
+      <template v-else-if="column.key === 'inventory'">
+        <div class="inventory-cell">
+          <span><em>总量</em>{{ formatCompactWeight(record.weight) }}</span>
+          <span><em>已分配</em>{{ formatCompactWeight(record.allocatedWeight) }}</span>
+          <span class="remaining"><em>剩余</em>{{ formatCompactWeight(record.remainingWeight) }}</span>
+        </div>
       </template>
       <template v-else-if="column.key === 'linkedOrders'">
-        <a-space v-if="record.linkedOrders?.length" wrap size="small">
-          <a-tag v-for="item in record.linkedOrders" :key="String(item.linkId || item.orderId)" color="blue">
-            {{ item.orderNo || `订单 ${item.orderId}` }}
-          </a-tag>
-        </a-space>
+        <a-tooltip
+          v-if="record.linkedOrders?.length"
+          :title="formatLinkedOrders(record)"
+        >
+          <a-tag color="blue">{{ record.linkedOrderCount }} 个订单</a-tag>
+        </a-tooltip>
         <span v-else class="muted-text">未分配订单</span>
       </template>
-      <template v-else-if="column.key === 'allocatedWeight'">
-        {{ formatAllocation(record.allocatedWeight, record.allocatedQuantity) }}
-      </template>
-      <template v-else-if="column.key === 'remainingWeight'">
-        {{ formatAllocation(record.remainingWeight, record.remainingQuantity) }}
-      </template>
-      <template v-else-if="column.key === 'lockedByPlan'">
-        <a-tag :color="record.lockedByPlan ? 'processing' : 'success'">
-          {{ record.lockedByPlan ? `计划 ${record.currentPlanId || ''} 占用` : '可用于排产' }}
-        </a-tag>
-      </template>
-      <template v-else-if="column.key === 'resourceStatus'">
-        <a-tag v-if="getStatusOption(record.resourceStatus, record.resourceStatusLabel)" :color="getStatusOption(record.resourceStatus, record.resourceStatusLabel)?.color">
-          {{ getStatusOption(record.resourceStatus, record.resourceStatusLabel)?.label }}
-        </a-tag>
-        <span v-else>{{ record.resourceStatusLabel || record.resourceStatus || '-' }}</span>
+      <template v-else-if="column.key === 'scheduleStatus'">
+        <div class="status-cell">
+          <a-tag
+            v-if="getStatusOption(record.resourceStatus, record.resourceStatusLabel)"
+            :color="getStatusOption(record.resourceStatus, record.resourceStatusLabel)?.color"
+          >
+            {{ getStatusOption(record.resourceStatus, record.resourceStatusLabel)?.label }}
+          </a-tag>
+          <span :class="{ locked: record.lockedByPlan }">
+            {{ record.lockedByPlan ? '计划占用中' : '当前未锁定' }}
+          </span>
+        </div>
       </template>
       <template v-else-if="column.key === 'action'">
-        <a-space>
-          <a-button type="link" @click="openEditModal(record)">编辑资源</a-button>
-          <a-button type="link" @click="jumpToOrderSchedulePool">去订单排产</a-button>
-        </a-space>
+        <div class="action-cell">
+          <a-button type="link" size="small" @click="openEditModal(record)">编辑</a-button>
+          <a-button type="link" size="small" @click="jumpToOrderSchedulePool">去排产</a-button>
+        </div>
       </template>
     </template>
   </TablePage>
@@ -366,6 +368,90 @@ onMounted(() => {
 </template>
 
 <style scoped>
+.batch-resource-page :deep(.ant-table-cell) {
+  overflow-wrap: normal;
+  word-break: normal;
+}
+
+.batch-resource-page :deep(.ant-table-content) {
+  overflow-x: clip !important;
+}
+
+.batch-resource-page :deep(.ant-table-tbody > tr > td) {
+  padding-top: 12px;
+  padding-bottom: 12px;
+  vertical-align: middle;
+}
+
+.single-line-cell,
+.date-cell {
+  display: block;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.date-cell {
+  font-size: 13px;
+}
+
+.stacked-cell,
+.status-cell,
+.action-cell {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 4px;
+}
+
+.stacked-cell strong {
+  overflow: hidden;
+  width: 100%;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.stacked-cell span,
+.status-cell span {
+  color: #64748b;
+  font-size: 12px;
+}
+
+.inventory-cell {
+  display: grid;
+  gap: 3px;
+  font-size: 12px;
+}
+
+.inventory-cell span {
+  display: grid;
+  grid-template-columns: 48px 1fr;
+  white-space: nowrap;
+}
+
+.inventory-cell em {
+  color: #94a3b8;
+  font-style: normal;
+}
+
+.inventory-cell .remaining {
+  color: #1677ff;
+  font-weight: 600;
+}
+
+.status-cell .locked {
+  color: #d97706;
+}
+
+.action-cell {
+  gap: 0;
+}
+
+.action-cell :deep(.ant-btn) {
+  height: 26px;
+  padding-inline: 0;
+}
+
 .form-grid {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));

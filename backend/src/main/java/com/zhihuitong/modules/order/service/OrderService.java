@@ -76,6 +76,7 @@ public class OrderService {
 
     private static final Set<String> ORDER_STATUSES = Set.of("NEW", "READY", "PLANNING", "IN_PROGRESS", "DONE", "CANCELLED");
     private static final Set<String> ACTIVE_PLAN_STATUSES = Set.of("DRAFT", "RELEASED", "RUNNING");
+    private static final Set<String> ORDER_DELETE_PROTECTED_PLAN_STATUSES = Set.of("DRAFT", "RELEASED", "RUNNING", "COMPLETED");
 
     private final OrderInfoMapper orderInfoMapper;
     private final OrderItemMapper orderItemMapper;
@@ -324,6 +325,22 @@ public class OrderService {
     }
 
     @Transactional
+    public void delete(Long orderId) {
+        requireOrder(orderId);
+        List<ProductionPlan> plans = findOrderPlans(orderId);
+        long protectedPlanCount = plans.stream().filter(this::isOrderDeleteProtectedPlan).count();
+        if (protectedPlanCount > 0) {
+            throw new BusinessException(409, "Order is already referenced by active or completed production plans and cannot be deleted");
+        }
+        deleteNonProtectedOrderPlans(plans);
+        orderBatchLinkMapper.delete(Wrappers.<OrderBatchLink>lambdaQuery()
+                .eq(OrderBatchLink::getOrderId, orderId));
+        orderItemMapper.delete(Wrappers.<OrderItem>lambdaQuery()
+                .eq(OrderItem::getOrderId, orderId));
+        orderInfoMapper.deleteById(orderId);
+    }
+
+    @Transactional
     public OrderInfo patchStatus(Long orderId, OrderStatusPatchRequest request) {
         assertOrderStatus(request.getStatus());
         OrderInfo entity = requireOrder(orderId);
@@ -420,19 +437,33 @@ public class OrderService {
     }
 
     @Transactional
+    public OrderBatchLink updateBatchLink(Long orderId, Long linkId, OrderBatchLinkUpsertRequest request) {
+        requireOrder(orderId);
+        OrderBatchLink link = requireBatchLink(linkId);
+        if (!orderId.equals(link.getOrderId())) {
+            throw new BusinessException(404, "Order batch link not found");
+        }
+        assertBatchLinkNotUsedByPlan(orderId, link);
+        OrderItem item = requireOrderItem(request.getOrderItemId());
+        if (!orderId.equals(item.getOrderId())) {
+            throw new BusinessException(422, "Order item does not belong to the target order");
+        }
+        BatchInfo batch = batchService.requireBatch(request.getBatchId());
+        validateOrderBatchLinkRequest(request, item, batch, linkId);
+        checkBatchLinkUnique(orderId, request.getOrderItemId(), request.getBatchId(), linkId);
+        copyBatchLinkRequest(orderId, request, link);
+        orderBatchLinkMapper.updateById(link);
+        return link;
+    }
+
+    @Transactional
     public void deleteBatchLink(Long orderId, Long linkId) {
         requireOrder(orderId);
         OrderBatchLink link = requireBatchLink(linkId);
         if (!orderId.equals(link.getOrderId())) {
             throw new BusinessException(404, "Order batch link not found");
         }
-        long planCount = productionPlanMapper.selectCount(Wrappers.<ProductionPlan>lambdaQuery()
-                .eq(ProductionPlan::getOrderId, orderId)
-                .eq(ProductionPlan::getOrderItemId, link.getOrderItemId())
-                .eq(ProductionPlan::getBatchId, link.getBatchId()));
-        if (planCount > 0) {
-            throw new BusinessException(409, "Order batch link is already referenced by production plans and cannot be deleted");
-        }
+        assertBatchLinkNotUsedByPlan(orderId, link);
         orderBatchLinkMapper.deleteById(linkId);
     }
 
@@ -1028,6 +1059,39 @@ public class OrderService {
         return plan != null && ACTIVE_PLAN_STATUSES.contains(plan.getStatus());
     }
 
+    private boolean isOrderDeleteProtectedPlan(ProductionPlan plan) {
+        return plan != null && ORDER_DELETE_PROTECTED_PLAN_STATUSES.contains(plan.getStatus());
+    }
+
+    private void deleteNonProtectedOrderPlans(List<ProductionPlan> plans) {
+        List<ProductionPlan> deletablePlans = plans.stream()
+                .filter(plan -> !isOrderDeleteProtectedPlan(plan))
+                .toList();
+        if (deletablePlans.isEmpty()) {
+            return;
+        }
+        List<Long> planIds = deletablePlans.stream().map(ProductionPlan::getPlanId).filter(Objects::nonNull).toList();
+        if (planIds.isEmpty()) {
+            return;
+        }
+        List<PlanStep> steps = planStepMapper.selectList(Wrappers.<PlanStep>lambdaQuery()
+                .in(PlanStep::getPlanId, planIds));
+        List<Long> planStepIds = steps.stream().map(PlanStep::getPlanStepId).filter(Objects::nonNull).toList();
+        if (!planStepIds.isEmpty()) {
+            long qcCount = qcRecordMapper.selectCount(Wrappers.<QcRecord>lambdaQuery()
+                    .in(QcRecord::getPlanStepId, planStepIds));
+            long exceptionCount = exceptionRecordMapper.selectCount(Wrappers.<ExceptionRecord>lambdaQuery()
+                    .in(ExceptionRecord::getPlanStepId, planStepIds));
+            if (qcCount > 0 || exceptionCount > 0) {
+                throw new BusinessException(409, "Cancelled production plans already have quality or exception records and cannot be deleted with the order");
+            }
+            planStepMapper.delete(Wrappers.<PlanStep>lambdaQuery()
+                    .in(PlanStep::getPlanStepId, planStepIds));
+        }
+        productionPlanMapper.delete(Wrappers.<ProductionPlan>lambdaQuery()
+                .in(ProductionPlan::getPlanId, planIds));
+    }
+
     private OrderRouteStepVo toRouteStepVo(RouteStep routeStep, ProcessStep processStep) {
         OrderRouteStepVo vo = new OrderRouteStepVo();
         vo.setRouteStepId(routeStep.getRouteStepId());
@@ -1095,6 +1159,10 @@ public class OrderService {
     }
 
     private void validateOrderBatchLinkRequest(OrderBatchLinkUpsertRequest request, OrderItem item, BatchInfo batch) {
+        validateOrderBatchLinkRequest(request, item, batch, null);
+    }
+
+    private void validateOrderBatchLinkRequest(OrderBatchLinkUpsertRequest request, OrderItem item, BatchInfo batch, Long excludeLinkId) {
         if (request.getAllocatedWeight() == null && request.getAllocatedQuantity() == null) {
             throw new BusinessException(422, "allocatedWeight or allocatedQuantity must provide at least one allocation dimension");
         }
@@ -1105,21 +1173,21 @@ public class OrderService {
             throw new BusinessException(422, "allocatedWeight exceeds order item requiredWeight");
         }
         if (request.getAllocatedWeight() != null && batch.getWeight() != null) {
-            BigDecimal batchAllocatedWeight = batchResourcePoolService.sumBatchAllocatedWeight(batch.getBatchId(), null)
+            BigDecimal batchAllocatedWeight = batchResourcePoolService.sumBatchAllocatedWeight(batch.getBatchId(), excludeLinkId)
                     .add(request.getAllocatedWeight());
             if (batchAllocatedWeight.compareTo(batch.getWeight()) > 0) {
                 throw new BusinessException(422, "allocatedWeight exceeds remaining batch weight");
             }
         }
         if (request.getAllocatedWeight() != null && item.getRequiredWeight() != null) {
-            BigDecimal itemAllocatedWeight = batchResourcePoolService.sumOrderItemAllocatedWeight(item.getOrderItemId(), null)
+            BigDecimal itemAllocatedWeight = batchResourcePoolService.sumOrderItemAllocatedWeight(item.getOrderItemId(), excludeLinkId)
                     .add(request.getAllocatedWeight());
             if (itemAllocatedWeight.compareTo(item.getRequiredWeight()) > 0) {
                 throw new BusinessException(422, "allocatedWeight exceeds remaining order item requiredWeight");
             }
         }
         if (request.getAllocatedQuantity() != null && item.getQuantity() != null) {
-            BigDecimal itemAllocatedQuantity = batchResourcePoolService.sumOrderItemAllocatedQuantity(item.getOrderItemId(), null)
+            BigDecimal itemAllocatedQuantity = batchResourcePoolService.sumOrderItemAllocatedQuantity(item.getOrderItemId(), excludeLinkId)
                     .add(request.getAllocatedQuantity());
             if (itemAllocatedQuantity.compareTo(item.getQuantity()) > 0) {
                 throw new BusinessException(422, "allocatedQuantity exceeds remaining order item quantity");
@@ -1147,6 +1215,16 @@ public class OrderService {
                 .ne(excludeId != null, OrderBatchLink::getId, excludeId));
         if (count > 0) {
             throw new BusinessException(409, "The order item is already linked to the batch");
+        }
+    }
+
+    private void assertBatchLinkNotUsedByPlan(Long orderId, OrderBatchLink link) {
+        long planCount = productionPlanMapper.selectCount(Wrappers.<ProductionPlan>lambdaQuery()
+                .eq(ProductionPlan::getOrderId, orderId)
+                .eq(ProductionPlan::getOrderItemId, link.getOrderItemId())
+                .eq(ProductionPlan::getBatchId, link.getBatchId()));
+        if (planCount > 0) {
+            throw new BusinessException(409, "Order batch link is already referenced by production plans and cannot be changed");
         }
     }
 
