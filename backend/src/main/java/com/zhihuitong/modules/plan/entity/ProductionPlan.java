@@ -28,6 +28,10 @@ public class ProductionPlan {
 
     private String status;
 
+    private Long deptId;
+
+    private Long createdBy;
+
     private LocalDateTime createTime;
 
     private String remark;

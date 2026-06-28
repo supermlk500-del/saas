@@ -14,6 +14,7 @@ import com.zhihuitong.modules.quality.service.QcRecordService;
 import com.zhihuitong.modules.quality.vo.InspectionIntegrationResultVo;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.Min;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.http.MediaType;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -28,6 +29,7 @@ import org.springframework.web.bind.annotation.RestController;
 
 @Validated
 @RestController
+@PreAuthorize("@auth.hasPermission('quality:realtime:view')")
 @RequestMapping("/api/qc-records")
 public class QcRecordController {
 
@@ -50,35 +52,41 @@ public class QcRecordController {
         return AjaxResult.success(qcRecordService.getDetail(inspectionId));
     }
 
+    @PreAuthorize("@auth.hasPermission('quality:realtime:detect')")
     @PostMapping
     public AjaxResult create(@Valid @RequestBody QcRecordUpsertRequest request) {
         return AjaxResult.success(qcRecordService.create(request));
     }
 
+    @PreAuthorize("@auth.hasPermission('quality:realtime:detect')")
     @PostMapping(value = "/detect-image", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     public AjaxResult detectImage(@Valid @ModelAttribute QcDetectImageRequest request) {
         InspectionIntegrationResultVo result = inspectionIntegrationService.detectImage(request);
         return AjaxResult.success(result);
     }
 
+    @PreAuthorize("@auth.hasPermission('quality:realtime:detect')")
     @PostMapping(value = "/detect-frame", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     public AjaxResult detectFrame(@Valid @ModelAttribute QcDetectFrameRequest request) {
         InspectionIntegrationResultVo result = inspectionIntegrationService.detectFrame(request);
         return AjaxResult.success(result);
     }
 
+    @PreAuthorize("@auth.hasPermission('quality:realtime:detect')")
     @PutMapping("/{inspectionId}")
     public AjaxResult update(@PathVariable @Min(value = 1, message = "inspectionId 必须大于 0") Long inspectionId,
                              @Valid @RequestBody QcRecordUpsertRequest request) {
         return AjaxResult.success(qcRecordService.update(inspectionId, request));
     }
 
+    @PreAuthorize("@auth.hasPermission('quality:record:review')")
     @PatchMapping("/{inspectionId}/review")
     public AjaxResult review(@PathVariable @Min(value = 1, message = "inspectionId 必须大于 0") Long inspectionId,
                              @Valid @RequestBody QcRecordReviewRequest request) {
         return AjaxResult.success(qcRecordService.review(inspectionId, request));
     }
 
+    @PreAuthorize("@auth.hasPermission('quality:realtime:detect')")
     @PatchMapping("/{inspectionId}/close")
     public AjaxResult close(@PathVariable @Min(value = 1, message = "inspectionId 必须大于 0") Long inspectionId,
                             @Valid @RequestBody QcRecordCloseRequest request) {

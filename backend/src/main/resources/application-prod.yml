@@ -1,0 +1,36 @@
+spring:
+  datasource:
+    driver-class-name: com.mysql.cj.jdbc.Driver
+    url: jdbc:mysql://${MYSQL_HOST:host.docker.internal}:${MYSQL_PORT:3306}/${MYSQL_DATABASE:zhihuitong}?useUnicode=true&characterEncoding=UTF-8&serverTimezone=Asia/Shanghai&allowPublicKeyRetrieval=true&useSSL=${MYSQL_USE_SSL:false}
+    username: ${MYSQL_USERNAME:zhihuitong}
+    password: ${MYSQL_PASSWORD}
+    hikari:
+      minimum-idle: ${MYSQL_POOL_MIN_IDLE:2}
+      maximum-pool-size: ${MYSQL_POOL_MAX_SIZE:10}
+      connection-timeout: 30000
+      validation-timeout: 5000
+      initialization-fail-timeout: 1
+
+  data:
+    redis:
+      host: ${REDIS_HOST:saas-redis}
+      port: ${REDIS_PORT:6379}
+      password: ${REDIS_PASSWORD:}
+      database: ${REDIS_DATABASE:0}
+      timeout: 3s
+
+inspection:
+  storage:
+    upload-root: ${INSPECTION_STORAGE_UPLOAD_ROOT:/app/data/upload}
+    result-root: ${INSPECTION_STORAGE_RESULT_ROOT:/app/data/results}
+
+ai:
+  yolo:
+    model-path: ${AI_YOLO_MODEL_PATH:/app/docs/best.onnx}
+
+logging:
+  level:
+    root: info
+    com.zhihuitong: info
+    org.mybatis: warn
+    com.baomidou.mybatisplus: warn

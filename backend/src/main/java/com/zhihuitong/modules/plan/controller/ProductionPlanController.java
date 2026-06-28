@@ -12,6 +12,7 @@ import com.zhihuitong.modules.plan.vo.ProductionPlanDetailVo;
 import com.zhihuitong.modules.plan.vo.ProductionPlanListVo;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.Min;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.ModelAttribute;
@@ -25,6 +26,7 @@ import org.springframework.web.bind.annotation.RestController;
 
 @Validated
 @RestController
+@PreAuthorize("@auth.hasPermission('plan:production:list')")
 @RequestMapping("/api/production-plans")
 public class ProductionPlanController {
 
@@ -39,6 +41,7 @@ public class ProductionPlanController {
         return productionPlanService.list(query);
     }
 
+    @PreAuthorize("@auth.hasPermission('plan:production:create')")
     @PostMapping
     public AjaxResult create(@Valid @RequestBody ProductionPlanCreateRequest request) {
         return AjaxResult.success(productionPlanService.create(request));
@@ -50,18 +53,21 @@ public class ProductionPlanController {
         return AjaxResult.success(detail);
     }
 
+    @PreAuthorize("@auth.hasPermission('plan:production:edit')")
     @PutMapping("/{planId}")
     public AjaxResult update(@PathVariable @Min(value = 1, message = "planId 必须大于 0") Long planId,
                              @Valid @RequestBody ProductionPlanUpdateRequest request) {
         return AjaxResult.success(productionPlanService.update(planId, request));
     }
 
+    @PreAuthorize("@auth.hasPermission('plan:production:edit')")
     @PatchMapping("/{planId}/status")
     public AjaxResult patchStatus(@PathVariable @Min(value = 1, message = "planId 必须大于 0") Long planId,
                                   @Valid @RequestBody StatusPatchRequest request) {
         return AjaxResult.success(productionPlanService.patchStatus(planId, request));
     }
 
+    @PreAuthorize("@auth.hasPermission('plan:production:reschedule')")
     @PostMapping("/{planId}/reschedule")
     public AjaxResult reschedule(@PathVariable @Min(value = 1, message = "planId 必须大于 0") Long planId,
                                  @Valid @RequestBody PlanRescheduleRequest request) {

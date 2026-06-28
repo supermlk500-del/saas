@@ -14,6 +14,7 @@ import com.zhihuitong.modules.exception.dto.ExceptionStatusPatchRequest;
 import com.zhihuitong.modules.exception.entity.ExceptionRecord;
 import com.zhihuitong.modules.exception.mapper.ExceptionRecordMapper;
 import com.zhihuitong.modules.plan.service.PlanStepService;
+import com.zhihuitong.security.service.DataScopeService;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
@@ -28,15 +29,18 @@ public class ExceptionRecordService {
 
     private final ExceptionRecordMapper exceptionRecordMapper;
     private final PlanStepService planStepService;
+    private final DataScopeService dataScopeService;
 
     public ExceptionRecordService(ExceptionRecordMapper exceptionRecordMapper,
-                                  PlanStepService planStepService) {
+                                  PlanStepService planStepService,
+                                  DataScopeService dataScopeService) {
         this.exceptionRecordMapper = exceptionRecordMapper;
         this.planStepService = planStepService;
+        this.dataScopeService = dataScopeService;
     }
 
     public TableDataInfo<ExceptionRecord> list(ExceptionRecordQuery query) {
-        Page<ExceptionRecord> page = exceptionRecordMapper.selectPage(query.toPage(), Wrappers.<ExceptionRecord>lambdaQuery()
+        Page<ExceptionRecord> page = exceptionRecordMapper.selectPage(query.toPage(), dataScopeService.apply(Wrappers.<ExceptionRecord>lambdaQuery(), ExceptionRecord::getDeptId, ExceptionRecord::getCreatedBy)
                 .eq(query.getPlanStepId() != null, ExceptionRecord::getPlanStepId, query.getPlanStepId())
                 .eq(StringUtils.hasText(query.getExceptionType()), ExceptionRecord::getExceptionType, query.getExceptionType())
                 .eq(StringUtils.hasText(query.getExceptionLevel()), ExceptionRecord::getExceptionLevel, query.getExceptionLevel())

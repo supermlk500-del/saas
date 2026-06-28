@@ -722,7 +722,7 @@ onMounted(() => {
     </template>
 
     <template #actions>
-      <a-button type="primary" @click="openCreateModal">新建计划</a-button>
+      <a-button v-permission="'plan:production:create'" type="primary" @click="openCreateModal">新建计划</a-button>
     </template>
 
     <template #bodyCell="{ column, record }">
@@ -785,9 +785,9 @@ onMounted(() => {
       <template v-else-if="column.key === 'action'">
         <div class="plan-action-grid">
           <a-button type="link" size="small" @click="openDetailDrawer(record)">详情</a-button>
-          <a-button type="link" size="small" @click="openEditModal(record)">编辑</a-button>
-          <a-button type="link" size="small" @click="openStatusModal(record)">状态</a-button>
-          <a-button type="link" size="small" @click="openRescheduleModal(record)">重排</a-button>
+          <a-button v-permission="'plan:production:edit'" type="link" size="small" @click="openEditModal(record)">编辑</a-button>
+          <a-button v-permission="'plan:production:edit'" type="link" size="small" @click="openStatusModal(record)">状态</a-button>
+          <a-button v-permission="'plan:production:reschedule'" type="link" size="small" @click="openRescheduleModal(record)">重排</a-button>
           <a-button type="link" size="small" @click="jumpToGantt(record)">甘特图</a-button>
         </div>
       </template>

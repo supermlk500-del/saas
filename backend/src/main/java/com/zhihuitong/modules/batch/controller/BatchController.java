@@ -13,6 +13,7 @@ import com.zhihuitong.modules.batch.vo.BatchResourcePoolVo;
 import jakarta.servlet.http.HttpServletResponse;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.Min;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -30,6 +31,7 @@ import java.io.IOException;
 
 @Validated
 @RestController
+@PreAuthorize("@auth.hasPermission('batch:resource:list')")
 @RequestMapping("/api/batches")
 public class BatchController {
 
@@ -57,23 +59,27 @@ public class BatchController {
         return AjaxResult.success(detail);
     }
 
+    @PreAuthorize("@auth.hasPermission('batch:resource:add')")
     @PostMapping
     public AjaxResult create(@Valid @RequestBody BatchUpsertRequest request) {
         return AjaxResult.success(batchService.create(request));
     }
 
+    @PreAuthorize("@auth.hasPermission('batch:resource:edit')")
     @PutMapping("/{batchId}")
     public AjaxResult update(@PathVariable @Min(value = 1, message = "batchId must be greater than 0") Long batchId,
                              @Valid @RequestBody BatchUpsertRequest request) {
         return AjaxResult.success(batchService.update(batchId, request));
     }
 
+    @PreAuthorize("@auth.hasPermission('batch:resource:remove')")
     @DeleteMapping("/{batchId}")
     public AjaxResult delete(@PathVariable @Min(value = 1, message = "batchId must be greater than 0") Long batchId) {
         batchService.delete(batchId);
         return AjaxResult.success();
     }
 
+    @PreAuthorize("@auth.hasPermission('batch:resource:add')")
     @PostMapping("/import")
     public AjaxResult importBatches(@RequestParam("file") MultipartFile file) throws IOException {
         BatchImportResultVo result = batchService.importBatches(file);

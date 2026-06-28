@@ -423,15 +423,16 @@ http://localhost:8080
 
 ## 重要文档在哪里
 
-如果你要继续理解项目，优先看这些文件：
+开发文档统一从 [`docs/README.md`](docs/README.md) 进入：
 
-- [方案设计](C:/Users/lhr/Desktop/saas/docs/方案设计.md)
-- [接口详细设计](C:/Users/lhr/Desktop/saas/docs/接口详细设计.md)
-- [数据库设计说明](C:/Users/lhr/Desktop/saas/docs/数据库设计说明.md)
-- [Java后端开发文档](C:/Users/lhr/Desktop/saas/docs/Java后端开发文档.md)
+- [开发指南](docs/开发指南.md)
+- [系统设计](docs/系统设计.md)
+- [API 接口](docs/API接口.md)
+- [数据库设计](docs/数据库设计.md)
+- [权限与认证](docs/权限与认证.md)
+- [测试指南](docs/测试指南.md)
 
 ---
-
 ## 一句话总结
 
 如果你完全不懂这个项目，可以先这样理解：

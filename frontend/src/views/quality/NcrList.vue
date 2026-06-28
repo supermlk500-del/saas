@@ -237,7 +237,7 @@ onMounted(async () => {
     </template>
 
     <template #actions>
-      <a-button type="primary" @click="openCreateModal">登记质量异常</a-button>
+      <a-button v-permission="'exception:record:handle'" type="primary" @click="openCreateModal">登记质量异常</a-button>
     </template>
 
     <template #bodyCell="{ column, record }">
@@ -259,8 +259,8 @@ onMounted(async () => {
       </template>
       <template v-else-if="column.key === 'action'">
         <a-space>
-          <a-button type="link" @click="openStatusModal(record)">状态</a-button>
-          <a-button type="link" @click="openCloseModal(record)">关闭</a-button>
+          <a-button v-permission="'exception:record:handle'" type="link" @click="openStatusModal(record)">状态</a-button>
+          <a-button v-permission="'exception:record:handle'" type="link" @click="openCloseModal(record)">关闭</a-button>
         </a-space>
       </template>
     </template>

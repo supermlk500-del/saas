@@ -8,6 +8,7 @@ import com.zhihuitong.modules.process.entity.StepMachineCapability;
 import com.zhihuitong.modules.process.service.StepMachineCapabilityService;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.Min;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -21,6 +22,7 @@ import org.springframework.web.bind.annotation.RestController;
 
 @Validated
 @RestController
+@PreAuthorize("@auth.hasPermission('process:machine:list')")
 @RequestMapping("/api/step-machine-capabilities")
 public class StepMachineCapabilityController {
 
@@ -35,17 +37,20 @@ public class StepMachineCapabilityController {
         return capabilityService.list(query);
     }
 
+    @PreAuthorize("@auth.hasPermission('process:machine:edit')")
     @PostMapping
     public AjaxResult create(@Valid @RequestBody CapabilityUpsertRequest request) {
         return AjaxResult.success(capabilityService.create(request));
     }
 
+    @PreAuthorize("@auth.hasPermission('process:machine:edit')")
     @PutMapping("/{capId}")
     public AjaxResult update(@PathVariable @Min(value = 1, message = "capId must be greater than 0") Long capId,
                              @Valid @RequestBody CapabilityUpsertRequest request) {
         return AjaxResult.success(capabilityService.update(capId, request));
     }
 
+    @PreAuthorize("@auth.hasPermission('process:machine:edit')")
     @DeleteMapping("/{capId}")
     public AjaxResult delete(@PathVariable @Min(value = 1, message = "capId must be greater than 0") Long capId) {
         capabilityService.delete(capId);

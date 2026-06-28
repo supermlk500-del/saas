@@ -37,5 +37,9 @@ public class QcRecord {
 
     private String inspector;
 
+    private Long deptId;
+
+    private Long createdBy;
+
     private String remark;
 }

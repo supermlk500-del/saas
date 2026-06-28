@@ -19,6 +19,7 @@ import com.zhihuitong.modules.process.service.MachineService;
 import com.zhihuitong.modules.process.service.ProcessRouteService;
 import com.zhihuitong.modules.process.service.ProcessStepService;
 import com.zhihuitong.modules.process.service.StepMachineCapabilityService;
+import com.zhihuitong.security.service.DataScopeService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -56,6 +57,8 @@ class ProductionPlanServiceTest {
     private MachineService machineService;
     @Mock
     private StepMachineCapabilityService capabilityService;
+    @Mock
+    private DataScopeService dataScopeService;
 
     private ProductionPlanService productionPlanService;
 
@@ -69,8 +72,11 @@ class ProductionPlanServiceTest {
                 processRouteService,
                 processStepService,
                 machineService,
-                capabilityService
+                capabilityService,
+                dataScopeService
         );
+        org.mockito.Mockito.lenient().when(dataScopeService.apply(any(), any(), any()))
+                .thenAnswer(invocation -> invocation.getArgument(0));
     }
 
     @Test

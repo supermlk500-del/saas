@@ -26,6 +26,10 @@ public class OrderInfo {
 
     private String status;
 
+    private Long deptId;
+
+    private Long createdBy;
+
     private String remark;
 
     private LocalDateTime createTime;

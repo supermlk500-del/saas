@@ -1,4 +1,5 @@
 import request, { type ApiSuccessResponse } from '@/utils/request'
+import { readAccessToken } from '@/utils/authToken'
 import type { IdValue, QcDetectionBox, QcDetectionResult } from '@/types/domain'
 
 export type QcStreamSessionCreateRequest = {
@@ -88,10 +89,11 @@ export const closeQcStreamSession = (sessionId: string) =>
 export const buildQcStreamSocketUrl = (sessionId: string) => {
   const baseApi = (import.meta.env.VITE_APP_BASE_API ?? '/prod-api').replace(/\/+$/, '')
   const wsProtocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:'
+  const tokenQuery = `?access_token=${encodeURIComponent(readAccessToken())}`
 
   if (/^https?:\/\//i.test(baseApi)) {
-    return `${baseApi.replace(/^http/i, 'ws')}/ws/qc-stream/${sessionId}`
+    return `${baseApi.replace(/^http/i, 'ws')}/ws/qc-stream/${sessionId}${tokenQuery}`
   }
 
-  return `${wsProtocol}//${window.location.host}${baseApi}/ws/qc-stream/${sessionId}`
+  return `${wsProtocol}//${window.location.host}${baseApi}/ws/qc-stream/${sessionId}${tokenQuery}`
 }

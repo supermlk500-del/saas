@@ -1082,13 +1082,6 @@ onBeforeUnmount(() => {
                   <div class="capture-workspace">
                     <div class="camera-section">
                       <div class="camera-preview">
-                        <div class="video-toolbar">
-                          <div class="section-heading">实时视频源</div>
-                          <a-button class="settings-button" @click="settingsModalOpen = true">
-                            <template #icon><SettingOutlined /></template>
-                            设置
-                          </a-button>
-                        </div>
                         <div class="video-frame">
                           <video ref="videoRef" muted playsinline @loadedmetadata="handleVideoReady" />
                           <canvas ref="overlayCanvasRef" class="overlay-canvas" />
@@ -1101,10 +1094,10 @@ onBeforeUnmount(() => {
                         <div class="camera-actions">
                           <a-button :loading="cameraLoading" :disabled="cameraActive" @click="ensureCameraPreview">打开视频预览</a-button>
                           <a-button :disabled="!cameraActive && !streamRunning" @click="stopRealtimeDetection">停止检测</a-button>
-                          <a-button type="primary" :loading="streamPreparing" :disabled="streamRunning" @click="startRealtimeDetection">
+                          <a-button v-permission="'quality:realtime:detect'" type="primary" :loading="streamPreparing" :disabled="streamRunning" @click="startRealtimeDetection">
                             开始检测
                           </a-button>
-                          <a-button type="primary" ghost :loading="snapshotSaving" :disabled="!streamRunning" @click="saveCurrentFrameSnapshot">
+                          <a-button v-permission="'quality:realtime:detect'" type="primary" ghost :loading="snapshotSaving" :disabled="!streamRunning" @click="saveCurrentFrameSnapshot">
                             保存当前帧
                           </a-button>
                         </div>
@@ -1135,45 +1128,46 @@ onBeforeUnmount(() => {
                   </div>
                 </div>
 
-                <div class="image-grid">
-                <a-card size="small" title="关键帧留档" class="inner-card">
-                  <div class="image-grid">
-                    <a-card size="small" title="关键帧原图">
-                      <div class="image-frame">
-                        <a-image v-if="streamSnapshotSourcePreviewUrl" :src="streamSnapshotSourcePreviewUrl" alt="关键帧原图" />
-                        <a-empty v-else description="保存关键帧后显示原图" />
-                      </div>
-                    </a-card>
-                    <a-card size="small" title="关键帧结果图">
-                      <div class="image-frame">
-                        <a-image v-if="streamResultPreviewUrl" :src="streamResultPreviewUrl" alt="关键帧结果图" />
-                        <a-empty v-else description="后端生成结果图后显示" />
-                      </div>
-                    </a-card>
-                  </div>
-                  <div class="path-text">
-                    {{ latestSavedFrameTime ? `最近保存时间：${latestSavedFrameTime}` : '检测到缺陷后会自动保存原图和结果图到 photo' }}
-                  </div>
+                <div class="image-grid result-detail-grid">
+                  <a-card size="small" title="关键帧留档" class="inner-card">
+                    <div class="image-grid snapshot-image-grid">
+                      <a-card size="small" title="关键帧原图">
+                        <div class="image-frame">
+                          <a-image v-if="streamSnapshotSourcePreviewUrl" :src="streamSnapshotSourcePreviewUrl" alt="关键帧原图" />
+                          <a-empty v-else description="保存关键帧后显示原图" />
+                        </div>
+                      </a-card>
+                      <a-card size="small" title="关键帧结果图">
+                        <div class="image-frame">
+                          <a-image v-if="streamResultPreviewUrl" :src="streamResultPreviewUrl" alt="关键帧结果图" />
+                          <a-empty v-else description="后端生成结果图后显示" />
+                        </div>
+                      </a-card>
+                    </div>
+                    <div class="path-text">
+                      {{ latestSavedFrameTime ? `最近保存时间：${latestSavedFrameTime}` : '检测到缺陷后会自动保存原图和结果图到 photo' }}
+                    </div>
+                  </a-card>
 
-                <a-card size="small" title="当前帧结构化 boxes" class="inner-card">
-                  <a-table
-                    v-if="streamBoxes.length"
-                    :columns="[
-                      { title: '缺陷', dataIndex: 'label', key: 'label' },
-                      { title: '置信度', dataIndex: 'score', key: 'score' },
-                      { title: 'x1', dataIndex: 'x1', key: 'x1' },
-                      { title: 'y1', dataIndex: 'y1', key: 'y1' },
-                      { title: 'x2', dataIndex: 'x2', key: 'x2' },
-                      { title: 'y2', dataIndex: 'y2', key: 'y2' },
-                    ]"
-                    :data-source="streamBoxes"
-                    :pagination="false"
-                    size="small"
-                    row-key="label"
-                  />
-                  <a-empty v-else description="当前帧未返回 boxes，主展示以视频叠框状态为准" />
-                </a-card>
-
+                  <a-card size="small" title="当前帧结构化 boxes" class="inner-card">
+                    <a-table
+                      v-if="streamBoxes.length"
+                      :columns="[
+                        { title: '缺陷', dataIndex: 'label', key: 'label' },
+                        { title: '置信度', dataIndex: 'score', key: 'score' },
+                        { title: 'x1', dataIndex: 'x1', key: 'x1' },
+                        { title: 'y1', dataIndex: 'y1', key: 'y1' },
+                        { title: 'x2', dataIndex: 'x2', key: 'x2' },
+                        { title: 'y2', dataIndex: 'y2', key: 'y2' },
+                      ]"
+                      :data-source="streamBoxes"
+                      :pagination="false"
+                      size="small"
+                      row-key="label"
+                    />
+                    <a-empty v-else description="当前帧未返回 boxes，主展示以视频叠框状态为准" />
+                  </a-card>
+                </div>
               </div>
             </a-card>
 
@@ -1197,7 +1191,7 @@ onBeforeUnmount(() => {
                     </div>
                     <div class="camera-actions compact-actions">
                       <a-button @click="resetImageInspection">清空图片</a-button>
-                      <a-button type="primary" :loading="detecting" @click="handleOfflineDetect">上传并检测</a-button>
+                      <a-button v-permission="'quality:realtime:detect'" type="primary" :loading="detecting" @click="handleOfflineDetect">上传并检测</a-button>
                     </div>
                   </div>
                 </div>
@@ -1408,17 +1402,6 @@ onBeforeUnmount(() => {
   display: inline-flex;
   align-items: center;
   gap: 4px;
-}
-
-.video-toolbar {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 12px;
-}
-
-.video-toolbar .section-heading {
-  margin-bottom: 0;
 }
 
 .workbench-grid {
@@ -1719,8 +1702,16 @@ onBeforeUnmount(() => {
 
 .image-grid {
   display: grid;
-  grid-template-columns: 1fr 1fr;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 16px;
+}
+
+.image-grid > * {
+  min-width: 0;
+}
+
+.result-detail-grid {
+  grid-template-columns: minmax(0, 1fr);
 }
 
 .path-text {

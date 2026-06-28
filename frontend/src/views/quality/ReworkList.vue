@@ -186,8 +186,8 @@ onMounted(() => {
       </template>
       <template v-else-if="column.key === 'action'">
         <a-space>
-          <a-button type="link" @click="openReworkModal(record)">发起返工</a-button>
-          <a-button type="link" @click="openCloseModal(record)">关闭</a-button>
+          <a-button v-permission="'exception:record:rework'" type="link" @click="openReworkModal(record)">发起返工</a-button>
+          <a-button v-permission="'exception:record:handle'" type="link" @click="openCloseModal(record)">关闭</a-button>
         </a-space>
       </template>
     </template>

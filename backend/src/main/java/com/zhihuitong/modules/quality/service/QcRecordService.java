@@ -15,6 +15,7 @@ import com.zhihuitong.modules.quality.dto.QcRecordReviewRequest;
 import com.zhihuitong.modules.quality.dto.QcRecordUpsertRequest;
 import com.zhihuitong.modules.quality.entity.QcRecord;
 import com.zhihuitong.modules.quality.mapper.QcRecordMapper;
+import com.zhihuitong.security.service.DataScopeService;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
@@ -33,22 +34,25 @@ public class QcRecordService {
     private final PlanStepService planStepService;
     private final QcCameraService qcCameraService;
     private final ExceptionRecordMapper exceptionRecordMapper;
+    private final DataScopeService dataScopeService;
 
     public QcRecordService(QcRecordMapper qcRecordMapper,
                            QcItemService qcItemService,
                            PlanStepService planStepService,
                            QcCameraService qcCameraService,
-                           ExceptionRecordMapper exceptionRecordMapper) {
+                           ExceptionRecordMapper exceptionRecordMapper,
+                           DataScopeService dataScopeService) {
         this.qcRecordMapper = qcRecordMapper;
         this.qcItemService = qcItemService;
         this.planStepService = planStepService;
         this.qcCameraService = qcCameraService;
         this.exceptionRecordMapper = exceptionRecordMapper;
+        this.dataScopeService = dataScopeService;
     }
 
     public TableDataInfo<QcRecord> list(QcRecordQuery query) {
         validateTimeRange(query.getInspectTimeFrom(), query.getInspectTimeTo(), "inspectTimeFrom must be earlier than or equal to inspectTimeTo");
-        Page<QcRecord> page = qcRecordMapper.selectPage(query.toPage(), Wrappers.<QcRecord>lambdaQuery()
+        Page<QcRecord> page = qcRecordMapper.selectPage(query.toPage(), dataScopeService.apply(Wrappers.<QcRecord>lambdaQuery(), QcRecord::getDeptId, QcRecord::getCreatedBy)
                 .eq(query.getPlanStepId() != null, QcRecord::getPlanStepId, query.getPlanStepId())
                 .eq(query.getQcItemId() != null, QcRecord::getQcItemId, query.getQcItemId())
                 .eq(StringUtils.hasText(query.getInspectType()), QcRecord::getInspectType, query.getInspectType())
@@ -172,6 +176,8 @@ public class QcRecordService {
         exceptionRecord.setHandleResult("");
         exceptionRecord.setCreateTime(LocalDateTime.now());
         exceptionRecord.setStatus("OPEN");
+        exceptionRecord.setDeptId(entity.getDeptId());
+        exceptionRecord.setCreatedBy(entity.getCreatedBy());
         exceptionRecordMapper.insert(exceptionRecord);
     }
 

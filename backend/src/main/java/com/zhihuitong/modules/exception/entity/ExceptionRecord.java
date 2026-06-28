@@ -27,4 +27,8 @@ public class ExceptionRecord {
     private LocalDateTime createTime;
 
     private String status;
+
+    private Long deptId;
+
+    private Long createdBy;
 }

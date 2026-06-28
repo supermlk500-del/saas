@@ -483,7 +483,7 @@ onMounted(() => {
     <template #actions>
       <a-space>
         <a-button @click="openProcessStepLibrary">工序模板库</a-button>
-        <a-button type="primary" @click="openCreateModal">新增路线</a-button>
+        <a-button v-permission="'process:route:edit'" type="primary" @click="openCreateModal">新增路线</a-button>
       </a-space>
     </template>
 
@@ -508,10 +508,10 @@ onMounted(() => {
       </template>
       <template v-else-if="column.key === 'action'">
         <a-space>
-          <a-button type="link" @click="openRouteStepDrawer(record)">工序配置</a-button>
-          <a-button type="link" @click="openEditModal(record)">编辑</a-button>
+          <a-button v-permission="'process:route:edit'" type="link" @click="openRouteStepDrawer(record)">工序配置</a-button>
+          <a-button v-permission="'process:route:edit'" type="link" @click="openEditModal(record)">编辑</a-button>
           <a-popconfirm title="确认删除该工艺路线吗？" @confirm="handleDeleteProcessRoute(record)">
-            <a-button type="link" danger>删除</a-button>
+            <a-button v-permission="'process:route:edit'" type="link" danger>删除</a-button>
           </a-popconfirm>
         </a-space>
       </template>
@@ -561,7 +561,7 @@ onMounted(() => {
           </div>
           <a-space>
             <a-button @click="openProcessStepLibrary">工序模板库</a-button>
-            <a-button type="primary" @click="openRouteStepModal">新增路线工序</a-button>
+            <a-button v-permission="'process:route:edit'" type="primary" @click="openRouteStepModal">新增路线工序</a-button>
           </a-space>
         </div>
 
@@ -590,7 +590,7 @@ onMounted(() => {
               <a-space>
                 <a-button type="link" @click="openEditRouteStepModal(record)">编辑</a-button>
                 <a-popconfirm title="确认删除该路线工序吗？" @confirm="handleDeleteRouteStep(record)">
-                  <a-button type="link" danger>删除</a-button>
+                  <a-button v-permission="'process:route:edit'" type="link" danger>删除</a-button>
                 </a-popconfirm>
               </a-space>
             </template>
@@ -643,7 +643,7 @@ onMounted(() => {
   >
     <div class="process-step-toolbar">
       <div class="process-step-hint">当前页面用于维护工艺路线依赖的工序模板资源。</div>
-      <a-button type="primary" @click="openCreateProcessStepModal">新增工序模板</a-button>
+      <a-button v-permission="'process:route:edit'" type="primary" @click="openCreateProcessStepModal">新增工序模板</a-button>
     </div>
 
     <a-table
@@ -683,7 +683,7 @@ onMounted(() => {
               title="确认删除该工序模板吗？已被路线、设备能力或生产计划引用时将无法删除。"
               @confirm="handleDeleteProcessStep(record)"
             >
-              <a-button type="link" danger>删除</a-button>
+              <a-button v-permission="'process:route:edit'" type="link" danger>删除</a-button>
             </a-popconfirm>
           </a-space>
         </template>

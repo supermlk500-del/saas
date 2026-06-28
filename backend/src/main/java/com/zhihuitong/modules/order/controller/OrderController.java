@@ -22,6 +22,7 @@ import com.zhihuitong.modules.order.vo.OrderQcSummaryVo;
 import com.zhihuitong.modules.order.vo.OrderRouteSummaryVo;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.Min;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -38,6 +39,7 @@ import java.util.List;
 
 @Validated
 @RestController
+@PreAuthorize("@auth.hasPermission('order:order:list')")
 @RequestMapping("/api/orders")
 public class OrderController {
 
@@ -58,12 +60,14 @@ public class OrderController {
         return AjaxResult.success(detail);
     }
 
+    @PreAuthorize("@auth.hasPermission('order:order:add')")
     @PostMapping
     public AjaxResult create(@Valid @RequestBody OrderUpsertRequest request) {
         OrderInfo order = orderService.create(request);
         return AjaxResult.success(order);
     }
 
+    @PreAuthorize("@auth.hasPermission('order:order:edit')")
     @PutMapping("/{orderId}")
     public AjaxResult update(@PathVariable @Min(value = 1, message = "orderId must be greater than 0") Long orderId,
                              @Valid @RequestBody OrderUpsertRequest request) {
@@ -71,12 +75,14 @@ public class OrderController {
         return AjaxResult.success(order);
     }
 
+    @PreAuthorize("@auth.hasPermission('order:order:remove')")
     @DeleteMapping("/{orderId}")
     public AjaxResult delete(@PathVariable @Min(value = 1, message = "orderId must be greater than 0") Long orderId) {
         orderService.delete(orderId);
         return AjaxResult.success();
     }
 
+    @PreAuthorize("@auth.hasPermission('order:order:edit')")
     @PatchMapping("/{orderId}/status")
     public AjaxResult patchStatus(@PathVariable @Min(value = 1, message = "orderId must be greater than 0") Long orderId,
                                   @Valid @RequestBody OrderStatusPatchRequest request) {
@@ -90,6 +96,7 @@ public class OrderController {
         return AjaxResult.success(items);
     }
 
+    @PreAuthorize("@auth.hasPermission('order:order:add')")
     @PostMapping("/{orderId}/items")
     public AjaxResult createItem(@PathVariable @Min(value = 1, message = "orderId must be greater than 0") Long orderId,
                                  @Valid @RequestBody OrderItemUpsertRequest request) {
@@ -97,6 +104,7 @@ public class OrderController {
         return AjaxResult.success(item);
     }
 
+    @PreAuthorize("@auth.hasPermission('order:order:edit')")
     @PutMapping("/{orderId}/items/{orderItemId}")
     public AjaxResult updateItem(@PathVariable @Min(value = 1, message = "orderId must be greater than 0") Long orderId,
                                  @PathVariable @Min(value = 1, message = "orderItemId must be greater than 0") Long orderItemId,
@@ -105,6 +113,7 @@ public class OrderController {
         return AjaxResult.success(item);
     }
 
+    @PreAuthorize("@auth.hasPermission('order:order:remove')")
     @DeleteMapping("/{orderId}/items/{orderItemId}")
     public AjaxResult deleteItem(@PathVariable @Min(value = 1, message = "orderId must be greater than 0") Long orderId,
                                  @PathVariable @Min(value = 1, message = "orderItemId must be greater than 0") Long orderItemId) {
@@ -148,6 +157,7 @@ public class OrderController {
         return AjaxResult.success(rows);
     }
 
+    @PreAuthorize("@auth.hasPermission('order:order:add')")
     @PostMapping("/{orderId}/batches")
     public AjaxResult createBatchLink(@PathVariable @Min(value = 1, message = "orderId must be greater than 0") Long orderId,
                                       @Valid @RequestBody OrderBatchLinkUpsertRequest request) {
@@ -155,6 +165,7 @@ public class OrderController {
         return AjaxResult.success(link);
     }
 
+    @PreAuthorize("@auth.hasPermission('order:order:edit')")
     @PutMapping("/{orderId}/batches/{linkId}")
     public AjaxResult updateBatchLink(@PathVariable @Min(value = 1, message = "orderId must be greater than 0") Long orderId,
                                       @PathVariable @Min(value = 1, message = "linkId must be greater than 0") Long linkId,
@@ -163,6 +174,7 @@ public class OrderController {
         return AjaxResult.success(link);
     }
 
+    @PreAuthorize("@auth.hasPermission('order:order:remove')")
     @DeleteMapping("/{orderId}/batches/{linkId}")
     public AjaxResult deleteBatchLink(@PathVariable @Min(value = 1, message = "orderId must be greater than 0") Long orderId,
                                       @PathVariable @Min(value = 1, message = "linkId must be greater than 0") Long linkId) {

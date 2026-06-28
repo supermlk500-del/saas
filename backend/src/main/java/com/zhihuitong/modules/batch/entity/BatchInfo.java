@@ -27,5 +27,9 @@ public class BatchInfo {
 
     private String composition;
 
+    private Long deptId;
+
+    private Long createdBy;
+
     private String note;
 }

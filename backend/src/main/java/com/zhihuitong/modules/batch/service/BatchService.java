@@ -24,6 +24,7 @@ import com.zhihuitong.modules.plan.mapper.PlanStepMapper;
 import com.zhihuitong.modules.plan.mapper.ProductionPlanMapper;
 import com.zhihuitong.modules.quality.entity.QcRecord;
 import com.zhihuitong.modules.quality.mapper.QcRecordMapper;
+import com.zhihuitong.security.service.DataScopeService;
 import jakarta.servlet.http.HttpServletResponse;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -56,24 +57,27 @@ public class BatchService {
     private final QcRecordMapper qcRecordMapper;
     private final ExceptionRecordMapper exceptionRecordMapper;
     private final BatchResourcePoolService batchResourcePoolService;
+    private final DataScopeService dataScopeService;
 
     public BatchService(BatchInfoMapper batchInfoMapper,
                         ProductionPlanMapper productionPlanMapper,
                         PlanStepMapper planStepMapper,
                         QcRecordMapper qcRecordMapper,
                         ExceptionRecordMapper exceptionRecordMapper,
-                        BatchResourcePoolService batchResourcePoolService) {
+                        BatchResourcePoolService batchResourcePoolService,
+                        DataScopeService dataScopeService) {
         this.batchInfoMapper = batchInfoMapper;
         this.productionPlanMapper = productionPlanMapper;
         this.planStepMapper = planStepMapper;
         this.qcRecordMapper = qcRecordMapper;
         this.exceptionRecordMapper = exceptionRecordMapper;
         this.batchResourcePoolService = batchResourcePoolService;
+        this.dataScopeService = dataScopeService;
     }
 
     public TableDataInfo<BatchListVo> list(BatchQuery query) {
         validateDateRange(query.getDateFrom(), query.getDateTo(), "dateFrom must be earlier than or equal to dateTo");
-        Page<BatchInfo> page = batchInfoMapper.selectPage(query.toPage(), buildQuery(query));
+        Page<BatchInfo> page = batchInfoMapper.selectPage(query.toPage(), dataScopeService.apply(buildQuery(query), BatchInfo::getDeptId, BatchInfo::getCreatedBy));
         List<BatchListVo> rows = page.getRecords().stream().map(this::toListVo).toList();
         Map<Long, String> statusMap = deriveBatchStatuses(rows.stream().map(BatchListVo::getBatchId).toList());
         rows.forEach(item -> item.setStatus(statusMap.getOrDefault(item.getBatchId(), "READY")));

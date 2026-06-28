@@ -10,6 +10,7 @@ import com.zhihuitong.modules.plan.service.PlanStepService;
 import com.zhihuitong.modules.plan.vo.PlanStepVo;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.Min;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.ModelAttribute;
@@ -31,28 +32,33 @@ public class PlanStepController {
         this.planStepService = planStepService;
     }
 
+    @PreAuthorize("@auth.hasAnyPermission('plan:production:list', 'quality:realtime:view')")
     @GetMapping
     public TableDataInfo<PlanStepVo> list(@Valid @ModelAttribute PlanStepQuery query) {
         return planStepService.list(query);
     }
 
+    @PreAuthorize("@auth.hasAnyPermission('plan:production:list', 'quality:realtime:view')")
     @GetMapping("/{planStepId}")
     public AjaxResult detail(@PathVariable @Min(value = 1, message = "planStepId must be greater than 0") Long planStepId) {
         return AjaxResult.success(planStepService.getDetail(planStepId));
     }
 
+    @PreAuthorize("@auth.hasPermission('plan:production:edit')")
     @PutMapping("/{planStepId}")
     public AjaxResult update(@PathVariable @Min(value = 1, message = "planStepId must be greater than 0") Long planStepId,
                              @Valid @RequestBody PlanStepUpdateRequest request) {
         return AjaxResult.success(planStepService.update(planStepId, request));
     }
 
+    @PreAuthorize("@auth.hasPermission('plan:production:edit')")
     @PatchMapping("/{planStepId}/machine")
     public AjaxResult patchMachine(@PathVariable @Min(value = 1, message = "planStepId must be greater than 0") Long planStepId,
                                    @Valid @RequestBody PlanStepMachinePatchRequest request) {
         return AjaxResult.success(planStepService.patchMachine(planStepId, request));
     }
 
+    @PreAuthorize("@auth.hasPermission('plan:production:edit')")
     @PatchMapping("/{planStepId}/status")
     public AjaxResult patchStatus(@PathVariable @Min(value = 1, message = "planStepId must be greater than 0") Long planStepId,
                                   @Valid @RequestBody StatusPatchRequest request) {

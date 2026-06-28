@@ -3,11 +3,28 @@ spring:
     driver-class-name: com.mysql.cj.jdbc.Driver
     url: jdbc:mysql://${MYSQL_HOST:localhost}:${MYSQL_PORT:3306}/${MYSQL_DATABASE:zhihuitong}?useUnicode=true&characterEncoding=UTF-8&serverTimezone=Asia/Shanghai&allowPublicKeyRetrieval=true&useSSL=false
     username: ${MYSQL_USERNAME:root}
-    password: ${MYSQL_PASSWORD:qwertyuiop7}
+    password: ${MYSQL_PASSWORD:dev-local-password}
     hikari:
       minimum-idle: 5
       maximum-pool-size: 20
       connection-timeout: 30000
       validation-timeout: 5000
       initialization-fail-timeout: -1
+
+mybatis-plus:
+  configuration:
+    log-impl: org.apache.ibatis.logging.stdout.StdOutImpl
+
+inspection:
+  storage:
+    upload-root: ${INSPECTION_STORAGE_UPLOAD_ROOT:D:/lhr/Desktop/saas/photo/upload}
+    result-root: ${INSPECTION_STORAGE_RESULT_ROOT:D:/lhr/Desktop/saas/photo/results}
+
+ai:
+  yolo:
+    model-path: ${AI_YOLO_MODEL_PATH:D:/lhr/Desktop/saas/docs/best.onnx}
+
+security:
+  jwt:
+    secret: ${JWT_SECRET:change-this-development-secret-to-at-least-32-bytes}
 

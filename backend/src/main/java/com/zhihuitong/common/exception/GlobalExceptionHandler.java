@@ -2,17 +2,22 @@ package com.zhihuitong.common.exception;
 
 import com.zhihuitong.common.domain.AjaxResult;
 import jakarta.validation.ConstraintViolationException;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.http.converter.HttpMessageNotReadableException;
+import org.springframework.security.access.AccessDeniedException;
 import org.springframework.validation.BindException;
 import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
+import org.springframework.web.context.request.async.AsyncRequestNotUsableException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 
 @RestControllerAdvice
 public class GlobalExceptionHandler {
+    private static final Logger log = LoggerFactory.getLogger(GlobalExceptionHandler.class);
 
     @ExceptionHandler(MethodArgumentNotValidException.class)
     public ResponseEntity<AjaxResult> handleMethodArgumentNotValidException(MethodArgumentNotValidException exception) {
@@ -47,14 +52,24 @@ public class GlobalExceptionHandler {
         return buildResponse(400, "参数不合法: " + exception.getName());
     }
 
+    @ExceptionHandler(AccessDeniedException.class)
+    public ResponseEntity<AjaxResult> handleAccessDeniedException() {
+        return buildResponse(403, "无权执行该操作");
+    }
     @ExceptionHandler(BusinessException.class)
     public ResponseEntity<AjaxResult> handleBusinessException(BusinessException exception) {
         return buildResponse(exception.getCode(), exception.getMessage());
     }
 
+    @ExceptionHandler(AsyncRequestNotUsableException.class)
+    public void handleAsyncRequestNotUsableException(AsyncRequestNotUsableException exception) {
+        log.debug("Client disconnected before the response was written: {}", exception.getMessage());
+    }
+
     @ExceptionHandler(Exception.class)
     public ResponseEntity<AjaxResult> handleException(Exception exception) {
-        return buildResponse(500, exception.getMessage() == null ? "服务器内部错误" : exception.getMessage());
+        log.error("Unhandled request exception", exception);
+        return buildResponse(500, "服务器内部错误");
     }
 
     private ResponseEntity<AjaxResult> buildResponse(int code, String message) {

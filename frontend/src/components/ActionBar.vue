@@ -1,13 +1,15 @@
 <script setup lang="ts">
-type ActionItem = { key: string; label: string; type?: string }
+import { useAuthStore } from '@/stores/auth'
+type ActionItem = { key: string; label: string; type?: string; permission?: string }
 const props = defineProps<{ actions: ActionItem[] }>()
+const authStore = useAuthStore()
 const emit = defineEmits<{ (e: 'action', key: string): void }>()
 </script>
 
 <template>
   <a-space>
     <template v-for="act in props.actions" :key="act.key">
-      <a-button :type="act.type || 'default'" @click="() => emit('action', act.key)">
+      <a-button v-if="authStore.hasPermission(act.permission)" :type="act.type || 'default'" @click="() => emit('action', act.key)">
         {{ act.label }}
       </a-button>
     </template>

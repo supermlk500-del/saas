@@ -11,6 +11,7 @@ import com.zhihuitong.modules.process.vo.ProcessRouteDetailVo;
 import com.zhihuitong.modules.process.vo.RouteStepVo;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.Min;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -26,6 +27,7 @@ import java.util.List;
 
 @Validated
 @RestController
+@PreAuthorize("@auth.hasPermission('process:route:list')")
 @RequestMapping("/api/process-routes")
 public class ProcessRouteController {
 
@@ -46,17 +48,20 @@ public class ProcessRouteController {
         return AjaxResult.success(detail);
     }
 
+    @PreAuthorize("@auth.hasPermission('process:route:edit')")
     @PostMapping
     public AjaxResult create(@Valid @RequestBody ProcessRouteUpsertRequest request) {
         return AjaxResult.success(processRouteService.create(request));
     }
 
+    @PreAuthorize("@auth.hasPermission('process:route:edit')")
     @PutMapping("/{routeId}")
     public AjaxResult update(@PathVariable @Min(value = 1, message = "routeId must be greater than 0") Long routeId,
                              @Valid @RequestBody ProcessRouteUpsertRequest request) {
         return AjaxResult.success(processRouteService.update(routeId, request));
     }
 
+    @PreAuthorize("@auth.hasPermission('process:route:edit')")
     @DeleteMapping("/{routeId}")
     public AjaxResult delete(@PathVariable @Min(value = 1, message = "routeId must be greater than 0") Long routeId) {
         processRouteService.delete(routeId);
@@ -69,12 +74,14 @@ public class ProcessRouteController {
         return AjaxResult.success(rows);
     }
 
+    @PreAuthorize("@auth.hasPermission('process:route:edit')")
     @PostMapping("/{routeId}/steps")
     public AjaxResult createRouteStep(@PathVariable @Min(value = 1, message = "routeId must be greater than 0") Long routeId,
                                       @Valid @RequestBody RouteStepUpsertRequest request) {
         return AjaxResult.success(processRouteService.createRouteStep(routeId, request));
     }
 
+    @PreAuthorize("@auth.hasPermission('process:route:edit')")
     @PutMapping("/{routeId}/steps/{routeStepId}")
     public AjaxResult updateRouteStep(@PathVariable @Min(value = 1, message = "routeId must be greater than 0") Long routeId,
                                       @PathVariable @Min(value = 1, message = "routeStepId must be greater than 0") Long routeStepId,
@@ -82,6 +89,7 @@ public class ProcessRouteController {
         return AjaxResult.success(processRouteService.updateRouteStep(routeId, routeStepId, request));
     }
 
+    @PreAuthorize("@auth.hasPermission('process:route:edit')")
     @DeleteMapping("/{routeId}/steps/{routeStepId}")
     public AjaxResult deleteRouteStep(@PathVariable @Min(value = 1, message = "routeId must be greater than 0") Long routeId,
                                       @PathVariable @Min(value = 1, message = "routeStepId must be greater than 0") Long routeStepId) {

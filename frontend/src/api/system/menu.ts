@@ -3,6 +3,7 @@ import request, { type RuoYiResponse } from '@/utils/request'
 export interface SysMenuItem {
   menuId: number
   menuName: string
+  menuKey?: string
   parentId?: number
   orderNum?: number
   path?: string
@@ -35,6 +36,7 @@ export function listMenus(params?: SysMenuListParams) {
 export interface SysMenuForm {
   menuId?: number
   menuName: string
+  menuKey?: string
   parentId: number
   orderNum: number
   path?: string

@@ -54,6 +54,7 @@ import com.zhihuitong.modules.process.mapper.RouteStepMapper;
 import com.zhihuitong.modules.process.mapper.StepMachineCapabilityMapper;
 import com.zhihuitong.modules.quality.entity.QcRecord;
 import com.zhihuitong.modules.quality.mapper.QcRecordMapper;
+import com.zhihuitong.security.service.DataScopeService;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
@@ -92,6 +93,7 @@ public class OrderService {
     private final MachineMapper machineMapper;
     private final QcRecordMapper qcRecordMapper;
     private final ExceptionRecordMapper exceptionRecordMapper;
+    private final DataScopeService dataScopeService;
 
     public OrderService(OrderInfoMapper orderInfoMapper,
                         OrderItemMapper orderItemMapper,
@@ -106,7 +108,8 @@ public class OrderService {
                         StepMachineCapabilityMapper stepMachineCapabilityMapper,
                         MachineMapper machineMapper,
                         QcRecordMapper qcRecordMapper,
-                        ExceptionRecordMapper exceptionRecordMapper) {
+                        ExceptionRecordMapper exceptionRecordMapper,
+                        DataScopeService dataScopeService) {
         this.orderInfoMapper = orderInfoMapper;
         this.orderItemMapper = orderItemMapper;
         this.orderBatchLinkMapper = orderBatchLinkMapper;
@@ -121,11 +124,12 @@ public class OrderService {
         this.machineMapper = machineMapper;
         this.qcRecordMapper = qcRecordMapper;
         this.exceptionRecordMapper = exceptionRecordMapper;
+        this.dataScopeService = dataScopeService;
     }
 
     public TableDataInfo<OrderListVo> list(OrderQuery query) {
         validateTimeRange(query.getDeliveryDateFrom(), query.getDeliveryDateTo(), "deliveryDateFrom must be earlier than or equal to deliveryDateTo");
-        Page<OrderInfo> page = orderInfoMapper.selectPage(query.toPage(), Wrappers.<OrderInfo>lambdaQuery()
+        Page<OrderInfo> page = orderInfoMapper.selectPage(query.toPage(), dataScopeService.apply(Wrappers.<OrderInfo>lambdaQuery(), OrderInfo::getDeptId, OrderInfo::getCreatedBy)
                 .like(StringUtils.hasText(query.getOrderNo()), OrderInfo::getOrderNo, query.getOrderNo())
                 .like(StringUtils.hasText(query.getCustomerName()), OrderInfo::getCustomerName, query.getCustomerName())
                 .eq(StringUtils.hasText(query.getStatus()), OrderInfo::getStatus, query.getStatus())
@@ -212,7 +216,7 @@ public class OrderService {
     }
 
     public TableDataInfo<OrderSchedulePoolVo> listSchedulePool(OrderSchedulePoolQuery query) {
-        List<OrderInfo> orders = orderInfoMapper.selectList(Wrappers.<OrderInfo>lambdaQuery()
+        List<OrderInfo> orders = orderInfoMapper.selectList(dataScopeService.apply(Wrappers.<OrderInfo>lambdaQuery(), OrderInfo::getDeptId, OrderInfo::getCreatedBy)
                 .like(StringUtils.hasText(query.getOrderNo()), OrderInfo::getOrderNo, query.getOrderNo())
                 .like(StringUtils.hasText(query.getCustomerName()), OrderInfo::getCustomerName, query.getCustomerName())
                 .eq(StringUtils.hasText(query.getStatus()), OrderInfo::getStatus, query.getStatus())
@@ -308,6 +312,8 @@ public class OrderService {
         checkOrderNoUnique(request.getOrderNo(), null);
         OrderInfo entity = new OrderInfo();
         copyOrderRequest(request, entity);
+        entity.setDeptId(dataScopeService.currentDeptId());
+        entity.setCreatedBy(dataScopeService.currentUserId());
         entity.setCreateTime(LocalDateTime.now());
         orderInfoMapper.insert(entity);
         return entity;

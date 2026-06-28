@@ -98,7 +98,7 @@ const rules = {
 }
 
 const actionBar = [
-  { key: 'new', label: '新建订单', type: 'primary' },
+  { key: 'new', label: '新建订单', type: 'primary', permission: 'order:order:add' },
 ]
 
 const priorityOptions = [
@@ -356,8 +356,8 @@ onMounted(() => {
       <template v-else-if="column.key === 'action'">
         <div class="action-cell">
           <a-button type="link" size="small" @click="goToDetail(record)">详情</a-button>
-          <a-button type="link" size="small" @click="openEditModal(record)">编辑</a-button>
-          <a-button type="link" size="small" danger @click="handleDeleteOrder(record)">删除</a-button>
+          <a-button v-permission="'order:order:edit'" type="link" size="small" @click="openEditModal(record)">编辑</a-button>
+          <a-button v-permission="'order:order:remove'" type="link" size="small" danger @click="handleDeleteOrder(record)">删除</a-button>
         </div>
       </template>
     </template>

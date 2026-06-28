@@ -242,7 +242,7 @@ onMounted(() => {
     <template #actions>
       <a-space>
         <a-button @click="jumpToOrderSchedulePool">去订单排产池</a-button>
-        <a-button type="primary" @click="openCreateModal">新增来料资源</a-button>
+        <a-button v-permission="'batch:resource:add'" type="primary" @click="openCreateModal">新增来料资源</a-button>
       </a-space>
     </template>
 
@@ -297,7 +297,7 @@ onMounted(() => {
       </template>
       <template v-else-if="column.key === 'action'">
         <div class="action-cell">
-          <a-button type="link" size="small" @click="openEditModal(record)">编辑</a-button>
+          <a-button v-permission="'batch:resource:edit'" type="link" size="small" @click="openEditModal(record)">编辑</a-button>
           <a-button type="link" size="small" @click="jumpToOrderSchedulePool">去排产</a-button>
         </div>
       </template>

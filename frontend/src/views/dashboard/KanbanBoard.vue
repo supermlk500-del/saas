@@ -9,10 +9,7 @@ import {
   InboxOutlined,
 } from '@ant-design/icons-vue'
 import { RouterLink } from 'vue-router'
-import { fetchBatches } from '@/api/batch/batch'
-import { fetchExceptionRecords } from '@/api/exception/exceptionRecord'
-import { fetchPlans } from '@/api/plan/plan'
-import { fetchQcRecords } from '@/api/quality/qcRecord'
+import { getDashboardOverview } from '@/api/dashboard/dashboard'
 import {
   batchStatusOptions,
   exceptionLevelOptions,
@@ -42,18 +39,7 @@ const previousWeekQcRecords = ref<QcRecordItem[]>([])
 const exceptionRecords = ref<ExceptionRecordItem[]>([])
 const productionPlans = ref<ProductionPlanItem[]>([])
 
-const PENDING_BATCH_STATUSES = new Set(['NEW', 'READY'])
 const ACTIVE_EXCEPTION_STATUSES = new Set(['OPEN', 'PROCESSING'])
-
-const toApiDateTime = (date: Date) => {
-  const year = date.getFullYear()
-  const month = String(date.getMonth() + 1).padStart(2, '0')
-  const day = String(date.getDate()).padStart(2, '0')
-  const hours = String(date.getHours()).padStart(2, '0')
-  const minutes = String(date.getMinutes()).padStart(2, '0')
-  const seconds = String(date.getSeconds()).padStart(2, '0')
-  return `${year}-${month}-${day} ${hours}:${minutes}:${seconds}`
-}
 
 const parseDate = (value?: string | null) => {
   if (!value) {
@@ -113,33 +99,6 @@ const formatWeightCompact = (totalWeight: number) => {
   return `${Math.round(totalWeight)}`
 }
 
-const getWeekRange = (baseDate = new Date()) => {
-  const current = new Date(baseDate)
-  current.setHours(0, 0, 0, 0)
-  const day = current.getDay()
-  const mondayOffset = day === 0 ? -6 : 1 - day
-
-  const start = new Date(current)
-  start.setDate(current.getDate() + mondayOffset)
-
-  const end = new Date(start)
-  end.setDate(start.getDate() + 6)
-  end.setHours(23, 59, 59, 999)
-
-  return { start, end }
-}
-
-const getDayRange = (offsetDays = 0) => {
-  const start = new Date()
-  start.setHours(0, 0, 0, 0)
-  start.setDate(start.getDate() + offsetDays)
-
-  const end = new Date(start)
-  end.setHours(23, 59, 59, 999)
-
-  return { start, end }
-}
-
 const getStatusMeta = (status?: string | null) =>
   batchStatusOptions.find((item) => item.value === status)
 
@@ -180,7 +139,6 @@ const activePlanCount = computed(
   () => productionPlans.value.filter((item) => !['COMPLETED', 'CANCELLED'].includes(item.status)).length,
 )
 
-// 第一阶段没有独立的看板统计接口，这里按文档推荐的核心资源做前端聚合。
 const metricCards = computed<MetricCard[]>(() => {
   const todayTrend = formatTrend(todayPendingCount.value, yesterdayPendingCount.value)
   const weeklyTrend = formatTrend(weeklyPassRate.value, previousWeeklyPassRate.value)
@@ -247,95 +205,20 @@ const upcomingBatches = computed(() =>
 
 const loadDashboard = async () => {
   loading.value = true
-
-  const todayRange = getDayRange(0)
-  const yesterdayRange = getDayRange(-1)
-  const currentWeekRange = getWeekRange(new Date())
-  const previousWeekBase = new Date(currentWeekRange.start)
-  previousWeekBase.setDate(previousWeekBase.getDate() - 7)
-  const previousWeekRange = getWeekRange(previousWeekBase)
-
-  const results = await Promise.allSettled([
-    fetchBatches({ pageNum: 1, pageSize: 200 }),
-    fetchBatches({
-      pageNum: 1,
-      pageSize: 200,
-      dateFrom: toApiDateTime(todayRange.start),
-      dateTo: toApiDateTime(todayRange.end),
-    }),
-    fetchBatches({
-      pageNum: 1,
-      pageSize: 200,
-      dateFrom: toApiDateTime(yesterdayRange.start),
-      dateTo: toApiDateTime(yesterdayRange.end),
-    }),
-    fetchQcRecords({
-      pageNum: 1,
-      pageSize: 200,
-      inspectTimeFrom: toApiDateTime(currentWeekRange.start),
-      inspectTimeTo: toApiDateTime(currentWeekRange.end),
-    }),
-    fetchQcRecords({
-      pageNum: 1,
-      pageSize: 200,
-      inspectTimeFrom: toApiDateTime(previousWeekRange.start),
-      inspectTimeTo: toApiDateTime(previousWeekRange.end),
-    }),
-    fetchQcRecords({ pageNum: 1, pageSize: 20 }),
-    fetchExceptionRecords({ pageNum: 1, pageSize: 200 }),
-    fetchPlans({ pageNum: 1, pageSize: 200 }),
-  ])
-
-  const [
-    allBatchResult,
-    todayBatchResult,
-    yesterdayBatchResult,
-    weekQcResult,
-    previousWeekQcResult,
-    recentQcResult,
-    exceptionResult,
-    planResult,
-  ] = results
-
-  if (allBatchResult.status === 'fulfilled') {
-    pendingBatches.value = allBatchResult.value.list.filter((item) =>
-      PENDING_BATCH_STATUSES.has(item.status ?? ''),
-    )
+  try {
+    const response = await getDashboardOverview()
+    const overview = response.data
+    pendingBatches.value = overview.pendingBatches ?? []
+    todayPendingCount.value = overview.todayPendingCount ?? 0
+    yesterdayPendingCount.value = overview.yesterdayPendingCount ?? 0
+    currentWeekQcRecords.value = overview.currentWeekQcRecords ?? []
+    previousWeekQcRecords.value = overview.previousWeekQcRecords ?? []
+    recentQcRecords.value = overview.recentQcRecords ?? []
+    exceptionRecords.value = overview.exceptionRecords ?? []
+    productionPlans.value = overview.productionPlans ?? []
+  } finally {
+    loading.value = false
   }
-
-  if (todayBatchResult.status === 'fulfilled') {
-    todayPendingCount.value = todayBatchResult.value.list.filter((item) =>
-      PENDING_BATCH_STATUSES.has(item.status ?? ''),
-    ).length
-  }
-
-  if (yesterdayBatchResult.status === 'fulfilled') {
-    yesterdayPendingCount.value = yesterdayBatchResult.value.list.filter((item) =>
-      PENDING_BATCH_STATUSES.has(item.status ?? ''),
-    ).length
-  }
-
-  if (weekQcResult.status === 'fulfilled') {
-    currentWeekQcRecords.value = weekQcResult.value.list
-  }
-
-  if (previousWeekQcResult.status === 'fulfilled') {
-    previousWeekQcRecords.value = previousWeekQcResult.value.list
-  }
-
-  if (recentQcResult.status === 'fulfilled') {
-    recentQcRecords.value = recentQcResult.value.list
-  }
-
-  if (exceptionResult.status === 'fulfilled') {
-    exceptionRecords.value = exceptionResult.value.list
-  }
-
-  if (planResult.status === 'fulfilled') {
-    productionPlans.value = planResult.value.list
-  }
-
-  loading.value = false
 }
 
 onMounted(() => {

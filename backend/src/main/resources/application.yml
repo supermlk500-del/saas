@@ -1,11 +1,15 @@
 server:
-  port: 8080
+  port: ${SERVER_PORT:8080}
+  forward-headers-strategy: framework
+  shutdown: graceful
 
 spring:
   application:
     name: zhihuitong-backend
   profiles:
-    active: dev
+    active: ${SPRING_PROFILES_ACTIVE:dev}
+  lifecycle:
+    timeout-per-shutdown-phase: 30s
   servlet:
     multipart:
       max-file-size: 50MB
@@ -14,12 +18,20 @@ spring:
     time-zone: Asia/Shanghai
     date-format: yyyy-MM-dd HH:mm:ss
 
+  data:
+    redis:
+      host: ${REDIS_HOST:localhost}
+      port: ${REDIS_PORT:6379}
+
+      password: ${REDIS_PASSWORD:}
+      database: ${REDIS_DATABASE:0}
+      timeout: 3s
+
 mybatis-plus:
   mapper-locations: classpath*:mapper/**/*.xml
   type-aliases-package: com.zhihuitong.modules
   configuration:
     map-underscore-to-camel-case: false
-    log-impl: org.apache.ibatis.logging.stdout.StdOutImpl
   global-config:
     db-config:
       id-type: assign_id
@@ -32,7 +44,7 @@ management:
         include: health,info
   endpoint:
     health:
-      show-details: always
+      show-details: when-authorized
 
 logging:
   level:
@@ -40,18 +52,25 @@ logging:
 
 inspection:
   storage:
-    upload-root: /app/data/upload
-    result-root: /app/data/results
+    upload-root: ${INSPECTION_STORAGE_UPLOAD_ROOT}
+    result-root: ${INSPECTION_STORAGE_RESULT_ROOT}
 
 ai:
+  deepseek:
+    enabled: ${DEEPSEEK_ENABLED:true}
+    base-url: ${DEEPSEEK_BASE_URL:https://api.deepseek.com}
+    api-key: ${DEEPSEEK_API_KEY:}
+    model: ${DEEPSEEK_MODEL:deepseek-v4-flash}
+    timeout-seconds: ${DEEPSEEK_TIMEOUT_SECONDS:30}
+    max-tokens: ${DEEPSEEK_MAX_TOKENS:1200}
   yolo:
-    enabled: true
-    model-path: /app/docs/best.onnx
-    conf-threshold: 0.5
-    iou-threshold: 0.45
-    video-conf-threshold: 0.25
-    video-fallback-conf-threshold: 0.12
-    video-iou-threshold: 0.40
+    enabled: ${AI_YOLO_ENABLED:true}
+    model-path: ${AI_YOLO_MODEL_PATH}
+    conf-threshold: ${AI_YOLO_CONF_THRESHOLD:0.5}
+    iou-threshold: ${AI_YOLO_IOU_THRESHOLD:0.45}
+    video-conf-threshold: ${AI_YOLO_VIDEO_CONF_THRESHOLD:0.25}
+    video-fallback-conf-threshold: ${AI_YOLO_VIDEO_FALLBACK_CONF_THRESHOLD:0.12}
+    video-iou-threshold: ${AI_YOLO_VIDEO_IOU_THRESHOLD:0.40}
 
 qc:
   stream:
@@ -59,3 +78,12 @@ qc:
     session-idle-timeout-ms: 300000
     max-frame-size-bytes: 5242880
     auto-save-defect-interval-ms: 5000
+security:
+  jwt:
+    secret: ${JWT_SECRET}
+    expire-minutes: ${JWT_EXPIRE_MINUTES:30}
+    refresh-threshold-minutes: ${JWT_REFRESH_THRESHOLD_MINUTES:10}
+  captcha:
+    enabled: ${CAPTCHA_ENABLED:true}
+    expire-minutes: ${CAPTCHA_EXPIRE_MINUTES:5}
+    length: 4

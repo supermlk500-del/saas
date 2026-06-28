@@ -6,11 +6,13 @@ import '@/assets/styles/global.css'
 
 import App from './App.vue'
 import router from './router'
+import { installPermissionDirective } from '@/directives/permission'
 
 const app = createApp(App)
 
 app.use(createPinia())
 app.use(Antd)
 app.use(router)
+installPermissionDirective(app)
 
 app.mount('#app')

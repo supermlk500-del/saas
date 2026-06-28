@@ -9,6 +9,7 @@ import com.zhihuitong.modules.process.service.MachineService;
 import com.zhihuitong.modules.process.vo.MachineVo;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.Min;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.ModelAttribute;
@@ -22,6 +23,7 @@ import org.springframework.web.bind.annotation.RestController;
 
 @Validated
 @RestController
+@PreAuthorize("@auth.hasPermission('process:machine:list')")
 @RequestMapping("/api/machines")
 public class MachineController {
 
@@ -41,17 +43,20 @@ public class MachineController {
         return AjaxResult.success(machineService.getDetail(machineId));
     }
 
+    @PreAuthorize("@auth.hasPermission('process:machine:edit')")
     @PostMapping
     public AjaxResult create(@Valid @RequestBody MachineUpsertRequest request) {
         return AjaxResult.success(machineService.create(request));
     }
 
+    @PreAuthorize("@auth.hasPermission('process:machine:edit')")
     @PutMapping("/{machineId}")
     public AjaxResult update(@PathVariable @Min(value = 1, message = "machineId must be greater than 0") Long machineId,
                              @Valid @RequestBody MachineUpsertRequest request) {
         return AjaxResult.success(machineService.update(machineId, request));
     }
 
+    @PreAuthorize("@auth.hasPermission('process:machine:edit')")
     @PatchMapping("/{machineId}/status")
     public AjaxResult patchStatus(@PathVariable @Min(value = 1, message = "machineId must be greater than 0") Long machineId,
                                   @Valid @RequestBody MachineStatusPatchRequest request) {

@@ -11,6 +11,7 @@ import com.zhihuitong.modules.exception.entity.ExceptionRecord;
 import com.zhihuitong.modules.exception.service.ExceptionRecordService;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.Min;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.ModelAttribute;
@@ -24,6 +25,7 @@ import org.springframework.web.bind.annotation.RestController;
 
 @Validated
 @RestController
+@PreAuthorize("@auth.hasPermission('exception:record:list')")
 @RequestMapping("/api/exception-records")
 public class ExceptionRecordController {
 
@@ -43,29 +45,34 @@ public class ExceptionRecordController {
         return AjaxResult.success(exceptionRecordService.getDetail(exceptionId));
     }
 
+    @PreAuthorize("@auth.hasPermission('exception:record:handle')")
     @PostMapping
     public AjaxResult create(@Valid @RequestBody ExceptionRecordUpsertRequest request) {
         return AjaxResult.success(exceptionRecordService.create(request));
     }
 
+    @PreAuthorize("@auth.hasPermission('exception:record:handle')")
     @PutMapping("/{exceptionId}")
     public AjaxResult update(@PathVariable @Min(value = 1, message = "exceptionId must be greater than 0") Long exceptionId,
                              @Valid @RequestBody ExceptionRecordUpsertRequest request) {
         return AjaxResult.success(exceptionRecordService.update(exceptionId, request));
     }
 
+    @PreAuthorize("@auth.hasPermission('exception:record:handle')")
     @PatchMapping("/{exceptionId}/status")
     public AjaxResult patchStatus(@PathVariable @Min(value = 1, message = "exceptionId must be greater than 0") Long exceptionId,
                                   @Valid @RequestBody ExceptionStatusPatchRequest request) {
         return AjaxResult.success(exceptionRecordService.patchStatus(exceptionId, request));
     }
 
+    @PreAuthorize("@auth.hasPermission('exception:record:handle')")
     @PatchMapping("/{exceptionId}/close")
     public AjaxResult close(@PathVariable @Min(value = 1, message = "exceptionId must be greater than 0") Long exceptionId,
                             @Valid @RequestBody ExceptionCloseRequest request) {
         return AjaxResult.success(exceptionRecordService.close(exceptionId, request));
     }
 
+    @PreAuthorize("@auth.hasPermission('exception:record:rework')")
     @PostMapping("/{exceptionId}/rework")
     public AjaxResult rework(@PathVariable @Min(value = 1, message = "exceptionId must be greater than 0") Long exceptionId,
                              @Valid @RequestBody ExceptionReworkRequest request) {

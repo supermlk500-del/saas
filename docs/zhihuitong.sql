@@ -11,11 +11,35 @@
  Target Server Version : 80043 (8.0.43)
  File Encoding         : 65001
 
- Date: 26/05/2026 15:10:41
+ Date: 20/06/2026 19:59:24
 */
 
 SET NAMES utf8mb4;
 SET FOREIGN_KEY_CHECKS = 0;
+
+-- ----------------------------
+-- Table structure for aischedulerecord
+-- ----------------------------
+DROP TABLE IF EXISTS `aischedulerecord`;
+CREATE TABLE `aischedulerecord`  (
+  `recordId` bigint NOT NULL,
+  `planId` bigint NOT NULL,
+  `status` varchar(20) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT 'GENERATED',
+  `selectedStrategy` varchar(20) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NULL DEFAULT NULL,
+  `snapshotJson` longtext CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
+  `deptId` bigint NOT NULL,
+  `createdBy` bigint NOT NULL,
+  `createTime` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  `appliedTime` datetime NULL DEFAULT NULL,
+  PRIMARY KEY (`recordId`) USING BTREE,
+  INDEX `idx_ai_schedule_plan_time`(`planId` ASC, `createTime` ASC) USING BTREE,
+  INDEX `idx_ai_schedule_scope`(`deptId` ASC, `createdBy` ASC) USING BTREE
+) ENGINE = InnoDB CHARACTER SET = utf8mb4 COLLATE = utf8mb4_unicode_ci ROW_FORMAT = Dynamic;
+
+-- ----------------------------
+-- Records of aischedulerecord
+-- ----------------------------
+INSERT INTO `aischedulerecord` VALUES (2068300098185072641, 2067894171762089985, 'GENERATED', NULL, '{\"recordId\":null,\"planId\":\"2067894171762089985\",\"orderNo\":\"1\",\"batchNo\":\"YL-JN-20260618-004\",\"deliveryDate\":\"2026-06-19 12:00:14\",\"decisionEngine\":\"OR-Tools CP-SAT\",\"explanationModel\":\"deepseek-v4-flash\",\"notice\":\"排产结果由运筹优化算法计算，大模型仅用于解释；应用前必须人工确认。\",\"recordStatus\":null,\"selectedStrategy\":null,\"createTime\":null,\"appliedTime\":null,\"options\":[{\"strategy\":\"DELIVERY\",\"strategyName\":\"交期优先\",\"solverStatus\":\"OPTIMAL\",\"startTime\":\"2026-06-19 16:55:57\",\"endTime\":\"2026-06-20 11:49:57\",\"totalMinutes\":\"1134\",\"delayMinutes\":\"1429\",\"machineChanges\":6,\"estimatedUtilizationScore\":100,\"explanation\":\"好的，这是对您提供的 OR-Tools 排产结果的分析。\\n\\n### 方案优势\\n\\n*   **交期优先策略**：方案明确以“交期优先”为目标，旨在最大化满足客户交期。\\n*   **连续生产**：从退浆到卷装，所有工序无缝衔接，没有等待时间，生产周期紧凑。\\n*   **设备利用率高**：预估利用率评分达到100%，说明方案在理论上充分利用了所选机台的生产能力。\\n\\n### 主要风险\\n\\n*   **严重延期**：**总延期时间高达1429分钟（约23.8小时）**。这是本方案最大的问题，意味着即使采用交期优先策略，该订单也无法按时完成，存在严重的交付风险。\\n*   **机台切换频繁**：方案涉及6次机台切换，增加了物料搬运和换线准备的工作量，可能引入额外的等待或操作失误风险。\\n\\n### 人工确认重点\\n\\n1.  **延期原因**：请务必与计划员确认，为何在“交期优先”策略下仍产生如此严重的延期？是产能不足、物料未到，还是交期本身设定不合理？\\n2.  **机台可用性**：方案中所有机台在分配的时间段内均显示为“IDLE”（空闲）。请人工核实这些机台是否确实可用，有无被其他紧急订单占用或处于维修状态。\\n3.  **染色工序**：染色工序（高温溢流染色机1号）耗时最长（5.4小时），是整个流程的瓶颈。请确认该机台的能力（如浴比、温度控制）是否完全匹配此订单的工艺要求。\\n4.  **最终交付时间**：方案预计在 **2026-06-20 11:49:57** 完成。请将此时间与客户要求的交期进行对比，评估延期带来的商务影响，并决定是否需要调整生产优先级或与客户沟通。\",\"model\":\"deepseek-v4-flash\",\"aiGenerated\":true,\"fallbackReason\":null,\"steps\":[{\"planStepId\":\"2067894172089245697\",\"stepId\":\"30001\",\"stepName\":\"退浆\",\"machineId\":\"40001\",\"machineCode\":\"PT-DS-01\",\"machineName\":\"连续退浆机1号\",\"recommendationScore\":282,\"recommendationReason\":\"能力约束匹配；IDLE；策略评分 282\",\"startTime\":\"2026-06-19 16:55:57\",\"endTime\":\"2026-06-19 20:04:57\",\"predictedHours\":3.15},{\"planStepId\":\"2067894172089245698\",\"stepId\":\"30002\",\"stepName\":\"煮练\",\"machineId\":\"40002\",\"machineCode\":\"PT-SC-01\",\"machineName\":\"高效煮练机1号\",\"recommendationScore\":276,\"recommendationReason\":\"能力约束匹配；IDLE；策略评分 276\",\"startTime\":\"2026-06-19 20:04:57\",\"endTime\":\"2026-06-19 23:40:57\",\"predictedHours\":3.60},{\"planStepId\":\"2067894172089245699\",\"stepId\":\"30004\",\"stepName\":\"染色\",\"machineId\":\"40004\",\"machineCode\":\"DY-OF-01\",\"machineName\":\"高温溢流染色机1号\",\"recommendationScore\":264,\"recommendationReason\":\"能力约束匹配；IDLE；策略评分 264\",\"startTime\":\"2026-06-19 23:40:57\",\"endTime\":\"2026-06-20 05:04:57\",\"predictedHours\":5.40},{\"planStepId\":\"2067894172152160257\",\"stepId\":\"30005\",\"stepName\":\"染后水洗\",\"machineId\":\"40006\",\"machineCode\":\"WS-01\",\"machineName\":\"连续水洗机1号\",\"recommendationScore\":272,\"recommendationReason\":\"能力约束匹配；IDLE；策略评分 272\",\"startTime\":\"2026-06-20 05:04:57\",\"endTime\":\"2026-06-20 07:19:57\",\"predictedHours\":2.25},{\"planStepId\":\"2067894172152160258\",\"stepId\":\"30007\",\"stepName\":\"拉幅定型\",\"machineId\":\"40009\",\"machineCode\":\"ST-02\",\"machineName\":\"拉幅定型机2号\",\"recommendationScore\":260,\"recommendationReason\":\"能力约束匹配；IDLE；策略评分 260\",\"startTime\":\"2026-06-20 07:19:57\",\"endTime\":\"2026-06-20 09:34:57\",\"predictedHours\":2.25},{\"planStepId\":\"2067894172152160259\",\"stepId\":\"30008\",\"stepName\":\"成品检验\",\"machineId\":\"40011\",\"machineCode\":\"IN-02\",\"machineName\":\"智能验布机2号\",\"recommendationScore\":302,\"recommendationReason\":\"能力约束匹配；IDLE；策略评分 302\",\"startTime\":\"2026-06-20 09:34:57\",\"endTime\":\"2026-06-20 10:55:57\",\"predictedHours\":1.35},{\"planStepId\":\"2067894172152160260\",\"stepId\":\"30009\",\"stepName\":\"卷装\",\"machineId\":\"40012\",\"machineCode\":\"PK-01\",\"machineName\":\"自动卷装机1号\",\"recommendationScore\":302,\"recommendationReason\":\"能力约束匹配；IDLE；策略评分 302\",\"startTime\":\"2026-06-20 10:55:57\",\"endTime\":\"2026-06-20 11:49:57\",\"predictedHours\":0.90}]},{\"strategy\":\"UTILIZATION\",\"strategyName\":\"设备利用率优先\",\"solverStatus\":\"OPTIMAL\",\"startTime\":\"2026-06-19 16:55:57\",\"endTime\":\"2026-06-20 13:55:57\",\"totalMinutes\":\"1260\",\"delayMinutes\":\"1555\",\"machineChanges\":6,\"estimatedUtilizationScore\":100,\"explanation\":\"好的，作为纺织生产计划分析助手，以下是对该排产结果的分析说明：\\n\\n### 方案优势\\n- **设备利用率优先**：方案为每道工序都分配了当时处于空闲（IDLE）且能力匹配的设备，确保了设备不闲置，利用率达到100%。\\n- **连续无等待**：从退浆到卷装，7道工序紧密衔接，上一道工序结束时间即为下一道工序开始时间，生产流程非常顺畅，无中间等待浪费。\\n\\n### 主要风险与延期情况\\n- **严重延期**：方案总时长1260分钟（21小时），但总延期时间高达1555分钟（约25.9小时）。这意味着该订单的交期非常紧张，当前排产结果已远超原定计划时间。\\n- **无缓冲时间**：工序间零等待虽然效率高，但抗风险能力极弱。任何一道工序出现设备故障、质量问题或物料延迟，都会导致后续所有工序顺延，进一步加剧延期。\\n\\n### 人工确认重点\\n1.  **延期接受度**：请与销售或客户确认，当前排产导致的**1555分钟延期**是否可接受？是否需要调整交期或启用加急方案？\\n2.  **设备状态确认**：请现场确认所列设备（连续退浆机1号、高效煮练机1号等）在计划开始时间（2026-06-19 16:55）确实处于**空闲且完好**状态，避免因设备问题导致计划无法执行。\\n3.  **物料与人员**：请确认所有工序所需的染料、助剂、坯布等物料已到位，且各机台的操作人员已安排妥当，确保计划能按时启动。\",\"model\":\"deepseek-v4-flash\",\"aiGenerated\":true,\"fallbackReason\":null,\"steps\":[{\"planStepId\":\"2067894172089245697\",\"stepId\":\"30001\",\"stepName\":\"退浆\",\"machineId\":\"40001\",\"machineCode\":\"PT-DS-01\",\"machineName\":\"连续退浆机1号\",\"recommendationScore\":387,\"recommendationReason\":\"能力约束匹配；IDLE；策略评分 387\",\"startTime\":\"2026-06-19 16:55:57\",\"endTime\":\"2026-06-19 20:25:57\",\"predictedHours\":3.50},{\"planStepId\":\"2067894172089245698\",\"stepId\":\"30002\",\"stepName\":\"煮练\",\"machineId\":\"40002\",\"machineCode\":\"PT-SC-01\",\"machineName\":\"高效煮练机1号\",\"recommendationScore\":384,\"recommendationReason\":\"能力约束匹配；IDLE；策略评分 384\",\"startTime\":\"2026-06-19 20:25:57\",\"endTime\":\"2026-06-20 00:25:57\",\"predictedHours\":4.00},{\"planStepId\":\"2067894172089245699\",\"stepId\":\"30004\",\"stepName\":\"染色\",\"machineId\":\"40004\",\"machineCode\":\"DY-OF-01\",\"machineName\":\"高温溢流染色机1号\",\"recommendationScore\":382,\"recommendationReason\":\"能力约束匹配；IDLE；策略评分 382\",\"startTime\":\"2026-06-20 00:25:57\",\"endTime\":\"2026-06-20 06:25:57\",\"predictedHours\":6.00},{\"planStepId\":\"2067894172152160257\",\"stepId\":\"30005\",\"stepName\":\"染后水洗\",\"machineId\":\"40006\",\"machineCode\":\"WS-01\",\"machineName\":\"连续水洗机1号\",\"recommendationScore\":382,\"recommendationReason\":\"能力约束匹配；IDLE；策略评分 382\",\"startTime\":\"2026-06-20 06:25:57\",\"endTime\":\"2026-06-20 08:55:57\",\"predictedHours\":2.50},{\"planStepId\":\"2067894172152160258\",\"stepId\":\"30007\",\"stepName\":\"拉幅定型\",\"machineId\":\"40009\",\"machineCode\":\"ST-02\",\"machineName\":\"拉幅定型机2号\",\"recommendationScore\":380,\"recommendationReason\":\"能力约束匹配；IDLE；策略评分 380\",\"startTime\":\"2026-06-20 08:55:57\",\"endTime\":\"2026-06-20 11:25:57\",\"predictedHours\":2.50},{\"planStepId\":\"2067894172152160259\",\"stepId\":\"30008\",\"stepName\":\"成品检验\",\"machineId\":\"40010\",\"machineCode\":\"IN-01\",\"machineName\":\"成品验布机1号\",\"recommendationScore\":400,\"recommendationReason\":\"能力约束匹配；IDLE；策略评分 400\",\"startTime\":\"2026-06-20 11:25:57\",\"endTime\":\"2026-06-20 12:55:57\",\"predictedHours\":1.50},{\"planStepId\":\"2067894172152160260\",\"stepId\":\"30009\",\"stepName\":\"卷装\",\"machineId\":\"40012\",\"machineCode\":\"PK-01\",\"machineName\":\"自动卷装机1号\",\"recommendationScore\":397,\"recommendationReason\":\"能力约束匹配；IDLE；策略评分 397\",\"startTime\":\"2026-06-20 12:55:57\",\"endTime\":\"2026-06-20 13:55:57\",\"predictedHours\":1.00}]},{\"strategy\":\"COST\",\"strategyName\":\"成本优先\",\"solverStatus\":\"OPTIMAL\",\"startTime\":\"2026-06-19 16:55:57\",\"endTime\":\"2026-06-20 15:00:57\",\"totalMinutes\":\"1325\",\"delayMinutes\":\"1620\",\"machineChanges\":6,\"estimatedUtilizationScore\":100,\"explanation\":\"好的，这是对您提供的 OR-Tools 排产结果的分析。\\n\\n### 方案优势\\n\\n*   **成本最优**：求解器状态为“OPTIMAL”，策略为“成本优先”，说明此方案在满足所有约束的前提下，实现了生产成本的最小化。\\n*   **设备利用率高**：预估设备利用率评分达到满分100分，且所有工序均分配在“空闲（IDLE）”机台上，表明方案有效利用了现有设备资源，减少了闲置。\\n*   **流程连续**：从退浆到卷装，各工序时间紧密衔接，无明显的等待间隙，生产流程顺畅。\\n\\n### 主要风险与延期情况\\n\\n*   **存在延期**：方案总耗时1325分钟（约22小时），但总延期时间高达1620分钟（27小时）。这意味着该订单的交付日期可能比预期晚了近一天，存在客户交付风险。\\n*   **换线成本**：方案涉及6次机台切换，虽然次数不多，但每次切换都可能带来短暂的准备时间或质量波动风险。\\n\\n### 人工确认重点\\n\\n1.  **延期原因**：请确认延期1620分钟是否可接受？是否需要与销售或客户沟通调整交期？延期是由于订单本身紧急，还是因为“成本优先”策略选择了更慢但更便宜的设备？\\n2.  **机台状态**：方案中所有机台在计划开始时均为“IDLE”状态。请人工核实这些机台在`2026-06-19 16:55`时是否确实空闲、无故障、且已准备好生产。\\n3.  **染色工序**：染色工序（高温溢流染色机2号）耗时最长（6.3小时），是生产瓶颈。请确认该机台的工艺参数、染料、助剂等是否已准备就绪，避免因准备不足导致整体延误。\\n4.  **质量风险**：虽然方案连续，但连续生产对前道工序（退浆、煮练）的质量稳定性要求高。建议在关键工序（如染色前）设置质量检查点，防止批量返工。\",\"model\":\"deepseek-v4-flash\",\"aiGenerated\":true,\"fallbackReason\":null,\"steps\":[{\"planStepId\":\"2067894172089245697\",\"stepId\":\"30001\",\"stepName\":\"退浆\",\"machineId\":\"40001\",\"machineCode\":\"PT-DS-01\",\"machineName\":\"连续退浆机1号\",\"recommendationScore\":301,\"recommendationReason\":\"能力约束匹配；IDLE；策略评分 301\",\"startTime\":\"2026-06-19 16:55:57\",\"endTime\":\"2026-06-19 20:36:57\",\"predictedHours\":3.68},{\"planStepId\":\"2067894172089245698\",\"stepId\":\"30002\",\"stepName\":\"煮练\",\"machineId\":\"40002\",\"machineCode\":\"PT-SC-01\",\"machineName\":\"高效煮练机1号\",\"recommendationScore\":298,\"recommendationReason\":\"能力约束匹配；IDLE；策略评分 298\",\"startTime\":\"2026-06-19 20:36:57\",\"endTime\":\"2026-06-20 00:48:57\",\"predictedHours\":4.20},{\"planStepId\":\"2067894172089245699\",\"stepId\":\"30004\",\"stepName\":\"染色\",\"machineId\":\"40005\",\"machineCode\":\"DY-OF-02\",\"machineName\":\"高温溢流染色机2号\",\"recommendationScore\":290,\"recommendationReason\":\"能力约束匹配；IDLE；策略评分 290\",\"startTime\":\"2026-06-20 00:48:57\",\"endTime\":\"2026-06-20 07:06:57\",\"predictedHours\":6.30},{\"planStepId\":\"2067894172152160257\",\"stepId\":\"30005\",\"stepName\":\"染后水洗\",\"machineId\":\"40006\",\"machineCode\":\"WS-01\",\"machineName\":\"连续水洗机1号\",\"recommendationScore\":296,\"recommendationReason\":\"能力约束匹配；IDLE；策略评分 296\",\"startTime\":\"2026-06-20 07:06:57\",\"endTime\":\"2026-06-20 09:44:57\",\"predictedHours\":2.63},{\"planStepId\":\"2067894172152160258\",\"stepId\":\"30007\",\"stepName\":\"拉幅定型\",\"machineId\":\"40008\",\"machineCode\":\"ST-01\",\"machineName\":\"拉幅定型机1号\",\"recommendationScore\":286,\"recommendationReason\":\"能力约束匹配；IDLE；策略评分 286\",\"startTime\":\"2026-06-20 09:44:57\",\"endTime\":\"2026-06-20 12:22:57\",\"predictedHours\":2.63},{\"planStepId\":\"2067894172152160259\",\"stepId\":\"30008\",\"stepName\":\"成品检验\",\"machineId\":\"40011\",\"machineCode\":\"IN-02\",\"machineName\":\"智能验布机2号\",\"recommendationScore\":311,\"recommendationReason\":\"能力约束匹配；IDLE；策略评分 311\",\"startTime\":\"2026-06-20 12:22:57\",\"endTime\":\"2026-06-20 13:57:57\",\"predictedHours\":1.58},{\"planStepId\":\"2067894172152160260\",\"stepId\":\"30009\",\"stepName\":\"卷装\",\"machineId\":\"40012\",\"machineCode\":\"PK-01\",\"machineName\":\"自动卷装机1号\",\"recommendationScore\":311,\"recommendationReason\":\"能力约束匹配；IDLE；策略评分 311\",\"startTime\":\"2026-06-20 13:57:57\",\"endTime\":\"2026-06-20 15:00:57\",\"predictedHours\":1.05}]}]}', 100, 1, '2026-06-20 19:49:05', NULL);
 
 -- ----------------------------
 -- Table structure for batchinfo
@@ -29,20 +53,25 @@ CREATE TABLE `batchinfo`  (
   `weight` decimal(12, 2) NULL DEFAULT NULL,
   `width` decimal(8, 2) NULL DEFAULT NULL,
   `composition` varchar(100) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NULL DEFAULT NULL,
+  `deptId` bigint NOT NULL,
+  `createdBy` bigint NOT NULL,
   `note` varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NULL DEFAULT NULL,
   PRIMARY KEY (`batchId`) USING BTREE,
-  UNIQUE INDEX `batchNo`(`batchNo` ASC) USING BTREE
+  UNIQUE INDEX `batchNo`(`batchNo` ASC) USING BTREE,
+  INDEX `idx_batch_scope`(`deptId` ASC, `createdBy` ASC) USING BTREE
 ) ENGINE = InnoDB CHARACTER SET = utf8mb4 COLLATE = utf8mb4_unicode_ci ROW_FORMAT = Dynamic;
 
 -- ----------------------------
 -- Records of batchinfo
 -- ----------------------------
-INSERT INTO `batchinfo` VALUES (10001, 'GB-20260518-001', '江苏恒裕纺织有限公司', '2026-05-18 08:15:00', 2480.50, 168.00, '棉 95%, 氨纶 5%', '32S精梳汗布胚布，出口休闲系列，先排常规单染');
-INSERT INTO `batchinfo` VALUES (10002, 'GB-20260518-002', '绍兴远达针织有限公司', '2026-05-18 10:40:00', 3120.00, 180.00, '涤纶 88%, 氨纶 12%', '秋冬双面布，客户要求手感柔软、色牢度 4 级以上');
-INSERT INTO `batchinfo` VALUES (10003, 'GB-20260519-001', '常熟新裕织造有限公司', '2026-05-19 09:20:00', 2865.00, 175.00, '棉 65%, 涤纶 35%', '工装面料胚布，后续需做功能整理');
-INSERT INTO `batchinfo` VALUES (10004, 'GB-20260520-001', '福建联盛纺织科技有限公司', '2026-05-20 14:05:00', 2650.80, 168.00, '棉 100%', '婴童系列浅色单，客户要求白度稳定');
-INSERT INTO `batchinfo` VALUES (10005, 'GB-20260521-001', '张家港华彩纺织有限公司', '2026-05-21 11:30:00', 1988.60, 160.00, '莫代尔 60%, 棉 40%', '待业务确认手感目标后再排产');
-INSERT INTO `batchinfo` VALUES (10006, 'GB-20260521-002', '绍兴柯桥瑞丰面料有限公司', '2026-05-21 16:10:00', 3380.20, 182.00, '锦纶 78%, 氨纶 22%', '运动弹力面料，需确认定型门幅余量');
+INSERT INTO `batchinfo` VALUES (30001, 'YL-JN-20260618-001', '江南原料仓', '2026-06-18 08:10:00', 800.00, 168.00, '涤棉 65/35', 100, 1, '24/m2，黑色胚布，优先用于江南皮革厂黑色涤棉订单');
+INSERT INTO `batchinfo` VALUES (30002, 'YL-JN-20260618-002', '苏州联盛纺织', '2026-06-18 08:35:00', 620.00, 165.00, '涤棉 65/35', 100, 1, '24/m2，深灰色胚布，可作为黑色订单备选批次');
+INSERT INTO `batchinfo` VALUES (30003, 'YL-JN-20260618-003', '常熟恒丰织造', '2026-06-18 09:05:00', 960.00, 160.00, '涤棉 65/35', 100, 1, '24/m2，本白胚布，满足160厘米门幅要求');
+INSERT INTO `batchinfo` VALUES (30004, 'YL-JN-20260618-004', '无锡华锦纺织', '2026-06-18 09:30:00', 1250.00, 180.00, '涤棉 65/35', 100, 1, '24/m2，深色专用大批量胚布，适合连续生产');
+INSERT INTO `batchinfo` VALUES (30005, 'YL-JN-20260618-005', '南通新源布业', '2026-06-18 10:00:00', 540.00, 158.00, '涤棉 80/20', 100, 1, '24/m2，黑色胚布，门幅不足160厘米，用于验证候选过滤');
+INSERT INTO `batchinfo` VALUES (30006, 'YL-JN-20260618-006', '盐城棉纺供应中心', '2026-06-18 10:20:00', 880.00, 172.00, '纯棉 100%', 100, 1, '本白纯棉胚布，用于纯棉产品订单');
+INSERT INTO `batchinfo` VALUES (30007, 'YL-JN-20260618-007', '嘉兴涤纶原料厂', '2026-06-18 10:45:00', 730.00, 175.00, '涤纶 100%', 100, 1, '深色涤纶胚布，用于纯涤产品订单');
+INSERT INTO `batchinfo` VALUES (30008, 'YL-JN-20260618-008', '吴江锦棉织造', '2026-06-18 11:10:00', 680.00, 170.00, '锦棉 60/40', 100, 1, '中性色锦棉胚布，用于锦棉类产品订单');
 
 -- ----------------------------
 -- Table structure for exceptionrecord
@@ -57,18 +86,17 @@ CREATE TABLE `exceptionrecord`  (
   `handleResult` varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NULL DEFAULT NULL,
   `createTime` datetime NULL DEFAULT NULL,
   `status` varchar(20) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NULL DEFAULT NULL,
+  `deptId` bigint NOT NULL,
+  `createdBy` bigint NOT NULL,
   PRIMARY KEY (`exceptionId`) USING BTREE,
   INDEX `planStepId`(`planStepId` ASC) USING BTREE,
+  INDEX `idx_exception_scope`(`deptId` ASC, `createdBy` ASC) USING BTREE,
   CONSTRAINT `exceptionrecord_ibfk_1` FOREIGN KEY (`planStepId`) REFERENCES `planstep` (`planStepId`) ON DELETE RESTRICT ON UPDATE RESTRICT
 ) ENGINE = InnoDB CHARACTER SET = utf8mb4 COLLATE = utf8mb4_unicode_ci ROW_FORMAT = Dynamic;
 
 -- ----------------------------
 -- Records of exceptionrecord
 -- ----------------------------
-INSERT INTO `exceptionrecord` VALUES (63001, 61009, 'PROCESS', 'LOW', '夜班染色阶段蒸汽压力短时波动，缸温出现 2℃ 偏差', '机修已复位调压阀，班组每 30 分钟复核一次温压曲线', '2026-05-22 23:05:00', 'PROCESSING');
-INSERT INTO `exceptionrecord` VALUES (2058399713991524353, 61021, 'QUALITY', 'MEDIUM', 'Auto-created from QC failure record 2058399713693728770', '', '2026-05-24 12:08:30', 'CLOSED');
-INSERT INTO `exceptionrecord` VALUES (2058421270872760322, 61001, 'QUALITY', 'MEDIUM', 'Auto-created from QC failure record 2058421270809845761', '', '2026-05-24 13:34:09', 'CLOSED');
-INSERT INTO `exceptionrecord` VALUES (2058785122365923329, 61001, 'QUALITY', 'MEDIUM', 'Auto-created from QC failure record 2058785122298814465', '', '2026-05-25 13:39:58', 'OPEN');
 
 -- ----------------------------
 -- Table structure for inspectiondata
@@ -94,128 +122,6 @@ CREATE TABLE `inspectiondata`  (
 -- ----------------------------
 -- Records of inspectiondata
 -- ----------------------------
-INSERT INTO `inspectiondata` VALUES (2058194958493089794, 2058194958425980930, NULL, 'image', 'photo/upload/20260523/source_20260523223451296_87109bd9.jpg', 'source_20260523223451296_87109bd9.jpg', '2026-05-23 22:34:52', 'judge=PASS, defectType=none, boxCount=0', 'Stored by Java ONNX detection; inspectType=offline; variant=source');
-INSERT INTO `inspectiondata` VALUES (2058194958556004353, 2058194958425980930, NULL, 'image-result', 'photo/results/20260523/result_20260523223451983_05da19e5.jpg', 'result_20260523223451983_05da19e5.jpg', '2026-05-23 22:34:52', 'judge=PASS, defectType=none, boxCount=0', 'Stored by Java ONNX detection; inspectType=offline; variant=annotated');
-INSERT INTO `inspectiondata` VALUES (2058197101073559554, 2058197100960313345, NULL, 'image', 'photo/upload/20260523/source_20260523224322082_527d22bb.jpg', 'source_20260523224322082_527d22bb.jpg', '2026-05-23 22:43:23', 'judge=PASS, defectType=none, boxCount=0', 'Stored by Java ONNX detection; inspectType=offline; variant=source');
-INSERT INTO `inspectiondata` VALUES (2058197101073559555, 2058197100960313345, NULL, 'image-result', 'photo/results/20260523/result_20260523224322801_7cc2cd89.jpg', 'result_20260523224322801_7cc2cd89.jpg', '2026-05-23 22:43:23', 'judge=PASS, defectType=none, boxCount=0', 'Stored by Java ONNX detection; inspectType=offline; variant=annotated');
-INSERT INTO `inspectiondata` VALUES (2058399714054438913, 2058399713693728770, NULL, 'image', 'photo/upload/20260524/source_20260524120828759_b781c682.jpg', 'source_20260524120828759_b781c682.jpg', '2026-05-24 12:08:30', 'judge=FAIL, defectType=stain, boxCount=1', 'Stored by Java ONNX detection; inspectType=offline; variant=source');
-INSERT INTO `inspectiondata` VALUES (2058399714054438914, 2058399713693728770, NULL, 'image-result', 'photo/results/20260524/result_20260524120829381_cb2159c7.jpg', 'result_20260524120829381_cb2159c7.jpg', '2026-05-24 12:08:30', 'judge=FAIL, defectType=stain, boxCount=1', 'Stored by Java ONNX detection; inspectType=offline; variant=annotated');
-INSERT INTO `inspectiondata` VALUES (2058416184532598785, 2058416184465489921, NULL, 'image', 'photo/upload/20260524/source_20260524131355750_2e932c7c.jpg', 'source_20260524131355750_2e932c7c.jpg', '2026-05-24 13:13:57', 'judge=PASS, defectType=none, boxCount=0', 'Stored by Java ONNX detection; inspectType=offline; variant=source');
-INSERT INTO `inspectiondata` VALUES (2058416184595513345, 2058416184465489921, NULL, 'image-result', 'photo/results/20260524/result_20260524131356396_09c765ac.jpg', 'result_20260524131356396_09c765ac.jpg', '2026-05-24 13:13:57', 'judge=PASS, defectType=none, boxCount=0', 'Stored by Java ONNX detection; inspectType=offline; variant=annotated');
-INSERT INTO `inspectiondata` VALUES (2058416186554253314, 2058416186487144449, 2058416127540396034, 'frame', 'photo/upload/20260524/source_20260524131356717_db211145.jpg', 'source_20260524131356717_db211145.jpg', '2026-05-24 12:00:00', 'judge=PASS, defectType=none, boxCount=0', 'Stored by Java ONNX detection; inspectType=video; variant=source');
-INSERT INTO `inspectiondata` VALUES (2058416186617167873, 2058416186487144449, 2058416127540396034, 'frame-result', 'photo/results/20260524/result_20260524131356904_2c10a46e.jpg', 'result_20260524131356904_2c10a46e.jpg', '2026-05-24 12:00:00', 'judge=PASS, defectType=none, boxCount=0', 'Stored by Java ONNX detection; inspectType=video; variant=annotated');
-INSERT INTO `inspectiondata` VALUES (2058420976969490433, 2058420976902381569, 2058416127540396034, 'frame', 'photo/upload/20260524/source_20260524133258550_95b8c06a.jpg', 'source_20260524133258550_95b8c06a.jpg', '2026-05-24 13:32:58', 'judge=PASS, defectType=none, boxCount=0', 'Stored by Java ONNX detection; inspectType=video; variant=source');
-INSERT INTO `inspectiondata` VALUES (2058420976969490434, 2058420976902381569, 2058416127540396034, 'frame-result', 'photo/results/20260524/result_20260524133259088_43a0cc09.jpg', 'result_20260524133259088_43a0cc09.jpg', '2026-05-24 13:32:58', 'judge=PASS, defectType=none, boxCount=0', 'Stored by Java ONNX detection; inspectType=video; variant=annotated');
-INSERT INTO `inspectiondata` VALUES (2058421270872760323, 2058421270809845761, NULL, 'image', 'photo/upload/20260524/source_20260524133408934_78b3623d.jpg', 'source_20260524133408934_78b3623d.jpg', '2026-05-24 13:34:09', 'judge=FAIL, defectType=stain, boxCount=1', 'Stored by Java ONNX detection; inspectType=offline; variant=source');
-INSERT INTO `inspectiondata` VALUES (2058421270935674881, 2058421270809845761, NULL, 'image-result', 'photo/results/20260524/result_20260524133409099_003ec0a6.jpg', 'result_20260524133409099_003ec0a6.jpg', '2026-05-24 13:34:09', 'judge=FAIL, defectType=stain, boxCount=1', 'Stored by Java ONNX detection; inspectType=offline; variant=annotated');
-INSERT INTO `inspectiondata` VALUES (2058421867118239745, 2058421867051130882, 2058416127540396034, 'frame', 'photo/upload/20260524/source_20260524133631281_6eddfd90.jpg', 'source_20260524133631281_6eddfd90.jpg', '2026-05-24 13:36:30', 'judge=PASS, defectType=none, boxCount=0', 'Stored by Java ONNX detection; inspectType=video; variant=source');
-INSERT INTO `inspectiondata` VALUES (2058421867181154306, 2058421867051130882, 2058416127540396034, 'frame-result', 'photo/results/20260524/result_20260524133631379_3845fcfe.jpg', 'result_20260524133631379_3845fcfe.jpg', '2026-05-24 13:36:30', 'judge=PASS, defectType=none, boxCount=0', 'Stored by Java ONNX detection; inspectType=video; variant=annotated');
-INSERT INTO `inspectiondata` VALUES (2058426357015842817, 2058426356919373825, 2058416127540396034, 'frame', 'photo/upload/20260524/source_20260524135421253_7dc9cec3.jpg', 'source_20260524135421253_7dc9cec3.jpg', '2026-05-24 13:54:21', 'judge=PASS, defectType=none, boxCount=0', 'Stored by Java ONNX detection; inspectType=video; variant=source');
-INSERT INTO `inspectiondata` VALUES (2058426357015842818, 2058426356919373825, 2058416127540396034, 'frame-result', 'photo/results/20260524/result_20260524135421779_2490ccb6.jpg', 'result_20260524135421779_2490ccb6.jpg', '2026-05-24 13:54:21', 'judge=PASS, defectType=none, boxCount=0', 'Stored by Java ONNX detection; inspectType=video; variant=annotated');
-INSERT INTO `inspectiondata` VALUES (2058426362699124737, 2058426362632015873, 2058416127540396034, 'frame', 'photo/upload/20260524/source_20260524135423090_e5d305cc.jpg', 'source_20260524135423090_e5d305cc.jpg', '2026-05-24 13:54:23', 'judge=PASS, defectType=none, boxCount=0', 'Stored by Java ONNX detection; inspectType=video; variant=source');
-INSERT INTO `inspectiondata` VALUES (2058426362766233602, 2058426362632015873, 2058416127540396034, 'frame-result', 'photo/results/20260524/result_20260524135423204_6e0c9af0.jpg', 'result_20260524135423204_6e0c9af0.jpg', '2026-05-24 13:54:23', 'judge=PASS, defectType=none, boxCount=0', 'Stored by Java ONNX detection; inspectType=video; variant=annotated');
-INSERT INTO `inspectiondata` VALUES (2058426368369823745, 2058426368306909186, 2058416127540396034, 'frame', 'photo/upload/20260524/source_20260524135424439_d1daa690.jpg', 'source_20260524135424439_d1daa690.jpg', '2026-05-24 13:54:24', 'judge=RECHECK, defectType=other_defect, boxCount=1', 'Stored by Java ONNX detection; inspectType=video; variant=source');
-INSERT INTO `inspectiondata` VALUES (2058426368436932610, 2058426368306909186, 2058416127540396034, 'frame-result', 'photo/results/20260524/result_20260524135424556_6ea9f14f.jpg', 'result_20260524135424556_6ea9f14f.jpg', '2026-05-24 13:54:24', 'judge=RECHECK, defectType=other_defect, boxCount=1', 'Stored by Java ONNX detection; inspectType=video; variant=annotated');
-INSERT INTO `inspectiondata` VALUES (2058426374132797441, 2058426374065688578, 2058416127540396034, 'frame', 'photo/upload/20260524/source_20260524135425828_efeafb3f.jpg', 'source_20260524135425828_efeafb3f.jpg', '2026-05-24 13:54:25', 'judge=FAIL, defectType=star_jump, boxCount=1', 'Stored by Java ONNX detection; inspectType=video; variant=source');
-INSERT INTO `inspectiondata` VALUES (2058426374195712001, 2058426374065688578, 2058416127540396034, 'frame-result', 'photo/results/20260524/result_20260524135425930_e85305a7.jpg', 'result_20260524135425930_e85305a7.jpg', '2026-05-24 13:54:25', 'judge=FAIL, defectType=star_jump, boxCount=1', 'Stored by Java ONNX detection; inspectType=video; variant=annotated');
-INSERT INTO `inspectiondata` VALUES (2058426379853828098, 2058426379786719233, 2058416127540396034, 'frame', 'photo/upload/20260524/source_20260524135427192_c8787fc2.jpg', 'source_20260524135427192_c8787fc2.jpg', '2026-05-24 13:54:27', 'judge=FAIL, defectType=stain, boxCount=3', 'Stored by Java ONNX detection; inspectType=video; variant=source');
-INSERT INTO `inspectiondata` VALUES (2058426379920936961, 2058426379786719233, 2058416127540396034, 'frame-result', 'photo/results/20260524/result_20260524135427299_966e5b10.jpg', 'result_20260524135427299_966e5b10.jpg', '2026-05-24 13:54:27', 'judge=FAIL, defectType=stain, boxCount=3', 'Stored by Java ONNX detection; inspectType=video; variant=annotated');
-INSERT INTO `inspectiondata` VALUES (2058426385528721409, 2058426385461612546, 2058416127540396034, 'frame', 'photo/upload/20260524/source_20260524135428542_82eaf5e9.jpg', 'source_20260524135428542_82eaf5e9.jpg', '2026-05-24 13:54:28', 'judge=RECHECK, defectType=knot, boxCount=1', 'Stored by Java ONNX detection; inspectType=video; variant=source');
-INSERT INTO `inspectiondata` VALUES (2058426385528721410, 2058426385461612546, 2058416127540396034, 'frame-result', 'photo/results/20260524/result_20260524135428645_92dd3920.jpg', 'result_20260524135428645_92dd3920.jpg', '2026-05-24 13:54:28', 'judge=RECHECK, defectType=knot, boxCount=1', 'Stored by Java ONNX detection; inspectType=video; variant=annotated');
-INSERT INTO `inspectiondata` VALUES (2058426391224586241, 2058426391157477377, 2058416127540396034, 'frame', 'photo/upload/20260524/source_20260524135429886_c15f7697.jpg', 'source_20260524135429886_c15f7697.jpg', '2026-05-24 13:54:29', 'judge=FAIL, defectType=stain, boxCount=1', 'Stored by Java ONNX detection; inspectType=video; variant=source');
-INSERT INTO `inspectiondata` VALUES (2058426391224586242, 2058426391157477377, 2058416127540396034, 'frame-result', 'photo/results/20260524/result_20260524135429999_351ee5d8.jpg', 'result_20260524135429999_351ee5d8.jpg', '2026-05-24 13:54:29', 'judge=FAIL, defectType=stain, boxCount=1', 'Stored by Java ONNX detection; inspectType=video; variant=annotated');
-INSERT INTO `inspectiondata` VALUES (2058426396903673857, 2058426396836564993, 2058416127540396034, 'frame', 'photo/upload/20260524/source_20260524135431259_4212d06b.jpg', 'source_20260524135431259_4212d06b.jpg', '2026-05-24 13:54:31', 'judge=FAIL, defectType=stain, boxCount=1', 'Stored by Java ONNX detection; inspectType=video; variant=source');
-INSERT INTO `inspectiondata` VALUES (2058426396970782721, 2058426396836564993, 2058416127540396034, 'frame-result', 'photo/results/20260524/result_20260524135431360_e7b8f0fc.jpg', 'result_20260524135431360_e7b8f0fc.jpg', '2026-05-24 13:54:31', 'judge=FAIL, defectType=stain, boxCount=1', 'Stored by Java ONNX detection; inspectType=video; variant=annotated');
-INSERT INTO `inspectiondata` VALUES (2058426402461126658, 2058426402394017794, 2058416127540396034, 'frame', 'photo/upload/20260524/source_20260524135432589_3775cef5.jpg', 'source_20260524135432589_3775cef5.jpg', '2026-05-24 13:54:32', 'judge=PASS, defectType=none, boxCount=0', 'Stored by Java ONNX detection; inspectType=video; variant=source');
-INSERT INTO `inspectiondata` VALUES (2058426402528235521, 2058426402394017794, 2058416127540396034, 'frame-result', 'photo/results/20260524/result_20260524135432692_36735526.jpg', 'result_20260524135432692_36735526.jpg', '2026-05-24 13:54:32', 'judge=PASS, defectType=none, boxCount=0', 'Stored by Java ONNX detection; inspectType=video; variant=annotated');
-INSERT INTO `inspectiondata` VALUES (2058426408018579457, 2058426407947276290, 2058416127540396034, 'frame', 'photo/upload/20260524/source_20260524135433915_2c3af542.jpg', 'source_20260524135433915_2c3af542.jpg', '2026-05-24 13:54:33', 'judge=PASS, defectType=none, boxCount=0', 'Stored by Java ONNX detection; inspectType=video; variant=source');
-INSERT INTO `inspectiondata` VALUES (2058426408018579458, 2058426407947276290, 2058416127540396034, 'frame-result', 'photo/results/20260524/result_20260524135434018_518a85ac.jpg', 'result_20260524135434018_518a85ac.jpg', '2026-05-24 13:54:33', 'judge=PASS, defectType=none, boxCount=0', 'Stored by Java ONNX detection; inspectType=video; variant=annotated');
-INSERT INTO `inspectiondata` VALUES (2058426413517312002, 2058426413450203137, 2058416127540396034, 'frame', 'photo/upload/20260524/source_20260524135435224_04a01fb9.jpg', 'source_20260524135435224_04a01fb9.jpg', '2026-05-24 13:54:35', 'judge=PASS, defectType=none, boxCount=0', 'Stored by Java ONNX detection; inspectType=video; variant=source');
-INSERT INTO `inspectiondata` VALUES (2058426413517312003, 2058426413450203137, 2058416127540396034, 'frame-result', 'photo/results/20260524/result_20260524135435323_babcb519.jpg', 'result_20260524135435323_babcb519.jpg', '2026-05-24 13:54:35', 'judge=PASS, defectType=none, boxCount=0', 'Stored by Java ONNX detection; inspectType=video; variant=annotated');
-INSERT INTO `inspectiondata` VALUES (2058426418969907202, 2058426418906992641, 2058416127540396034, 'frame', 'photo/upload/20260524/source_20260524135436522_53b16a76.jpg', 'source_20260524135436522_53b16a76.jpg', '2026-05-24 13:54:36', 'judge=PASS, defectType=none, boxCount=0', 'Stored by Java ONNX detection; inspectType=video; variant=source');
-INSERT INTO `inspectiondata` VALUES (2058426418969907203, 2058426418906992641, 2058416127540396034, 'frame-result', 'photo/results/20260524/result_20260524135436622_dd38964b.jpg', 'result_20260524135436622_dd38964b.jpg', '2026-05-24 13:54:36', 'judge=PASS, defectType=none, boxCount=0', 'Stored by Java ONNX detection; inspectType=video; variant=annotated');
-INSERT INTO `inspectiondata` VALUES (2058426424435085315, 2058426424435085314, 2058416127540396034, 'frame', 'photo/upload/20260524/source_20260524135437829_03a375a4.jpg', 'source_20260524135437829_03a375a4.jpg', '2026-05-24 13:54:37', 'judge=PASS, defectType=none, boxCount=0', 'Stored by Java ONNX detection; inspectType=video; variant=source');
-INSERT INTO `inspectiondata` VALUES (2058426424502194178, 2058426424435085314, 2058416127540396034, 'frame-result', 'photo/results/20260524/result_20260524135437935_f1f1f4da.jpg', 'result_20260524135437935_f1f1f4da.jpg', '2026-05-24 13:54:37', 'judge=PASS, defectType=none, boxCount=0', 'Stored by Java ONNX detection; inspectType=video; variant=annotated');
-INSERT INTO `inspectiondata` VALUES (2058426430047064065, 2058426429975760897, 2058416127540396034, 'frame', 'photo/upload/20260524/source_20260524135439147_5ca00da1.jpg', 'source_20260524135439147_5ca00da1.jpg', '2026-05-24 13:54:39', 'judge=RECHECK, defectType=thick_weft, boxCount=3', 'Stored by Java ONNX detection; inspectType=video; variant=source');
-INSERT INTO `inspectiondata` VALUES (2058426430047064066, 2058426429975760897, 2058416127540396034, 'frame-result', 'photo/results/20260524/result_20260524135439261_9f3c8e19.jpg', 'result_20260524135439261_9f3c8e19.jpg', '2026-05-24 13:54:39', 'judge=RECHECK, defectType=thick_weft, boxCount=3', 'Stored by Java ONNX detection; inspectType=video; variant=annotated');
-INSERT INTO `inspectiondata` VALUES (2058426435533213698, 2058426435533213697, 2058416127540396034, 'frame', 'photo/upload/20260524/source_20260524135440481_e9b50fe7.jpg', 'source_20260524135440481_e9b50fe7.jpg', '2026-05-24 13:54:40', 'judge=FAIL, defectType=star_jump, boxCount=3', 'Stored by Java ONNX detection; inspectType=video; variant=source');
-INSERT INTO `inspectiondata` VALUES (2058426435596128257, 2058426435533213697, 2058416127540396034, 'frame-result', 'photo/results/20260524/result_20260524135440581_4573affb.jpg', 'result_20260524135440581_4573affb.jpg', '2026-05-24 13:54:40', 'judge=FAIL, defectType=star_jump, boxCount=3', 'Stored by Java ONNX detection; inspectType=video; variant=annotated');
-INSERT INTO `inspectiondata` VALUES (2058426441052917761, 2058426440990003202, 2058416127540396034, 'frame', 'photo/upload/20260524/source_20260524135441789_7426b9da.jpg', 'source_20260524135441789_7426b9da.jpg', '2026-05-24 13:54:41', 'judge=RECHECK, defectType=star_jump, boxCount=3', 'Stored by Java ONNX detection; inspectType=video; variant=source');
-INSERT INTO `inspectiondata` VALUES (2058426441052917762, 2058426440990003202, 2058416127540396034, 'frame-result', 'photo/results/20260524/result_20260524135441892_d024531d.jpg', 'result_20260524135441892_d024531d.jpg', '2026-05-24 13:54:41', 'judge=RECHECK, defectType=star_jump, boxCount=3', 'Stored by Java ONNX detection; inspectType=video; variant=annotated');
-INSERT INTO `inspectiondata` VALUES (2058426446610370563, 2058426446610370562, 2058416127540396034, 'frame', 'photo/upload/20260524/source_20260524135443116_ef7176ee.jpg', 'source_20260524135443116_ef7176ee.jpg', '2026-05-24 13:54:43', 'judge=RECHECK, defectType=star_jump, boxCount=1', 'Stored by Java ONNX detection; inspectType=video; variant=source');
-INSERT INTO `inspectiondata` VALUES (2058426446677479425, 2058426446610370562, 2058416127540396034, 'frame-result', 'photo/results/20260524/result_20260524135443218_f4f52285.jpg', 'result_20260524135443218_f4f52285.jpg', '2026-05-24 13:54:43', 'judge=RECHECK, defectType=star_jump, boxCount=1', 'Stored by Java ONNX detection; inspectType=video; variant=annotated');
-INSERT INTO `inspectiondata` VALUES (2058426452092325890, 2058426452092325889, 2058416127540396034, 'frame', 'photo/upload/20260524/source_20260524135444430_56dabd23.jpg', 'source_20260524135444430_56dabd23.jpg', '2026-05-24 13:54:44', 'judge=RECHECK, defectType=other_defect, boxCount=1', 'Stored by Java ONNX detection; inspectType=video; variant=source');
-INSERT INTO `inspectiondata` VALUES (2058426452155240449, 2058426452092325889, 2058416127540396034, 'frame-result', 'photo/results/20260524/result_20260524135444525_0b41d615.jpg', 'result_20260524135444525_0b41d615.jpg', '2026-05-24 13:54:44', 'judge=RECHECK, defectType=other_defect, boxCount=1', 'Stored by Java ONNX detection; inspectType=video; variant=annotated');
-INSERT INTO `inspectiondata` VALUES (2058426457628807169, 2058426457561698305, 2058416127540396034, 'frame', 'photo/upload/20260524/source_20260524135445753_e89ad020.jpg', 'source_20260524135445753_e89ad020.jpg', '2026-05-24 13:54:45', 'judge=RECHECK, defectType=star_jump, boxCount=1', 'Stored by Java ONNX detection; inspectType=video; variant=source');
-INSERT INTO `inspectiondata` VALUES (2058426457628807170, 2058426457561698305, 2058416127540396034, 'frame-result', 'photo/results/20260524/result_20260524135445845_dc359e8b.jpg', 'result_20260524135445845_dc359e8b.jpg', '2026-05-24 13:54:45', 'judge=RECHECK, defectType=star_jump, boxCount=1', 'Stored by Java ONNX detection; inspectType=video; variant=annotated');
-INSERT INTO `inspectiondata` VALUES (2058426463177871362, 2058426463047847937, 2058416127540396034, 'frame', 'photo/upload/20260524/source_20260524135447058_77ea0d16.jpg', 'source_20260524135447058_77ea0d16.jpg', '2026-05-24 13:54:47', 'judge=PASS, defectType=none, boxCount=0', 'Stored by Java ONNX detection; inspectType=video; variant=source');
-INSERT INTO `inspectiondata` VALUES (2058426463177871363, 2058426463047847937, 2058416127540396034, 'frame-result', 'photo/results/20260524/result_20260524135447153_6ea8a0df.jpg', 'result_20260524135447153_6ea8a0df.jpg', '2026-05-24 13:54:47', 'judge=PASS, defectType=none, boxCount=0', 'Stored by Java ONNX detection; inspectType=video; variant=annotated');
-INSERT INTO `inspectiondata` VALUES (2058426468693381123, 2058426468693381122, 2058416127540396034, 'frame', 'photo/upload/20260524/source_20260524135448384_4e79ccc7.jpg', 'source_20260524135448384_4e79ccc7.jpg', '2026-05-24 13:54:48', 'judge=PASS, defectType=none, boxCount=0', 'Stored by Java ONNX detection; inspectType=video; variant=source');
-INSERT INTO `inspectiondata` VALUES (2058426468760489986, 2058426468693381122, 2058416127540396034, 'frame-result', 'photo/results/20260524/result_20260524135448491_99c64544.jpg', 'result_20260524135448491_99c64544.jpg', '2026-05-24 13:54:48', 'judge=PASS, defectType=none, boxCount=0', 'Stored by Java ONNX detection; inspectType=video; variant=annotated');
-INSERT INTO `inspectiondata` VALUES (2058426474175336451, 2058426474175336450, 2058416127540396034, 'frame', 'photo/upload/20260524/source_20260524135449702_6c3a5ca4.jpg', 'source_20260524135449702_6c3a5ca4.jpg', '2026-05-24 13:54:49', 'judge=PASS, defectType=none, boxCount=0', 'Stored by Java ONNX detection; inspectType=video; variant=source');
-INSERT INTO `inspectiondata` VALUES (2058426474238251009, 2058426474175336450, 2058416127540396034, 'frame-result', 'photo/results/20260524/result_20260524135449800_ce006df8.jpg', 'result_20260524135449800_ce006df8.jpg', '2026-05-24 13:54:49', 'judge=PASS, defectType=none, boxCount=0', 'Stored by Java ONNX detection; inspectType=video; variant=annotated');
-INSERT INTO `inspectiondata` VALUES (2058426479724400641, 2058426479661486082, 2058416127540396034, 'frame', 'photo/upload/20260524/source_20260524135451011_5ff545b8.jpg', 'source_20260524135451011_5ff545b8.jpg', '2026-05-24 13:54:50', 'judge=PASS, defectType=none, boxCount=0', 'Stored by Java ONNX detection; inspectType=video; variant=source');
-INSERT INTO `inspectiondata` VALUES (2058426479724400642, 2058426479661486082, 2058416127540396034, 'frame-result', 'photo/results/20260524/result_20260524135451109_21eebec3.jpg', 'result_20260524135451109_21eebec3.jpg', '2026-05-24 13:54:50', 'judge=PASS, defectType=none, boxCount=0', 'Stored by Java ONNX detection; inspectType=video; variant=annotated');
-INSERT INTO `inspectiondata` VALUES (2058426485143441411, 2058426485143441410, 2058416127540396034, 'frame', 'photo/upload/20260524/source_20260524135452308_a2033569.jpg', 'source_20260524135452308_a2033569.jpg', '2026-05-24 13:54:52', 'judge=RECHECK, defectType=knot, boxCount=1', 'Stored by Java ONNX detection; inspectType=video; variant=source');
-INSERT INTO `inspectiondata` VALUES (2058426485206355970, 2058426485143441410, 2058416127540396034, 'frame-result', 'photo/results/20260524/result_20260524135452407_a81d11b9.jpg', 'result_20260524135452407_a81d11b9.jpg', '2026-05-24 13:54:52', 'judge=RECHECK, defectType=knot, boxCount=1', 'Stored by Java ONNX detection; inspectType=video; variant=annotated');
-INSERT INTO `inspectiondata` VALUES (2058426490591842306, 2058426490524733442, 2058416127540396034, 'frame', 'photo/upload/20260524/source_20260524135453605_a529b6f3.jpg', 'source_20260524135453605_a529b6f3.jpg', '2026-05-24 13:54:53', 'judge=PASS, defectType=none, boxCount=0', 'Stored by Java ONNX detection; inspectType=video; variant=source');
-INSERT INTO `inspectiondata` VALUES (2058426490591842307, 2058426490524733442, 2058416127540396034, 'frame-result', 'photo/results/20260524/result_20260524135453705_3af12ed1.jpg', 'result_20260524135453705_3af12ed1.jpg', '2026-05-24 13:54:53', 'judge=PASS, defectType=none, boxCount=0', 'Stored by Java ONNX detection; inspectType=video; variant=annotated');
-INSERT INTO `inspectiondata` VALUES (2058426495989911554, 2058426495922802689, 2058416127540396034, 'frame', 'photo/upload/20260524/source_20260524135454893_a71adcbf.jpg', 'source_20260524135454893_a71adcbf.jpg', '2026-05-24 13:54:54', 'judge=PASS, defectType=none, boxCount=0', 'Stored by Java ONNX detection; inspectType=video; variant=source');
-INSERT INTO `inspectiondata` VALUES (2058426495989911555, 2058426495922802689, 2058416127540396034, 'frame-result', 'photo/results/20260524/result_20260524135454992_41269001.jpg', 'result_20260524135454992_41269001.jpg', '2026-05-24 13:54:54', 'judge=PASS, defectType=none, boxCount=0', 'Stored by Java ONNX detection; inspectType=video; variant=annotated');
-INSERT INTO `inspectiondata` VALUES (2058426501408952322, 2058426501346037762, 2058416127540396034, 'frame', 'photo/upload/20260524/source_20260524135456188_428d18f2.jpg', 'source_20260524135456188_428d18f2.jpg', '2026-05-24 13:54:56', 'judge=RECHECK, defectType=other_defect, boxCount=4', 'Stored by Java ONNX detection; inspectType=video; variant=source');
-INSERT INTO `inspectiondata` VALUES (2058426501408952323, 2058426501346037762, 2058416127540396034, 'frame-result', 'photo/results/20260524/result_20260524135456285_e909f991.jpg', 'result_20260524135456285_e909f991.jpg', '2026-05-24 13:54:56', 'judge=RECHECK, defectType=other_defect, boxCount=4', 'Stored by Java ONNX detection; inspectType=video; variant=annotated');
-INSERT INTO `inspectiondata` VALUES (2058426506874130434, 2058426506874130433, 2058416127540396034, 'frame', 'photo/upload/20260524/source_20260524135457500_cad49f91.jpg', 'source_20260524135457500_cad49f91.jpg', '2026-05-24 13:54:57', 'judge=RECHECK, defectType=star_jump, boxCount=1', 'Stored by Java ONNX detection; inspectType=video; variant=source');
-INSERT INTO `inspectiondata` VALUES (2058426506937044993, 2058426506874130433, 2058416127540396034, 'frame-result', 'photo/results/20260524/result_20260524135457597_cc22a977.jpg', 'result_20260524135457597_cc22a977.jpg', '2026-05-24 13:54:57', 'judge=RECHECK, defectType=star_jump, boxCount=1', 'Stored by Java ONNX detection; inspectType=video; variant=annotated');
-INSERT INTO `inspectiondata` VALUES (2058426512381251586, 2058426512314142722, 2058416127540396034, 'frame', 'photo/upload/20260524/source_20260524135458794_6be86a8a.jpg', 'source_20260524135458794_6be86a8a.jpg', '2026-05-24 13:54:58', 'judge=RECHECK, defectType=knot, boxCount=1', 'Stored by Java ONNX detection; inspectType=video; variant=source');
-INSERT INTO `inspectiondata` VALUES (2058426512381251587, 2058426512314142722, 2058416127540396034, 'frame-result', 'photo/results/20260524/result_20260524135458898_b1067fa4.jpg', 'result_20260524135458898_b1067fa4.jpg', '2026-05-24 13:54:58', 'judge=RECHECK, defectType=knot, boxCount=1', 'Stored by Java ONNX detection; inspectType=video; variant=annotated');
-INSERT INTO `inspectiondata` VALUES (2058426517871595522, 2058426517808680962, 2058416127540396034, 'frame', 'photo/upload/20260524/source_20260524135500110_2c2a50a2.jpg', 'source_20260524135500110_2c2a50a2.jpg', '2026-05-24 13:55:00', 'judge=PASS, defectType=none, boxCount=0', 'Stored by Java ONNX detection; inspectType=video; variant=source');
-INSERT INTO `inspectiondata` VALUES (2058426517871595523, 2058426517808680962, 2058416127540396034, 'frame-result', 'photo/results/20260524/result_20260524135500209_aac02907.jpg', 'result_20260524135500209_aac02907.jpg', '2026-05-24 13:55:00', 'judge=PASS, defectType=none, boxCount=0', 'Stored by Java ONNX detection; inspectType=video; variant=annotated');
-INSERT INTO `inspectiondata` VALUES (2058426523307413506, 2058426523240304641, 2058416127540396034, 'frame', 'photo/upload/20260524/source_20260524135501405_7ae3a535.jpg', 'source_20260524135501405_7ae3a535.jpg', '2026-05-24 13:55:01', 'judge=PASS, defectType=none, boxCount=0', 'Stored by Java ONNX detection; inspectType=video; variant=source');
-INSERT INTO `inspectiondata` VALUES (2058426523307413507, 2058426523240304641, 2058416127540396034, 'frame-result', 'photo/results/20260524/result_20260524135501503_987f68a6.jpg', 'result_20260524135501503_987f68a6.jpg', '2026-05-24 13:55:01', 'judge=PASS, defectType=none, boxCount=0', 'Stored by Java ONNX detection; inspectType=video; variant=annotated');
-INSERT INTO `inspectiondata` VALUES (2058426528780980226, 2058426528713871362, 2058416127540396034, 'frame', 'photo/upload/20260524/source_20260524135502708_bffa01f4.jpg', 'source_20260524135502708_bffa01f4.jpg', '2026-05-24 13:55:02', 'judge=RECHECK, defectType=stain, boxCount=2', 'Stored by Java ONNX detection; inspectType=video; variant=source');
-INSERT INTO `inspectiondata` VALUES (2058426528780980227, 2058426528713871362, 2058416127540396034, 'frame-result', 'photo/results/20260524/result_20260524135502809_03f7e863.jpg', 'result_20260524135502809_03f7e863.jpg', '2026-05-24 13:55:02', 'judge=RECHECK, defectType=stain, boxCount=2', 'Stored by Java ONNX detection; inspectType=video; variant=annotated');
-INSERT INTO `inspectiondata` VALUES (2058426534258741249, 2058426534191632386, 2058416127540396034, 'frame', 'photo/upload/20260524/source_20260524135504014_8b677ca9.jpg', 'source_20260524135504014_8b677ca9.jpg', '2026-05-24 13:55:03', 'judge=RECHECK, defectType=stain, boxCount=1', 'Stored by Java ONNX detection; inspectType=video; variant=source');
-INSERT INTO `inspectiondata` VALUES (2058426534258741250, 2058426534191632386, 2058416127540396034, 'frame-result', 'photo/results/20260524/result_20260524135504114_0f3808b2.jpg', 'result_20260524135504114_0f3808b2.jpg', '2026-05-24 13:55:03', 'judge=RECHECK, defectType=stain, boxCount=1', 'Stored by Java ONNX detection; inspectType=video; variant=annotated');
-INSERT INTO `inspectiondata` VALUES (2058426539702947842, 2058426539702947841, 2058416127540396034, 'frame', 'photo/upload/20260524/source_20260524135505321_f10b2bbd.jpg', 'source_20260524135505321_f10b2bbd.jpg', '2026-05-24 13:55:05', 'judge=RECHECK, defectType=stain, boxCount=1', 'Stored by Java ONNX detection; inspectType=video; variant=source');
-INSERT INTO `inspectiondata` VALUES (2058426539770056706, 2058426539702947841, 2058416127540396034, 'frame-result', 'photo/results/20260524/result_20260524135505419_b11bb147.jpg', 'result_20260524135505419_b11bb147.jpg', '2026-05-24 13:55:05', 'judge=RECHECK, defectType=stain, boxCount=1', 'Stored by Java ONNX detection; inspectType=video; variant=annotated');
-INSERT INTO `inspectiondata` VALUES (2058426545252012033, 2058426545180708865, 2058416127540396034, 'frame', 'photo/upload/20260524/source_20260524135506632_08f2019b.jpg', 'source_20260524135506632_08f2019b.jpg', '2026-05-24 13:55:06', 'judge=RECHECK, defectType=stain, boxCount=1', 'Stored by Java ONNX detection; inspectType=video; variant=source');
-INSERT INTO `inspectiondata` VALUES (2058426545252012034, 2058426545180708865, 2058416127540396034, 'frame-result', 'photo/results/20260524/result_20260524135506735_bc08929b.jpg', 'result_20260524135506735_bc08929b.jpg', '2026-05-24 13:55:06', 'judge=RECHECK, defectType=stain, boxCount=1', 'Stored by Java ONNX detection; inspectType=video; variant=annotated');
-INSERT INTO `inspectiondata` VALUES (2058426550742355970, 2058426550742355969, 2058416127540396034, 'frame', 'photo/upload/20260524/source_20260524135507956_d90fab44.jpg', 'source_20260524135507956_d90fab44.jpg', '2026-05-24 13:55:07', 'judge=RECHECK, defectType=stain, boxCount=1', 'Stored by Java ONNX detection; inspectType=video; variant=source');
-INSERT INTO `inspectiondata` VALUES (2058426550809464834, 2058426550742355969, 2058416127540396034, 'frame-result', 'photo/results/20260524/result_20260524135508050_d814c403.jpg', 'result_20260524135508050_d814c403.jpg', '2026-05-24 13:55:07', 'judge=RECHECK, defectType=stain, boxCount=1', 'Stored by Java ONNX detection; inspectType=video; variant=annotated');
-INSERT INTO `inspectiondata` VALUES (2058426556362723330, 2058426556295614465, 2058416127540396034, 'frame', 'photo/upload/20260524/source_20260524135509274_faa09b37.jpg', 'source_20260524135509274_faa09b37.jpg', '2026-05-24 13:55:09', 'judge=RECHECK, defectType=stain, boxCount=1', 'Stored by Java ONNX detection; inspectType=video; variant=source');
-INSERT INTO `inspectiondata` VALUES (2058426556362723331, 2058426556295614465, 2058416127540396034, 'frame-result', 'photo/results/20260524/result_20260524135509377_f3e18c88.jpg', 'result_20260524135509377_f3e18c88.jpg', '2026-05-24 13:55:09', 'judge=RECHECK, defectType=stain, boxCount=1', 'Stored by Java ONNX detection; inspectType=video; variant=annotated');
-INSERT INTO `inspectiondata` VALUES (2058426561710460930, 2058426561710460929, 2058416127540396034, 'frame', 'photo/upload/20260524/source_20260524135510570_af4ca7ee.jpg', 'source_20260524135510570_af4ca7ee.jpg', '2026-05-24 13:55:10', 'judge=PASS, defectType=none, boxCount=0', 'Stored by Java ONNX detection; inspectType=video; variant=source');
-INSERT INTO `inspectiondata` VALUES (2058426561710460931, 2058426561710460929, 2058416127540396034, 'frame-result', 'photo/results/20260524/result_20260524135510663_c2a27498.jpg', 'result_20260524135510663_c2a27498.jpg', '2026-05-24 13:55:10', 'judge=PASS, defectType=none, boxCount=0', 'Stored by Java ONNX detection; inspectType=video; variant=annotated');
-INSERT INTO `inspectiondata` VALUES (2058426567150473218, 2058426567083364353, 2058416127540396034, 'frame', 'photo/upload/20260524/source_20260524135511851_7c9a1a46.jpg', 'source_20260524135511851_7c9a1a46.jpg', '2026-05-24 13:55:11', 'judge=PASS, defectType=none, boxCount=0', 'Stored by Java ONNX detection; inspectType=video; variant=source');
-INSERT INTO `inspectiondata` VALUES (2058426567150473219, 2058426567083364353, 2058416127540396034, 'frame-result', 'photo/results/20260524/result_20260524135511950_493cf69d.jpg', 'result_20260524135511950_493cf69d.jpg', '2026-05-24 13:55:11', 'judge=PASS, defectType=none, boxCount=0', 'Stored by Java ONNX detection; inspectType=video; variant=annotated');
-INSERT INTO `inspectiondata` VALUES (2058426572540153858, 2058426572473044994, 2058416127540396034, 'frame', 'photo/upload/20260524/source_20260524135513144_7698c21a.jpg', 'source_20260524135513144_7698c21a.jpg', '2026-05-24 13:55:13', 'judge=PASS, defectType=none, boxCount=0', 'Stored by Java ONNX detection; inspectType=video; variant=source');
-INSERT INTO `inspectiondata` VALUES (2058426572540153859, 2058426572473044994, 2058416127540396034, 'frame-result', 'photo/results/20260524/result_20260524135513242_52d50522.jpg', 'result_20260524135513242_52d50522.jpg', '2026-05-24 13:55:13', 'judge=PASS, defectType=none, boxCount=0', 'Stored by Java ONNX detection; inspectType=video; variant=annotated');
-INSERT INTO `inspectiondata` VALUES (2058426577887891458, 2058426577824976897, 2058416127540396034, 'frame', 'photo/upload/20260524/source_20260524135514427_f746f5e0.jpg', 'source_20260524135514427_f746f5e0.jpg', '2026-05-24 13:55:14', 'judge=PASS, defectType=none, boxCount=0', 'Stored by Java ONNX detection; inspectType=video; variant=source');
-INSERT INTO `inspectiondata` VALUES (2058426577955000322, 2058426577824976897, 2058416127540396034, 'frame-result', 'photo/results/20260524/result_20260524135514520_5116b839.jpg', 'result_20260524135514520_5116b839.jpg', '2026-05-24 13:55:14', 'judge=PASS, defectType=none, boxCount=0', 'Stored by Java ONNX detection; inspectType=video; variant=annotated');
-INSERT INTO `inspectiondata` VALUES (2058429290516254721, 2058429290449145858, 2058416127540396034, 'frame', 'photo/upload/20260524/source_20260524140601162_b4f836ab.jpg', 'source_20260524140601162_b4f836ab.jpg', '2026-05-24 14:06:00', 'judge=PASS, defectType=none, boxCount=0', 'Stored by Java ONNX detection; inspectType=video; variant=source');
-INSERT INTO `inspectiondata` VALUES (2058429290516254722, 2058429290449145858, 2058416127540396034, 'frame-result', 'photo/results/20260524/result_20260524140601259_4566a4b8.jpg', 'result_20260524140601259_4566a4b8.jpg', '2026-05-24 14:06:00', 'judge=PASS, defectType=none, boxCount=0', 'Stored by Java ONNX detection; inspectType=video; variant=annotated');
-INSERT INTO `inspectiondata` VALUES (2058429302000259074, 2058429301933150210, 2058416127540396034, 'frame', 'photo/upload/20260524/source_20260524140603901_4618404b.jpg', 'source_20260524140603901_4618404b.jpg', '2026-05-24 14:06:03', 'judge=PASS, defectType=none, boxCount=0', 'Stored by Java ONNX detection; inspectType=video; variant=source');
-INSERT INTO `inspectiondata` VALUES (2058429302067367937, 2058429301933150210, 2058416127540396034, 'frame-result', 'photo/results/20260524/result_20260524140603998_5049169a.jpg', 'result_20260524140603998_5049169a.jpg', '2026-05-24 14:06:03', 'judge=PASS, defectType=none, boxCount=0', 'Stored by Java ONNX detection; inspectType=video; variant=annotated');
-INSERT INTO `inspectiondata` VALUES (2058429349609803778, 2058429349609803777, NULL, 'image', 'photo/upload/20260524/source_20260524140615098_f8d31e7c.jpg', 'source_20260524140615098_f8d31e7c.jpg', '2026-05-24 14:06:15', 'judge=FAIL, defectType=stain, boxCount=1', 'Stored by Java ONNX detection; inspectType=offline; variant=source');
-INSERT INTO `inspectiondata` VALUES (2058429349676912642, 2058429349609803777, NULL, 'image-result', 'photo/results/20260524/result_20260524140615258_b7901d64.jpg', 'result_20260524140615258_b7901d64.jpg', '2026-05-24 14:06:15', 'judge=FAIL, defectType=stain, boxCount=1', 'Stored by Java ONNX detection; inspectType=offline; variant=annotated');
-INSERT INTO `inspectiondata` VALUES (2058429408673992705, 2058429408611078146, NULL, 'image', 'photo/upload/20260524/source_20260524140629168_c7ab0594.jpg', 'source_20260524140629168_c7ab0594.jpg', '2026-05-24 14:06:29', 'judge=FAIL, defectType=knot, boxCount=1', 'Stored by Java ONNX detection; inspectType=offline; variant=source');
-INSERT INTO `inspectiondata` VALUES (2058429408673992706, 2058429408611078146, NULL, 'image-result', 'photo/results/20260524/result_20260524140629347_23857c1c.jpg', 'result_20260524140629347_23857c1c.jpg', '2026-05-24 14:06:29', 'judge=FAIL, defectType=knot, boxCount=1', 'Stored by Java ONNX detection; inspectType=offline; variant=annotated');
-INSERT INTO `inspectiondata` VALUES (2058429522733895682, 2058429522733895681, NULL, 'image', 'photo/upload/20260524/source_20260524140656375_276b63d1.jpg', 'source_20260524140656375_276b63d1.jpg', '2026-05-24 14:06:57', 'judge=PASS, defectType=none, boxCount=0', 'Stored by Java ONNX detection; inspectType=offline; variant=source');
-INSERT INTO `inspectiondata` VALUES (2058429522733895683, 2058429522733895681, NULL, 'image-result', 'photo/results/20260524/result_20260524140656515_164b0c5e.jpg', 'result_20260524140656515_164b0c5e.jpg', '2026-05-24 14:06:57', 'judge=PASS, defectType=none, boxCount=0', 'Stored by Java ONNX detection; inspectType=offline; variant=annotated');
-INSERT INTO `inspectiondata` VALUES (2058429593227563009, 2058429593160454146, NULL, 'image', 'photo/upload/20260524/source_20260524140713150_9d96175f.jpg', 'source_20260524140713150_9d96175f.jpg', '2026-05-24 14:07:13', 'judge=FAIL, defectType=star_jump, boxCount=1', 'Stored by Java ONNX detection; inspectType=offline; variant=source');
-INSERT INTO `inspectiondata` VALUES (2058429593227563010, 2058429593160454146, NULL, 'image-result', 'photo/results/20260524/result_20260524140713304_d4236be4.jpg', 'result_20260524140713304_d4236be4.jpg', '2026-05-24 14:07:13', 'judge=FAIL, defectType=star_jump, boxCount=1', 'Stored by Java ONNX detection; inspectType=offline; variant=annotated');
-INSERT INTO `inspectiondata` VALUES (2058479676425928705, 2058479676107161601, 2058416127540396034, 'frame', 'photo/upload/20260524/source_20260524172613936_56c052c6.jpg', 'source_20260524172613936_56c052c6.jpg', '2026-05-24 17:26:12', 'judge=PASS, defectType=none, boxCount=0', 'Stored by Java ONNX detection; inspectType=video; variant=source');
-INSERT INTO `inspectiondata` VALUES (2058479676555952129, 2058479676107161601, 2058416127540396034, 'frame-result', 'photo/results/20260524/result_20260524172614045_ed080cda.jpg', 'result_20260524172614045_ed080cda.jpg', '2026-05-24 17:26:12', 'judge=PASS, defectType=none, boxCount=0', 'Stored by Java ONNX detection; inspectType=video; variant=annotated');
-INSERT INTO `inspectiondata` VALUES (2058479709057613825, 2058479708927590401, 2058416127540396034, 'frame', 'photo/upload/20260524/source_20260524172621827_5adbadc9.jpg', 'source_20260524172621827_5adbadc9.jpg', '2026-05-24 17:26:21', 'judge=FAIL, defectType=stain, boxCount=1', 'Stored by Java ONNX detection; inspectType=video; variant=source');
-INSERT INTO `inspectiondata` VALUES (2058479709120528386, 2058479708927590401, 2058416127540396034, 'frame-result', 'photo/results/20260524/result_20260524172621967_bcb6ff26.jpg', 'result_20260524172621967_bcb6ff26.jpg', '2026-05-24 17:26:21', 'judge=FAIL, defectType=stain, boxCount=1', 'Stored by Java ONNX detection; inspectType=video; variant=annotated');
-INSERT INTO `inspectiondata` VALUES (2058479737222365185, 2058479737159450626, 2058416127540396034, 'frame', 'photo/upload/20260524/source_20260524172628583_9a686c40.jpg', 'source_20260524172628583_9a686c40.jpg', '2026-05-24 17:26:28', 'judge=FAIL, defectType=stain, boxCount=1', 'Stored by Java ONNX detection; inspectType=video; variant=source');
-INSERT INTO `inspectiondata` VALUES (2058479737289474049, 2058479737159450626, 2058416127540396034, 'frame-result', 'photo/results/20260524/result_20260524172628696_74c29a4e.jpg', 'result_20260524172628696_74c29a4e.jpg', '2026-05-24 17:26:28', 'judge=FAIL, defectType=stain, boxCount=1', 'Stored by Java ONNX detection; inspectType=video; variant=annotated');
-INSERT INTO `inspectiondata` VALUES (2058785023367766017, 2058785023279685633, NULL, 'image', 'photo/upload/20260525/source_20260525133933789_fd19eb65.jpg', 'source_20260525133933789_fd19eb65.jpg', '2026-05-25 13:39:35', 'judge=PASS, defectType=none, boxCount=0', 'Stored by Java ONNX detection; inspectType=offline; variant=source');
-INSERT INTO `inspectiondata` VALUES (2058785023367766018, 2058785023279685633, NULL, 'image-result', 'photo/results/20260525/result_20260525133934394_d49a0423.jpg', 'result_20260525133934394_d49a0423.jpg', '2026-05-25 13:39:35', 'judge=PASS, defectType=none, boxCount=0', 'Stored by Java ONNX detection; inspectType=offline; variant=annotated');
-INSERT INTO `inspectiondata` VALUES (2058785122365923330, 2058785122298814465, NULL, 'image', 'photo/upload/20260525/source_20260525133957884_6bab1911.jpg', 'source_20260525133957884_6bab1911.jpg', '2026-05-25 13:39:58', 'judge=FAIL, defectType=size_stain, boxCount=1', 'Stored by Java ONNX detection; inspectType=offline; variant=source');
-INSERT INTO `inspectiondata` VALUES (2058785122433032193, 2058785122298814465, NULL, 'image-result', 'photo/results/20260525/result_20260525133958042_da8a2fa3.jpg', 'result_20260525133958042_da8a2fa3.jpg', '2026-05-25 13:39:58', 'judge=FAIL, defectType=size_stain, boxCount=1', 'Stored by Java ONNX detection; inspectType=offline; variant=annotated');
-INSERT INTO `inspectiondata` VALUES (2058883651616837633, 2058883651444871169, 2058416127540396034, 'frame', 'photo/upload/20260525/source_20260525201128942_8fb72a56.jpg', 'source_20260525201128942_8fb72a56.jpg', '2026-05-25 20:11:27', 'judge=RECHECK, defectType=stain, boxCount=1', 'Stored by Java ONNX detection; inspectType=video; variant=source');
-INSERT INTO `inspectiondata` VALUES (2058883651725889537, 2058883651444871169, 2058416127540396034, 'frame-result', 'photo/results/20260525/result_20260525201129167_18458d1a.jpg', 'result_20260525201129167_18458d1a.jpg', '2026-05-25 20:11:27', 'judge=RECHECK, defectType=stain, boxCount=1', 'Stored by Java ONNX detection; inspectType=video; variant=annotated');
 
 -- ----------------------------
 -- Table structure for machine
@@ -236,16 +142,18 @@ CREATE TABLE `machine`  (
 -- ----------------------------
 -- Records of machine
 -- ----------------------------
-INSERT INTO `machine` VALUES (40001, 'PT-DS-01', '连续退浆机 1 号', 'PRETREAT', '适合 150~185cm 门幅的针织胚布退浆', 1, '2026-05-15 08:00:00');
-INSERT INTO `machine` VALUES (40002, 'PT-SC-01', '高效煮练机 1 号', 'PRETREAT', '棉类前处理主力设备，蒸汽稳定性较好', 1, '2026-05-15 08:10:00');
-INSERT INTO `machine` VALUES (40003, 'PT-BL-01', '连续漂白机 1 号', 'PRETREAT', '用于浅色及婴童单白度提升', 1, '2026-05-15 08:20:00');
-INSERT INTO `machine` VALUES (40004, 'DY-OF-01', '高温溢流染色机 1 号', 'DYEING', '当前承担涤氨双面布深色单生产', 2, '2026-05-15 08:30:00');
-INSERT INTO `machine` VALUES (40005, 'DY-OF-02', '高温溢流染色机 2 号', 'DYEING', '适合棉弹汗布与涤棉布染色切换', 1, '2026-05-15 08:35:00');
-INSERT INTO `machine` VALUES (40006, 'FN-FN-01', '功能整理机 1 号', 'FINISHING', '支持吸湿排汗及耐磨后整理', 1, '2026-05-15 08:45:00');
-INSERT INTO `machine` VALUES (40007, 'ST-01', '拉幅定型机 1 号', 'FINISHING', '主要控制门幅、克重和布面平整度', 2, '2026-05-15 09:00:00');
-INSERT INTO `machine` VALUES (40008, 'IN-01', '成品验布机 1 号', 'INSPECTION', '用于成品检验与匹号确认', 1, '2026-05-15 09:10:00');
-INSERT INTO `machine` VALUES (40009, 'PK-01', '自动卷装机 1 号', 'PACKING', '支持自动贴标与卷装长度统计', 1, '2026-05-15 09:20:00');
-INSERT INTO `machine` VALUES (40010, 'WS-01', '连续水洗机 1 号', 'POST_DYE', '适合染后皂洗与多槽串联水洗', 2, '2026-05-15 09:30:00');
+INSERT INTO `machine` VALUES (40001, 'PT-DS-01', '连续退浆机1号', 'PRETREAT', '适用于150至185厘米门幅胚布退浆，前处理首道设备', 1, '2026-06-18 11:05:57');
+INSERT INTO `machine` VALUES (40002, 'PT-SC-01', '高效煮练机1号', 'PRETREAT', '棉及涤棉织物煮练，去除油剂与天然杂质', 1, '2026-06-18 11:05:57');
+INSERT INTO `machine` VALUES (40003, 'PT-BL-01', '连续漂白机1号', 'PRETREAT', '用于浅色订单及白度要求较高产品的漂白处理', 1, '2026-06-18 11:05:57');
+INSERT INTO `machine` VALUES (40004, 'DY-OF-01', '高温溢流染色机1号', 'DYEING', '主力染色设备，适合涤棉及深色订单', 1, '2026-06-18 11:05:57');
+INSERT INTO `machine` VALUES (40005, 'DY-OF-02', '高温溢流染色机2号', 'DYEING', '并行染色设备，可用于插单或颜色切换', 1, '2026-06-18 11:05:57');
+INSERT INTO `machine` VALUES (40006, 'WS-01', '连续水洗机1号', 'POST_DYE', '染后皂洗与多槽串联水洗设备', 1, '2026-06-18 11:05:57');
+INSERT INTO `machine` VALUES (40007, 'FN-FN-01', '功能整理机1号', 'FINISHING', '支持柔软、吸湿排汗及耐磨等后整理工艺', 1, '2026-06-18 11:05:57');
+INSERT INTO `machine` VALUES (40008, 'ST-01', '拉幅定型机1号', 'FINISHING', '控制成品门幅、克重和布面平整度的主力设备', 1, '2026-06-18 11:05:57');
+INSERT INTO `machine` VALUES (40009, 'ST-02', '拉幅定型机2号', 'FINISHING', '备用及并行定型设备，支持紧急订单插排', 1, '2026-06-18 11:05:57');
+INSERT INTO `machine` VALUES (40010, 'IN-01', '成品验布机1号', 'INSPECTION', '用于成品外观检验、缺陷确认和匹号', 1, '2026-06-18 11:05:57');
+INSERT INTO `machine` VALUES (40011, 'IN-02', '智能验布机2号', 'INSPECTION', '用于并行质检和视觉检测流程验证', 1, '2026-06-18 11:05:57');
+INSERT INTO `machine` VALUES (40012, 'PK-01', '自动卷装机1号', 'PACKING', '支持自动卷装、长度统计与标签粘贴', 1, '2026-06-18 11:05:57');
 
 -- ----------------------------
 -- Table structure for orderbatchlink
@@ -268,12 +176,7 @@ CREATE TABLE `orderbatchlink`  (
 -- ----------------------------
 -- Records of orderbatchlink
 -- ----------------------------
-INSERT INTO `orderbatchlink` VALUES (70001, 90001, 91001, 10001, 2400.00, 15000.00, '首批主料已全部分配到汗布订单');
-INSERT INTO `orderbatchlink` VALUES (70002, 90002, 91002, 10002, 3000.00, 12600.00, '深灰双面布已锁定夜班染色窗口');
-INSERT INTO `orderbatchlink` VALUES (70003, 90003, 91003, 10003, 2800.00, 13800.00, '工装功能整理单全量分配');
-INSERT INTO `orderbatchlink` VALUES (70004, 90004, 91004, 10004, 2500.00, 16000.00, '婴童浅色布已进入待排状态');
-INSERT INTO `orderbatchlink` VALUES (70005, 90005, 91005, 10005, 1900.00, 11800.00, '家居服面料待补整理方案后排产');
-INSERT INTO `orderbatchlink` VALUES (70006, 90006, 91006, 10006, 3200.00, 13500.00, '高弹运动面料待确认最终工艺路线');
+INSERT INTO `orderbatchlink` VALUES (2067894081014128641, 2067457510645342210, 2067457511756832769, 30004, 200.00, NULL, NULL);
 
 -- ----------------------------
 -- Table structure for orderinfo
@@ -287,21 +190,19 @@ CREATE TABLE `orderinfo`  (
   `deliveryDate` datetime NOT NULL,
   `priority` varchar(20) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NULL DEFAULT NULL,
   `status` varchar(20) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
+  `deptId` bigint NOT NULL,
+  `createdBy` bigint NOT NULL,
   `remark` varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NULL DEFAULT NULL,
   `createTime` datetime NOT NULL,
   PRIMARY KEY (`orderId`) USING BTREE,
-  UNIQUE INDEX `uk_orderinfo_orderNo`(`orderNo` ASC) USING BTREE
+  UNIQUE INDEX `uk_orderinfo_orderNo`(`orderNo` ASC) USING BTREE,
+  INDEX `idx_order_scope`(`deptId` ASC, `createdBy` ASC) USING BTREE
 ) ENGINE = InnoDB CHARACTER SET = utf8mb4 COLLATE = utf8mb4_unicode_ci ROW_FORMAT = DYNAMIC;
 
 -- ----------------------------
 -- Records of orderinfo
 -- ----------------------------
-INSERT INTO `orderinfo` VALUES (90001, 'ORD-20260520-001', '海澜之家针织事业部', '2026-05-20 09:10:00', '2026-05-30 18:00:00', 'HIGH', 'IN_PROGRESS', '出口休闲系列汗布订单，优先保交期', '2026-05-20 09:15:00');
-INSERT INTO `orderinfo` VALUES (90002, 'ORD-20260520-002', '迪卡侬华东供应链', '2026-05-20 11:30:00', '2026-05-29 18:00:00', 'HIGH', 'IN_PROGRESS', '秋冬运动双面布订单，夜班染色窗口已锁定', '2026-05-20 11:35:00');
-INSERT INTO `orderinfo` VALUES (90003, 'ORD-20260519-003', '际华工装面料部', '2026-05-19 15:20:00', '2026-05-28 12:00:00', 'MEDIUM', 'DONE', '工装功能整理订单，本批已完工待发运', '2026-05-19 15:25:00');
-INSERT INTO `orderinfo` VALUES (90004, 'ORD-20260521-004', '巴拉巴拉婴童面料中心', '2026-05-21 10:10:00', '2026-06-01 18:00:00', 'HIGH', 'PLANNING', '婴童浅色布订单，待客户确认克重窗口后下发', '2026-05-21 10:15:00');
-INSERT INTO `orderinfo` VALUES (90005, 'ORD-20260522-005', '都市丽人家居服事业部', '2026-05-22 14:40:00', '2026-06-03 18:00:00', 'MEDIUM', 'READY', '莫代尔棉家居服面料，待排柔软整理方案', '2026-05-22 14:45:00');
-INSERT INTO `orderinfo` VALUES (90006, 'ORD-20260522-006', '安踏运动针织开发部', '2026-05-22 16:10:00', '2026-06-05 18:00:00', 'MEDIUM', 'READY', '锦氨高弹运动面料，待确认定型和后整理路线', '2026-05-22 16:15:00');
+INSERT INTO `orderinfo` VALUES (2067457510645342210, '1', '江南皮革厂', '2026-06-16 12:00:17', '2026-06-19 12:00:14', 'NORMAL', 'NEW', 100, 1, NULL, '2026-06-18 12:00:57');
 
 -- ----------------------------
 -- Table structure for orderitem
@@ -326,12 +227,7 @@ CREATE TABLE `orderitem`  (
 -- ----------------------------
 -- Records of orderitem
 -- ----------------------------
-INSERT INTO `orderitem` VALUES (91001, 90001, 'HLJ-JERSEY-32S', '32S精梳棉弹汗布', '180g/m2', '军绿', 15000.00, 'm', 168.00, 2400.00, '需控制色差，适配外贸休闲男装');
-INSERT INTO `orderitem` VALUES (91002, 90002, 'DK-DBL-SPORT', '涤氨双面运动布', '260g/m2', '深灰', 12600.00, 'm', 180.00, 3000.00, '重点控制回弹手感与深色匀染');
-INSERT INTO `orderitem` VALUES (91003, 90003, 'JH-WORK-FUNC', '涤棉工装功能面料', '220g/m2', '藏青', 13800.00, 'm', 175.00, 2800.00, '需做吸湿排汗功能整理');
-INSERT INTO `orderitem` VALUES (91004, 90004, 'BLB-KIDS-WHITE', '全棉婴童白坯布', '165g/m2', '米白', 16000.00, 'm', 168.00, 2500.00, '对白度与手感要求较高');
-INSERT INTO `orderitem` VALUES (91005, 90005, 'DSLR-MODAL-HOME', '莫代尔棉家居服面料', '190g/m2', '豆沙粉', 11800.00, 'm', 160.00, 1900.00, '建议后续补柔软整理路线');
-INSERT INTO `orderitem` VALUES (91006, 90006, 'ANTA-NYLON-ELASTIC', '锦氨高弹运动面料', '240g/m2', '黑色', 13500.00, 'm', 182.00, 3200.00, '弹力与门幅稳定性是重点');
+INSERT INTO `orderitem` VALUES (2067457511756832769, 2067457510645342210, 'zy', '胚布', '24/m2', '黑', 1000.00, 'm', 168.00, 200.00, NULL);
 
 -- ----------------------------
 -- Table structure for planstep
@@ -360,56 +256,13 @@ CREATE TABLE `planstep`  (
 -- ----------------------------
 -- Records of planstep
 -- ----------------------------
-INSERT INTO `planstep` VALUES (61001, 60001, 30001, 40001, '2026-05-23 08:00:00', '2026-05-23 11:30:00', 3.50, 1, 'READY', '已完成缸前配布与开机确认');
-INSERT INTO `planstep` VALUES (61002, 60001, 30002, 40002, '2026-05-23 11:30:00', '2026-05-23 15:30:00', 4.00, 2, 'PENDING', NULL);
-INSERT INTO `planstep` VALUES (61003, 60001, 30003, 40003, '2026-05-23 15:30:00', '2026-05-23 18:30:00', 3.00, 3, 'PENDING', NULL);
-INSERT INTO `planstep` VALUES (61004, 60001, 30004, 40005, '2026-05-23 18:30:00', '2026-05-24 00:30:00', 6.00, 4, 'PENDING', NULL);
-INSERT INTO `planstep` VALUES (61005, 60001, 30005, 40010, '2026-05-24 00:30:00', '2026-05-24 03:00:00', 2.50, 5, 'PENDING', NULL);
-INSERT INTO `planstep` VALUES (61006, 60001, 30007, 40007, '2026-05-24 03:00:00', '2026-05-24 05:30:00', 2.50, 6, 'PENDING', NULL);
-INSERT INTO `planstep` VALUES (61007, 60001, 30008, 40008, '2026-05-24 05:30:00', '2026-05-24 07:00:00', 1.50, 7, 'PENDING', NULL);
-INSERT INTO `planstep` VALUES (61008, 60001, 30009, 40009, '2026-05-24 07:00:00', '2026-05-24 08:00:00', 1.00, 8, 'PENDING', NULL);
-INSERT INTO `planstep` VALUES (61009, 60002, 30004, 40004, '2026-05-22 20:00:00', '2026-05-23 02:00:00', 6.00, 1, 'RUNNING', '夜班染深灰，当前重点跟踪缸温与回修率');
-INSERT INTO `planstep` VALUES (61010, 60002, 30005, 40010, '2026-05-23 02:00:00', '2026-05-23 04:30:00', 2.50, 2, 'READY', '已预留水洗机窗口');
-INSERT INTO `planstep` VALUES (61011, 60002, 30007, 40007, '2026-05-23 04:30:00', '2026-05-23 07:00:00', 2.50, 3, 'PENDING', NULL);
-INSERT INTO `planstep` VALUES (61012, 60002, 30008, 40008, '2026-05-23 07:00:00', '2026-05-23 08:30:00', 1.50, 4, 'PENDING', NULL);
-INSERT INTO `planstep` VALUES (61013, 60002, 30009, 40009, '2026-05-23 08:30:00', '2026-05-23 09:30:00', 1.00, 5, 'PENDING', NULL);
-INSERT INTO `planstep` VALUES (61014, 60003, 30001, 40001, '2026-05-20 08:00:00', '2026-05-20 11:30:00', 3.50, 1, 'FINISHED', '前处理一次通过');
-INSERT INTO `planstep` VALUES (61015, 60003, 30002, 40002, '2026-05-20 11:30:00', '2026-05-20 15:30:00', 4.00, 2, 'FINISHED', NULL);
-INSERT INTO `planstep` VALUES (61016, 60003, 30004, 40005, '2026-05-20 15:30:00', '2026-05-20 21:30:00', 6.00, 3, 'FINISHED', '色差控制在客户样卡 4-5 级');
-INSERT INTO `planstep` VALUES (61017, 60003, 30006, 40006, '2026-05-20 21:30:00', '2026-05-21 00:30:00', 3.00, 4, 'FINISHED', '已完成吸湿排汗整理');
-INSERT INTO `planstep` VALUES (61018, 60003, 30007, 40007, '2026-05-21 00:30:00', '2026-05-21 03:00:00', 2.50, 5, 'FINISHED', NULL);
-INSERT INTO `planstep` VALUES (61019, 60003, 30008, 40008, '2026-05-21 03:00:00', '2026-05-21 04:30:00', 1.50, 6, 'FINISHED', '成检抽检通过');
-INSERT INTO `planstep` VALUES (61020, 60003, 30009, 40009, '2026-05-21 04:30:00', '2026-05-21 05:30:00', 1.00, 7, 'FINISHED', '已完成打卷和标签打印');
-INSERT INTO `planstep` VALUES (61021, 60004, 30001, 40001, '2026-05-24 08:00:00', '2026-05-24 11:30:00', 3.50, 1, 'PENDING', '待正式下发后排入机台');
-INSERT INTO `planstep` VALUES (61022, 60004, 30002, 40002, '2026-05-24 11:30:00', '2026-05-24 15:30:00', 4.00, 2, 'PENDING', NULL);
-INSERT INTO `planstep` VALUES (61023, 60004, 30003, 40003, '2026-05-24 15:30:00', '2026-05-24 18:30:00', 3.00, 3, 'PENDING', NULL);
-INSERT INTO `planstep` VALUES (61024, 60004, 30004, 40005, '2026-05-24 18:30:00', '2026-05-25 00:30:00', 6.00, 4, 'PENDING', NULL);
-INSERT INTO `planstep` VALUES (61025, 60004, 30005, 40010, '2026-05-25 00:30:00', '2026-05-25 03:00:00', 2.50, 5, 'PENDING', NULL);
-INSERT INTO `planstep` VALUES (61026, 60004, 30007, 40007, '2026-05-25 03:00:00', '2026-05-25 05:30:00', 2.50, 6, 'PENDING', NULL);
-INSERT INTO `planstep` VALUES (61027, 60004, 30008, 40008, '2026-05-25 05:30:00', '2026-05-25 07:00:00', 1.50, 7, 'PENDING', NULL);
-INSERT INTO `planstep` VALUES (61028, 60004, 30009, 40009, '2026-05-25 07:00:00', '2026-05-25 08:00:00', 1.00, 8, 'PENDING', NULL);
-INSERT INTO `planstep` VALUES (2057734625475338242, 2057734625013964801, 30001, 40001, '2026-05-22 16:05:27', '2026-05-22 19:35:27', 3.50, 1, 'PENDING', NULL);
-INSERT INTO `planstep` VALUES (2057734625538252802, 2057734625013964801, 30002, 40002, '2026-05-22 19:35:27', '2026-05-22 23:35:27', 4.00, 2, 'PENDING', NULL);
-INSERT INTO `planstep` VALUES (2057734625538252803, 2057734625013964801, 30004, NULL, '2026-05-22 23:35:27', '2026-05-23 05:35:27', 6.00, 3, 'PENDING', 'No matching active machine capability was found during plan generation');
-INSERT INTO `planstep` VALUES (2057734625538252804, 2057734625013964801, 30006, NULL, '2026-05-23 05:35:27', '2026-05-23 08:35:27', 3.00, 4, 'PENDING', 'No matching active machine capability was found during plan generation');
-INSERT INTO `planstep` VALUES (2057734625601167362, 2057734625013964801, 30007, 40007, '2026-05-23 08:35:27', '2026-05-23 11:05:27', 2.50, 5, 'PENDING', NULL);
-INSERT INTO `planstep` VALUES (2057734625601167363, 2057734625013964801, 30008, 40008, '2026-05-23 11:05:27', '2026-05-23 12:35:27', 1.50, 6, 'PENDING', NULL);
-INSERT INTO `planstep` VALUES (2057734625601167364, 2057734625013964801, 30009, 40009, '2026-05-23 12:35:27', '2026-05-23 13:35:27', 1.00, 7, 'PENDING', NULL);
-INSERT INTO `planstep` VALUES (2058567358653079554, 2058567358376255489, 30001, 40001, '2026-05-16 23:17:24', '2026-05-17 02:47:24', 3.50, 1, 'PENDING', NULL);
-INSERT INTO `planstep` VALUES (2058567358653079555, 2058567358376255489, 30002, 40002, '2026-05-17 02:47:24', '2026-05-17 06:47:24', 4.00, 2, 'PENDING', NULL);
-INSERT INTO `planstep` VALUES (2058567358653079556, 2058567358376255489, 30003, 40003, '2026-05-17 06:47:24', '2026-05-17 09:47:24', 3.00, 3, 'PENDING', NULL);
-INSERT INTO `planstep` VALUES (2058567358653079557, 2058567358376255489, 30004, 40005, '2026-05-17 09:47:24', '2026-05-17 15:47:24', 6.00, 4, 'PENDING', NULL);
-INSERT INTO `planstep` VALUES (2058567358653079558, 2058567358376255489, 30005, 40010, '2026-05-17 15:47:24', '2026-05-17 18:17:24', 2.50, 5, 'PENDING', NULL);
-INSERT INTO `planstep` VALUES (2058567358653079559, 2058567358376255489, 30007, 40007, '2026-05-17 18:17:24', '2026-05-17 20:47:24', 2.50, 6, 'PENDING', NULL);
-INSERT INTO `planstep` VALUES (2058567358720188417, 2058567358376255489, 30008, 40008, '2026-05-17 20:47:24', '2026-05-17 22:17:24', 1.50, 7, 'PENDING', NULL);
-INSERT INTO `planstep` VALUES (2058567358720188418, 2058567358376255489, 30009, 40009, '2026-05-17 22:17:24', '2026-05-17 23:17:24', 1.00, 8, 'PENDING', NULL);
-INSERT INTO `planstep` VALUES (2058721876988538882, 2058721876820766721, 30001, 40001, '2026-05-28 09:28:30', '2026-05-28 12:58:30', 3.50, 1, 'PENDING', NULL);
-INSERT INTO `planstep` VALUES (2058721876988538883, 2058721876820766721, 30002, 40002, '2026-05-28 12:58:30', '2026-05-28 16:58:30', 4.00, 2, 'PENDING', NULL);
-INSERT INTO `planstep` VALUES (2058721876988538884, 2058721876820766721, 30004, NULL, '2026-05-28 16:58:30', '2026-05-28 22:58:30', 6.00, 3, 'PENDING', 'No matching active machine capability was found during plan generation');
-INSERT INTO `planstep` VALUES (2058721876988538885, 2058721876820766721, 30006, NULL, '2026-05-28 22:58:30', '2026-05-29 01:58:30', 3.00, 4, 'PENDING', 'No matching active machine capability was found during plan generation');
-INSERT INTO `planstep` VALUES (2058721876988538886, 2058721876820766721, 30007, 40007, '2026-05-29 01:58:30', '2026-05-29 04:28:30', 2.50, 5, 'PENDING', NULL);
-INSERT INTO `planstep` VALUES (2058721876988538887, 2058721876820766721, 30008, 40008, '2026-05-29 04:28:30', '2026-05-29 05:58:30', 1.50, 6, 'PENDING', NULL);
-INSERT INTO `planstep` VALUES (2058721877055647745, 2058721876820766721, 30009, 40009, '2026-05-29 05:58:30', '2026-05-29 06:58:30', 1.00, 7, 'PENDING', NULL);
+INSERT INTO `planstep` VALUES (2067894172089245697, 2067894171762089985, 30001, 40001, '2026-06-19 16:55:57', '2026-06-19 20:25:57', 3.50, 1, 'PENDING', NULL);
+INSERT INTO `planstep` VALUES (2067894172089245698, 2067894171762089985, 30002, 40002, '2026-06-19 20:25:57', '2026-06-20 00:25:57', 4.00, 2, 'PENDING', NULL);
+INSERT INTO `planstep` VALUES (2067894172089245699, 2067894171762089985, 30004, 40005, '2026-06-20 00:25:57', '2026-06-20 06:25:57', 6.00, 3, 'PENDING', NULL);
+INSERT INTO `planstep` VALUES (2067894172152160257, 2067894171762089985, 30005, 40006, '2026-06-20 06:25:57', '2026-06-20 08:55:57', 2.50, 4, 'PENDING', NULL);
+INSERT INTO `planstep` VALUES (2067894172152160258, 2067894171762089985, 30007, 40008, '2026-06-20 08:55:57', '2026-06-20 11:25:57', 2.50, 5, 'PENDING', NULL);
+INSERT INTO `planstep` VALUES (2067894172152160259, 2067894171762089985, 30008, 40011, '2026-06-20 11:25:57', '2026-06-20 12:55:57', 1.50, 6, 'PENDING', NULL);
+INSERT INTO `planstep` VALUES (2067894172152160260, 2067894171762089985, 30009, 40012, '2026-06-20 12:55:57', '2026-06-20 13:55:57', 1.00, 7, 'PENDING', NULL);
 
 -- ----------------------------
 -- Table structure for processparameter
@@ -432,14 +285,6 @@ CREATE TABLE `processparameter`  (
 -- ----------------------------
 -- Records of processparameter
 -- ----------------------------
-INSERT INTO `processparameter` VALUES (62001, 61009, '染色温度', '128', '℃', 'process', '2026-05-22 22:30:00', '深灰色主染段实时记录');
-INSERT INTO `processparameter` VALUES (62002, 61009, '缸内压力', '0.28', 'MPa', 'process', '2026-05-22 22:45:00', '蒸汽压力恢复正常');
-INSERT INTO `processparameter` VALUES (62003, 61009, '浴比', '1:8', '', 'recipe', '2026-05-22 21:50:00', '按标准配方投料');
-INSERT INTO `processparameter` VALUES (62004, 61010, '水洗温度', '78', '℃', 'process', '2026-05-23 02:10:00', '待夜班转序后执行');
-INSERT INTO `processparameter` VALUES (62005, 61016, '染色温度', '130', '℃', 'process', '2026-05-20 17:20:00', '涤棉布染色主段稳定');
-INSERT INTO `processparameter` VALUES (62006, 61017, '轧余率', '68', '%', 'process', '2026-05-20 22:10:00', '功能整理液吸附均匀');
-INSERT INTO `processparameter` VALUES (62007, 61018, '定型温度', '175', '℃', 'process', '2026-05-21 01:20:00', '按工艺卡控制门幅回缩');
-INSERT INTO `processparameter` VALUES (62008, 61018, '车速', '32', 'm/min', 'process', '2026-05-21 01:25:00', '兼顾克重与门幅稳定性');
 
 -- ----------------------------
 -- Table structure for processroute
@@ -457,9 +302,10 @@ CREATE TABLE `processroute`  (
 -- ----------------------------
 -- Records of processroute
 -- ----------------------------
-INSERT INTO `processroute` VALUES (20001, '常规棉弹汗布染整路线-A', '适用于棉弹汗布的常规前处理、染色、定型与成检', 1, '2026-05-18 13:30:00');
-INSERT INTO `processroute` VALUES (20002, '涤氨双面布染整路线-B', '适用于涤氨双面布，重点控制染色均匀性与回弹手感', 1, '2026-05-18 13:45:00');
-INSERT INTO `processroute` VALUES (20003, '涤棉功能整理路线-C', '适用于涤棉工装布，包含后整理功能加工', 1, '2026-05-19 08:50:00');
+INSERT INTO `processroute` VALUES (20001, '涤棉常规染整路线', '适用于现有涤棉65/35及80/20来料：退浆、煮练、染色、水洗、定型、成检、卷装', 1, '2026-06-18 15:09:02');
+INSERT INTO `processroute` VALUES (20002, '纯棉漂白染整路线', '适用于纯棉100%及浅色产品：退浆、煮练、漂白、染色、水洗、定型、成检、卷装', 1, '2026-06-18 15:09:02');
+INSERT INTO `processroute` VALUES (20003, '纯涤快速染整路线', '适用于涤纶100%来料：染色、水洗、定型、成检、卷装，减少不必要前处理', 1, '2026-06-18 15:09:02');
+INSERT INTO `processroute` VALUES (20004, '锦棉功能整理路线', '适用于锦棉混纺来料：煮练、染色、水洗、功能整理、定型、成检、卷装', 1, '2026-06-18 15:09:02');
 
 -- ----------------------------
 -- Table structure for processstep
@@ -480,15 +326,15 @@ CREATE TABLE `processstep`  (
 -- ----------------------------
 -- Records of processstep
 -- ----------------------------
-INSERT INTO `processstep` VALUES (30001, 'DESIZE', '退浆', 'PRETREAT', 10, 3.50, '适用于常规针织胚布的酶退浆与上油去除', 1);
-INSERT INTO `processstep` VALUES (30002, 'SCOUR', '煮练', 'PRETREAT', 20, 4.00, '去除棉类胚布中的杂质、蜡质和浆料残留', 1);
-INSERT INTO `processstep` VALUES (30003, 'BLEACH', '漂白', 'PRETREAT', 30, 3.00, '提升浅色布种白度，为染色和婴童单做准备', 1);
-INSERT INTO `processstep` VALUES (30004, 'DYE', '染色', 'DYEING', 40, 6.00, '常规溢流染色工序，适合棉弹与涤氨布种', 1);
-INSERT INTO `processstep` VALUES (30005, 'WASH', '水洗', 'POST_DYE', 50, 2.50, '染后皂洗、水洗及还原清洗', 1);
-INSERT INTO `processstep` VALUES (30006, 'FINISH', '功能整理', 'FINISHING', 60, 3.00, '进行吸湿排汗或耐磨功能整理', 1);
-INSERT INTO `processstep` VALUES (30007, 'STENTER', '定型', 'FINISHING', 70, 2.50, '控制门幅、克重和手感，稳定成品尺寸', 1);
-INSERT INTO `processstep` VALUES (30008, 'FINAL_INSPECT', '成检', 'QUALITY_GATE', 80, 1.50, '落布前进行成品外观与工艺符合性确认', 1);
-INSERT INTO `processstep` VALUES (30009, 'ROLLING', '卷装', 'PACKING', 90, 1.00, '按批次和匹号完成卷装与标签粘贴', 1);
+INSERT INTO `processstep` VALUES (30001, 'DESIZE', '退浆', 'PRETREAT', 10, 3.50, '去除浆料和油剂，为后续煮练染色做准备', 1);
+INSERT INTO `processstep` VALUES (30002, 'SCOUR', '煮练', 'PRETREAT', 20, 4.00, '去除纤维杂质、蜡质和残余油污', 1);
+INSERT INTO `processstep` VALUES (30003, 'BLEACH', '漂白', 'PRETREAT', 30, 3.00, '提升白度，适用于纯棉和浅色产品', 1);
+INSERT INTO `processstep` VALUES (30004, 'DYE', '染色', 'DYEING', 40, 6.00, '溢流染色，覆盖涤棉、纯棉、纯涤和锦棉产品', 1);
+INSERT INTO `processstep` VALUES (30005, 'WASH', '染后水洗', 'POST_DYE', 50, 2.50, '染后皂洗、还原清洗及浮色去除', 1);
+INSERT INTO `processstep` VALUES (30006, 'FINISH', '功能整理', 'FINISHING', 60, 3.00, '进行吸湿排汗、柔软或耐磨功能整理', 1);
+INSERT INTO `processstep` VALUES (30007, 'STENTER', '拉幅定型', 'FINISHING', 70, 2.50, '控制门幅、克重、手感和尺寸稳定性', 1);
+INSERT INTO `processstep` VALUES (30008, 'FINAL_INSPECT', '成品检验', 'INSPECTION', 80, 1.50, '进行成品外观、门幅和质量判定', 1);
+INSERT INTO `processstep` VALUES (30009, 'ROLLING', '卷装', 'PACKING', 90, 1.00, '完成卷装、匹号和标签粘贴', 1);
 
 -- ----------------------------
 -- Table structure for productionplan
@@ -503,6 +349,8 @@ CREATE TABLE `productionplan`  (
   `planStartTime` datetime NULL DEFAULT NULL,
   `planEndTime` datetime NULL DEFAULT NULL,
   `status` varchar(20) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NULL DEFAULT NULL,
+  `deptId` bigint NOT NULL,
+  `createdBy` bigint NOT NULL,
   `createTime` datetime NULL DEFAULT NULL,
   `remark` varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NULL DEFAULT NULL,
   PRIMARY KEY (`planId`) USING BTREE,
@@ -510,6 +358,7 @@ CREATE TABLE `productionplan`  (
   INDEX `routeId`(`routeId` ASC) USING BTREE,
   INDEX `idx_productionplan_orderId`(`orderId` ASC) USING BTREE,
   INDEX `idx_productionplan_orderItemId`(`orderItemId` ASC) USING BTREE,
+  INDEX `idx_plan_scope`(`deptId` ASC, `createdBy` ASC) USING BTREE,
   CONSTRAINT `productionplan_ibfk_1` FOREIGN KEY (`batchId`) REFERENCES `batchinfo` (`batchId`) ON DELETE RESTRICT ON UPDATE RESTRICT,
   CONSTRAINT `productionplan_ibfk_2` FOREIGN KEY (`routeId`) REFERENCES `processroute` (`routeId`) ON DELETE RESTRICT ON UPDATE RESTRICT
 ) ENGINE = InnoDB CHARACTER SET = utf8mb4 COLLATE = utf8mb4_unicode_ci ROW_FORMAT = Dynamic;
@@ -517,13 +366,7 @@ CREATE TABLE `productionplan`  (
 -- ----------------------------
 -- Records of productionplan
 -- ----------------------------
-INSERT INTO `productionplan` VALUES (60001, 90001, 91001, 10001, 20001, '2026-05-23 08:00:00', '2026-05-24 08:00:00', 'RELEASED', '2026-05-22 16:20:00', '外贸休闲汗布首批排产，优先保证色差稳定');
-INSERT INTO `productionplan` VALUES (60002, 90002, 91002, 10002, 20002, '2026-05-22 20:00:00', '2026-05-23 09:30:00', 'RUNNING', '2026-05-22 15:40:00', '秋冬双面布深灰色单，夜班优先生产');
-INSERT INTO `productionplan` VALUES (60003, 90003, 91003, 10003, 20003, '2026-05-20 08:00:00', '2026-05-21 05:30:00', 'COMPLETED', '2026-05-19 17:10:00', '工装布功能整理单已完工，待业务安排发运');
-INSERT INTO `productionplan` VALUES (60004, 90004, 91004, 10004, 20001, '2026-05-24 08:00:00', '2026-05-25 08:00:00', 'DRAFT', '2026-05-22 17:00:00', '婴童浅色单待客户确认克重窗口后正式下发');
-INSERT INTO `productionplan` VALUES (2057734625013964801, NULL, NULL, 10006, 20003, '2026-05-22 16:05:27', '2026-05-23 13:35:27', 'DRAFT', '2026-05-22 16:05:40', '不急');
-INSERT INTO `productionplan` VALUES (2058567358376255489, 90004, 91004, 10004, 20001, '2026-05-16 23:17:24', '2026-05-17 23:17:24', 'DRAFT', '2026-05-24 23:14:39', '婴童浅色布订单，待客户确认克重窗口后下发');
-INSERT INTO `productionplan` VALUES (2058721876820766721, 90006, 91006, 10006, 20003, '2026-05-28 09:28:30', '2026-05-29 06:58:30', 'DRAFT', '2026-05-25 09:28:39', '锦氨高弹运动面料，待确认定型和后整理路线');
+INSERT INTO `productionplan` VALUES (2067894171762089985, 2067457510645342210, 2067457511756832769, 30004, 20001, '2026-06-19 16:55:57', '2026-06-20 13:55:57', 'DRAFT', 100, 1, '2026-06-19 16:56:05', NULL);
 
 -- ----------------------------
 -- Table structure for qccamera
@@ -545,7 +388,7 @@ CREATE TABLE `qccamera`  (
 -- ----------------------------
 -- Records of qccamera
 -- ----------------------------
-INSERT INTO `qccamera` VALUES (2058416127540396034, 'LOCAL_CAM_001', '电脑摄像头', 'local_webcam', '127.0.0.1', '质检工作站本机', 1, '系统自动初始化的本机摄像头资源');
+INSERT INTO `qccamera` VALUES (2067457245565329409, 'LOCAL_CAM_001', '电脑摄像头', 'local_webcam', '127.0.0.1', '质检工作站本机', 1, '系统自动初始化的本机摄像头资源');
 
 -- ----------------------------
 -- Table structure for qcitem
@@ -568,7 +411,6 @@ CREATE TABLE `qcitem`  (
 -- ----------------------------
 -- Records of qcitem
 -- ----------------------------
-INSERT INTO `qcitem` VALUES (2058194754972876802, 'FABRIC_SURFACE_DEFECT', '胚布外观缺陷检测', 'image', '项', NULL, NULL, 1, '用于 Java ONNX 本地推理的默认图片检测标准');
 
 -- ----------------------------
 -- Table structure for qcrecord
@@ -587,10 +429,13 @@ CREATE TABLE `qcrecord`  (
   `resultValue` varchar(100) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NULL DEFAULT NULL,
   `resultJudge` varchar(20) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NULL DEFAULT NULL,
   `inspector` varchar(100) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NULL DEFAULT NULL,
+  `deptId` bigint NOT NULL,
+  `createdBy` bigint NOT NULL,
   `remark` varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NULL DEFAULT NULL,
   PRIMARY KEY (`inspectionId`) USING BTREE,
   INDEX `planStepId`(`planStepId` ASC) USING BTREE,
   INDEX `qcItemId`(`qcItemId` ASC) USING BTREE,
+  INDEX `idx_qc_scope`(`deptId` ASC, `createdBy` ASC) USING BTREE,
   CONSTRAINT `qcrecord_ibfk_1` FOREIGN KEY (`planStepId`) REFERENCES `planstep` (`planStepId`) ON DELETE RESTRICT ON UPDATE RESTRICT,
   CONSTRAINT `qcrecord_ibfk_2` FOREIGN KEY (`qcItemId`) REFERENCES `qcitem` (`qcItemId`) ON DELETE RESTRICT ON UPDATE RESTRICT
 ) ENGINE = InnoDB CHARACTER SET = utf8mb4 COLLATE = utf8mb4_unicode_ci ROW_FORMAT = Dynamic;
@@ -598,67 +443,6 @@ CREATE TABLE `qcrecord`  (
 -- ----------------------------
 -- Records of qcrecord
 -- ----------------------------
-INSERT INTO `qcrecord` VALUES (2058194958425980930, 61001, 2058194754972876802, '2026-05-23 22:34:52', 'offline', NULL, NULL, 'photo/results/20260523/result_20260523223451983_05da19e5.jpg', NULL, 'PASS', 'PASS', 'codex', 'Triggered via Java ONNX Runtime detection; boxCount=0');
-INSERT INTO `qcrecord` VALUES (2058197100960313345, 61001, 2058194754972876802, '2026-05-23 22:43:23', 'offline', NULL, NULL, 'photo/results/20260523/result_20260523224322801_7cc2cd89.jpg', NULL, 'PASS', 'PASS', 'codex', 'Triggered via Java ONNX Runtime detection; boxCount=0');
-INSERT INTO `qcrecord` VALUES (2058399713693728770, 61021, 2058194754972876802, '2026-05-24 12:08:30', 'offline', NULL, NULL, 'photo/results/20260524/result_20260524120829381_cb2159c7.jpg', 0.79, 'stain:0.79', 'FAIL', 'onnx-runtime', 'Triggered via Java ONNX Runtime detection; defectType=stain; boxCount=1');
-INSERT INTO `qcrecord` VALUES (2058416184465489921, 61001, 2058194754972876802, '2026-05-24 13:13:57', 'offline', NULL, NULL, 'photo/results/20260524/result_20260524131356396_09c765ac.jpg', NULL, 'PASS', 'PASS', 'codex', 'Triggered via Java ONNX Runtime detection; boxCount=0; remark=detect-image smoke test');
-INSERT INTO `qcrecord` VALUES (2058416186487144449, 61001, 2058194754972876802, '2026-05-24 12:00:00', 'video', 2058416127540396034, '2026-05-24 12:00:00', 'photo/results/20260524/result_20260524131356904_2c10a46e.jpg', NULL, 'PASS', 'PASS', 'codex', 'Triggered via Java ONNX Runtime detection; boxCount=0; remark=detect-frame smoke test');
-INSERT INTO `qcrecord` VALUES (2058420976902381569, 61001, 2058194754972876802, '2026-05-24 13:32:58', 'video', 2058416127540396034, '2026-05-24 13:32:58', 'photo/results/20260524/result_20260524133259088_43a0cc09.jpg', NULL, 'PASS', 'PASS', 'onnx-runtime', 'Triggered via Java ONNX Runtime detection; boxCount=0');
-INSERT INTO `qcrecord` VALUES (2058421270809845761, 61001, 2058194754972876802, '2026-05-24 13:34:09', 'offline', NULL, NULL, 'photo/results/20260524/result_20260524133409099_003ec0a6.jpg', 0.79, 'stain:0.79', 'FAIL', 'onnx-runtime', 'Triggered via Java ONNX Runtime detection; defectType=stain; boxCount=1');
-INSERT INTO `qcrecord` VALUES (2058421867051130882, 61001, 2058194754972876802, '2026-05-24 13:36:30', 'video', 2058416127540396034, '2026-05-24 13:36:30', 'photo/results/20260524/result_20260524133631379_3845fcfe.jpg', NULL, 'PASS', 'PASS', 'onnx-runtime', 'Triggered via Java ONNX Runtime detection; boxCount=0');
-INSERT INTO `qcrecord` VALUES (2058426356919373825, 61001, 2058194754972876802, '2026-05-24 13:54:21', 'video', 2058416127540396034, '2026-05-24 13:54:21', 'photo/results/20260524/result_20260524135421779_2490ccb6.jpg', NULL, 'PASS', 'PASS', 'onnx-runtime', 'Triggered via Java ONNX Runtime detection; boxCount=0');
-INSERT INTO `qcrecord` VALUES (2058426362632015873, 61001, 2058194754972876802, '2026-05-24 13:54:23', 'video', 2058416127540396034, '2026-05-24 13:54:23', 'photo/results/20260524/result_20260524135423204_6e0c9af0.jpg', NULL, 'PASS', 'PASS', 'onnx-runtime', 'Triggered via Java ONNX Runtime detection; boxCount=0');
-INSERT INTO `qcrecord` VALUES (2058426368306909186, 61001, 2058194754972876802, '2026-05-24 13:54:24', 'video', 2058416127540396034, '2026-05-24 13:54:24', 'photo/results/20260524/result_20260524135424556_6ea9f14f.jpg', 0.19, 'other_defect:0.19', 'RECHECK', 'onnx-runtime', 'Triggered via Java ONNX Runtime detection; defectType=other_defect; boxCount=1');
-INSERT INTO `qcrecord` VALUES (2058426374065688578, 61001, 2058194754972876802, '2026-05-24 13:54:25', 'video', 2058416127540396034, '2026-05-24 13:54:25', 'photo/results/20260524/result_20260524135425930_e85305a7.jpg', 0.42, 'star_jump:0.42', 'FAIL', 'onnx-runtime', 'Triggered via Java ONNX Runtime detection; defectType=star_jump; boxCount=1');
-INSERT INTO `qcrecord` VALUES (2058426379786719233, 61001, 2058194754972876802, '2026-05-24 13:54:27', 'video', 2058416127540396034, '2026-05-24 13:54:27', 'photo/results/20260524/result_20260524135427299_966e5b10.jpg', 0.59, 'stain:0.59,star_jump:0.51,star_jump:0.29', 'FAIL', 'onnx-runtime', 'Triggered via Java ONNX Runtime detection; defectType=stain; boxCount=3');
-INSERT INTO `qcrecord` VALUES (2058426385461612546, 61001, 2058194754972876802, '2026-05-24 13:54:28', 'video', 2058416127540396034, '2026-05-24 13:54:28', 'photo/results/20260524/result_20260524135428645_92dd3920.jpg', 0.26, 'knot:0.26', 'RECHECK', 'onnx-runtime', 'Triggered via Java ONNX Runtime detection; defectType=knot; boxCount=1');
-INSERT INTO `qcrecord` VALUES (2058426391157477377, 61001, 2058194754972876802, '2026-05-24 13:54:29', 'video', 2058416127540396034, '2026-05-24 13:54:29', 'photo/results/20260524/result_20260524135429999_351ee5d8.jpg', 0.54, 'stain:0.54', 'FAIL', 'onnx-runtime', 'Triggered via Java ONNX Runtime detection; defectType=stain; boxCount=1');
-INSERT INTO `qcrecord` VALUES (2058426396836564993, 61001, 2058194754972876802, '2026-05-24 13:54:31', 'video', 2058416127540396034, '2026-05-24 13:54:31', 'photo/results/20260524/result_20260524135431360_e7b8f0fc.jpg', 0.70, 'stain:0.70', 'FAIL', 'onnx-runtime', 'Triggered via Java ONNX Runtime detection; defectType=stain; boxCount=1');
-INSERT INTO `qcrecord` VALUES (2058426402394017794, 61001, 2058194754972876802, '2026-05-24 13:54:32', 'video', 2058416127540396034, '2026-05-24 13:54:32', 'photo/results/20260524/result_20260524135432692_36735526.jpg', NULL, 'PASS', 'PASS', 'onnx-runtime', 'Triggered via Java ONNX Runtime detection; boxCount=0');
-INSERT INTO `qcrecord` VALUES (2058426407947276290, 61001, 2058194754972876802, '2026-05-24 13:54:33', 'video', 2058416127540396034, '2026-05-24 13:54:33', 'photo/results/20260524/result_20260524135434018_518a85ac.jpg', NULL, 'PASS', 'PASS', 'onnx-runtime', 'Triggered via Java ONNX Runtime detection; boxCount=0');
-INSERT INTO `qcrecord` VALUES (2058426413450203137, 61001, 2058194754972876802, '2026-05-24 13:54:35', 'video', 2058416127540396034, '2026-05-24 13:54:35', 'photo/results/20260524/result_20260524135435323_babcb519.jpg', NULL, 'PASS', 'PASS', 'onnx-runtime', 'Triggered via Java ONNX Runtime detection; boxCount=0');
-INSERT INTO `qcrecord` VALUES (2058426418906992641, 61001, 2058194754972876802, '2026-05-24 13:54:36', 'video', 2058416127540396034, '2026-05-24 13:54:36', 'photo/results/20260524/result_20260524135436622_dd38964b.jpg', NULL, 'PASS', 'PASS', 'onnx-runtime', 'Triggered via Java ONNX Runtime detection; boxCount=0');
-INSERT INTO `qcrecord` VALUES (2058426424435085314, 61001, 2058194754972876802, '2026-05-24 13:54:37', 'video', 2058416127540396034, '2026-05-24 13:54:37', 'photo/results/20260524/result_20260524135437935_f1f1f4da.jpg', NULL, 'PASS', 'PASS', 'onnx-runtime', 'Triggered via Java ONNX Runtime detection; boxCount=0');
-INSERT INTO `qcrecord` VALUES (2058426429975760897, 61001, 2058194754972876802, '2026-05-24 13:54:39', 'video', 2058416127540396034, '2026-05-24 13:54:39', 'photo/results/20260524/result_20260524135439261_9f3c8e19.jpg', 0.24, 'thick_weft:0.24,star_jump:0.20,star_jump:0.17', 'RECHECK', 'onnx-runtime', 'Triggered via Java ONNX Runtime detection; defectType=thick_weft; boxCount=3');
-INSERT INTO `qcrecord` VALUES (2058426435533213697, 61001, 2058194754972876802, '2026-05-24 13:54:40', 'video', 2058416127540396034, '2026-05-24 13:54:40', 'photo/results/20260524/result_20260524135440581_4573affb.jpg', 0.55, 'star_jump:0.55,star_jump:0.30,stain:0.28', 'FAIL', 'onnx-runtime', 'Triggered via Java ONNX Runtime detection; defectType=star_jump; boxCount=3');
-INSERT INTO `qcrecord` VALUES (2058426440990003202, 61001, 2058194754972876802, '2026-05-24 13:54:41', 'video', 2058416127540396034, '2026-05-24 13:54:41', 'photo/results/20260524/result_20260524135441892_d024531d.jpg', 0.22, 'star_jump:0.22,stain:0.13,star_jump:0.12', 'RECHECK', 'onnx-runtime', 'Triggered via Java ONNX Runtime detection; defectType=star_jump; boxCount=3');
-INSERT INTO `qcrecord` VALUES (2058426446610370562, 61001, 2058194754972876802, '2026-05-24 13:54:43', 'video', 2058416127540396034, '2026-05-24 13:54:43', 'photo/results/20260524/result_20260524135443218_f4f52285.jpg', 0.36, 'star_jump:0.36', 'RECHECK', 'onnx-runtime', 'Triggered via Java ONNX Runtime detection; defectType=star_jump; boxCount=1');
-INSERT INTO `qcrecord` VALUES (2058426452092325889, 61001, 2058194754972876802, '2026-05-24 13:54:44', 'video', 2058416127540396034, '2026-05-24 13:54:44', 'photo/results/20260524/result_20260524135444525_0b41d615.jpg', 0.18, 'other_defect:0.18', 'RECHECK', 'onnx-runtime', 'Triggered via Java ONNX Runtime detection; defectType=other_defect; boxCount=1');
-INSERT INTO `qcrecord` VALUES (2058426457561698305, 61001, 2058194754972876802, '2026-05-24 13:54:45', 'video', 2058416127540396034, '2026-05-24 13:54:45', 'photo/results/20260524/result_20260524135445845_dc359e8b.jpg', 0.31, 'star_jump:0.31', 'RECHECK', 'onnx-runtime', 'Triggered via Java ONNX Runtime detection; defectType=star_jump; boxCount=1');
-INSERT INTO `qcrecord` VALUES (2058426463047847937, 61001, 2058194754972876802, '2026-05-24 13:54:47', 'video', 2058416127540396034, '2026-05-24 13:54:47', 'photo/results/20260524/result_20260524135447153_6ea8a0df.jpg', NULL, 'PASS', 'PASS', 'onnx-runtime', 'Triggered via Java ONNX Runtime detection; boxCount=0');
-INSERT INTO `qcrecord` VALUES (2058426468693381122, 61001, 2058194754972876802, '2026-05-24 13:54:48', 'video', 2058416127540396034, '2026-05-24 13:54:48', 'photo/results/20260524/result_20260524135448491_99c64544.jpg', NULL, 'PASS', 'PASS', 'onnx-runtime', 'Triggered via Java ONNX Runtime detection; boxCount=0');
-INSERT INTO `qcrecord` VALUES (2058426474175336450, 61001, 2058194754972876802, '2026-05-24 13:54:49', 'video', 2058416127540396034, '2026-05-24 13:54:49', 'photo/results/20260524/result_20260524135449800_ce006df8.jpg', NULL, 'PASS', 'PASS', 'onnx-runtime', 'Triggered via Java ONNX Runtime detection; boxCount=0');
-INSERT INTO `qcrecord` VALUES (2058426479661486082, 61001, 2058194754972876802, '2026-05-24 13:54:50', 'video', 2058416127540396034, '2026-05-24 13:54:50', 'photo/results/20260524/result_20260524135451109_21eebec3.jpg', NULL, 'PASS', 'PASS', 'onnx-runtime', 'Triggered via Java ONNX Runtime detection; boxCount=0');
-INSERT INTO `qcrecord` VALUES (2058426485143441410, 61001, 2058194754972876802, '2026-05-24 13:54:52', 'video', 2058416127540396034, '2026-05-24 13:54:52', 'photo/results/20260524/result_20260524135452407_a81d11b9.jpg', 0.26, 'knot:0.26', 'RECHECK', 'onnx-runtime', 'Triggered via Java ONNX Runtime detection; defectType=knot; boxCount=1');
-INSERT INTO `qcrecord` VALUES (2058426490524733442, 61001, 2058194754972876802, '2026-05-24 13:54:53', 'video', 2058416127540396034, '2026-05-24 13:54:53', 'photo/results/20260524/result_20260524135453705_3af12ed1.jpg', NULL, 'PASS', 'PASS', 'onnx-runtime', 'Triggered via Java ONNX Runtime detection; boxCount=0');
-INSERT INTO `qcrecord` VALUES (2058426495922802689, 61001, 2058194754972876802, '2026-05-24 13:54:54', 'video', 2058416127540396034, '2026-05-24 13:54:54', 'photo/results/20260524/result_20260524135454992_41269001.jpg', NULL, 'PASS', 'PASS', 'onnx-runtime', 'Triggered via Java ONNX Runtime detection; boxCount=0');
-INSERT INTO `qcrecord` VALUES (2058426501346037762, 61001, 2058194754972876802, '2026-05-24 13:54:56', 'video', 2058416127540396034, '2026-05-24 13:54:56', 'photo/results/20260524/result_20260524135456285_e909f991.jpg', 0.23, 'other_defect:0.23,knot:0.15,hair_grain:0.13', 'RECHECK', 'onnx-runtime', 'Triggered via Java ONNX Runtime detection; defectType=other_defect; boxCount=4');
-INSERT INTO `qcrecord` VALUES (2058426506874130433, 61001, 2058194754972876802, '2026-05-24 13:54:57', 'video', 2058416127540396034, '2026-05-24 13:54:57', 'photo/results/20260524/result_20260524135457597_cc22a977.jpg', 0.27, 'star_jump:0.27', 'RECHECK', 'onnx-runtime', 'Triggered via Java ONNX Runtime detection; defectType=star_jump; boxCount=1');
-INSERT INTO `qcrecord` VALUES (2058426512314142722, 61001, 2058194754972876802, '2026-05-24 13:54:58', 'video', 2058416127540396034, '2026-05-24 13:54:58', 'photo/results/20260524/result_20260524135458898_b1067fa4.jpg', 0.36, 'knot:0.36', 'RECHECK', 'onnx-runtime', 'Triggered via Java ONNX Runtime detection; defectType=knot; boxCount=1');
-INSERT INTO `qcrecord` VALUES (2058426517808680962, 61001, 2058194754972876802, '2026-05-24 13:55:00', 'video', 2058416127540396034, '2026-05-24 13:55:00', 'photo/results/20260524/result_20260524135500209_aac02907.jpg', NULL, 'PASS', 'PASS', 'onnx-runtime', 'Triggered via Java ONNX Runtime detection; boxCount=0');
-INSERT INTO `qcrecord` VALUES (2058426523240304641, 61001, 2058194754972876802, '2026-05-24 13:55:01', 'video', 2058416127540396034, '2026-05-24 13:55:01', 'photo/results/20260524/result_20260524135501503_987f68a6.jpg', NULL, 'PASS', 'PASS', 'onnx-runtime', 'Triggered via Java ONNX Runtime detection; boxCount=0');
-INSERT INTO `qcrecord` VALUES (2058426528713871362, 61001, 2058194754972876802, '2026-05-24 13:55:02', 'video', 2058416127540396034, '2026-05-24 13:55:02', 'photo/results/20260524/result_20260524135502809_03f7e863.jpg', 0.19, 'stain:0.19,stain:0.15', 'RECHECK', 'onnx-runtime', 'Triggered via Java ONNX Runtime detection; defectType=stain; boxCount=2');
-INSERT INTO `qcrecord` VALUES (2058426534191632386, 61001, 2058194754972876802, '2026-05-24 13:55:03', 'video', 2058416127540396034, '2026-05-24 13:55:03', 'photo/results/20260524/result_20260524135504114_0f3808b2.jpg', 0.22, 'stain:0.22', 'RECHECK', 'onnx-runtime', 'Triggered via Java ONNX Runtime detection; defectType=stain; boxCount=1');
-INSERT INTO `qcrecord` VALUES (2058426539702947841, 61001, 2058194754972876802, '2026-05-24 13:55:05', 'video', 2058416127540396034, '2026-05-24 13:55:05', 'photo/results/20260524/result_20260524135505419_b11bb147.jpg', 0.13, 'stain:0.13', 'RECHECK', 'onnx-runtime', 'Triggered via Java ONNX Runtime detection; defectType=stain; boxCount=1');
-INSERT INTO `qcrecord` VALUES (2058426545180708865, 61001, 2058194754972876802, '2026-05-24 13:55:06', 'video', 2058416127540396034, '2026-05-24 13:55:06', 'photo/results/20260524/result_20260524135506735_bc08929b.jpg', 0.15, 'stain:0.15', 'RECHECK', 'onnx-runtime', 'Triggered via Java ONNX Runtime detection; defectType=stain; boxCount=1');
-INSERT INTO `qcrecord` VALUES (2058426550742355969, 61001, 2058194754972876802, '2026-05-24 13:55:07', 'video', 2058416127540396034, '2026-05-24 13:55:07', 'photo/results/20260524/result_20260524135508050_d814c403.jpg', 0.12, 'stain:0.12', 'RECHECK', 'onnx-runtime', 'Triggered via Java ONNX Runtime detection; defectType=stain; boxCount=1');
-INSERT INTO `qcrecord` VALUES (2058426556295614465, 61001, 2058194754972876802, '2026-05-24 13:55:09', 'video', 2058416127540396034, '2026-05-24 13:55:09', 'photo/results/20260524/result_20260524135509377_f3e18c88.jpg', 0.30, 'stain:0.30', 'RECHECK', 'onnx-runtime', 'Triggered via Java ONNX Runtime detection; defectType=stain; boxCount=1');
-INSERT INTO `qcrecord` VALUES (2058426561710460929, 61001, 2058194754972876802, '2026-05-24 13:55:10', 'video', 2058416127540396034, '2026-05-24 13:55:10', 'photo/results/20260524/result_20260524135510663_c2a27498.jpg', NULL, 'PASS', 'PASS', 'onnx-runtime', 'Triggered via Java ONNX Runtime detection; boxCount=0');
-INSERT INTO `qcrecord` VALUES (2058426567083364353, 61001, 2058194754972876802, '2026-05-24 13:55:11', 'video', 2058416127540396034, '2026-05-24 13:55:11', 'photo/results/20260524/result_20260524135511950_493cf69d.jpg', NULL, 'PASS', 'PASS', 'onnx-runtime', 'Triggered via Java ONNX Runtime detection; boxCount=0');
-INSERT INTO `qcrecord` VALUES (2058426572473044994, 61001, 2058194754972876802, '2026-05-24 13:55:13', 'video', 2058416127540396034, '2026-05-24 13:55:13', 'photo/results/20260524/result_20260524135513242_52d50522.jpg', NULL, 'PASS', 'PASS', 'onnx-runtime', 'Triggered via Java ONNX Runtime detection; boxCount=0');
-INSERT INTO `qcrecord` VALUES (2058426577824976897, 61001, 2058194754972876802, '2026-05-24 13:55:14', 'video', 2058416127540396034, '2026-05-24 13:55:14', 'photo/results/20260524/result_20260524135514520_5116b839.jpg', NULL, 'PASS', 'PASS', 'onnx-runtime', 'Triggered via Java ONNX Runtime detection; boxCount=0');
-INSERT INTO `qcrecord` VALUES (2058429290449145858, 61001, 2058194754972876802, '2026-05-24 14:06:00', 'video', 2058416127540396034, '2026-05-24 14:06:00', 'photo/results/20260524/result_20260524140601259_4566a4b8.jpg', NULL, 'PASS', 'PASS', 'onnx-runtime', 'Triggered via Java ONNX Runtime detection; boxCount=0');
-INSERT INTO `qcrecord` VALUES (2058429301933150210, 61001, 2058194754972876802, '2026-05-24 14:06:03', 'video', 2058416127540396034, '2026-05-24 14:06:03', 'photo/results/20260524/result_20260524140603998_5049169a.jpg', NULL, 'PASS', 'PASS', 'onnx-runtime', 'Triggered via Java ONNX Runtime detection; boxCount=0');
-INSERT INTO `qcrecord` VALUES (2058429349609803777, 61001, 2058194754972876802, '2026-05-24 14:06:15', 'offline', NULL, NULL, 'photo/results/20260524/result_20260524140615258_b7901d64.jpg', 0.79, 'stain:0.79', 'FAIL', 'onnx-runtime', 'Triggered via Java ONNX Runtime detection; defectType=stain; boxCount=1');
-INSERT INTO `qcrecord` VALUES (2058429408611078146, 61001, 2058194754972876802, '2026-05-24 14:06:29', 'offline', NULL, NULL, 'photo/results/20260524/result_20260524140629347_23857c1c.jpg', 0.57, 'knot:0.57', 'FAIL', 'onnx-runtime', 'Triggered via Java ONNX Runtime detection; defectType=knot; boxCount=1');
-INSERT INTO `qcrecord` VALUES (2058429522733895681, 61001, 2058194754972876802, '2026-05-24 14:06:57', 'offline', NULL, NULL, 'photo/results/20260524/result_20260524140656515_164b0c5e.jpg', NULL, 'PASS', 'PASS', 'onnx-runtime', 'Triggered via Java ONNX Runtime detection; boxCount=0');
-INSERT INTO `qcrecord` VALUES (2058429593160454146, 61001, 2058194754972876802, '2026-05-24 14:07:13', 'offline', NULL, NULL, 'photo/results/20260524/result_20260524140713304_d4236be4.jpg', 0.55, 'star_jump:0.55', 'FAIL', 'onnx-runtime', 'Triggered via Java ONNX Runtime detection; defectType=star_jump; boxCount=1');
-INSERT INTO `qcrecord` VALUES (2058479676107161601, 61001, 2058194754972876802, '2026-05-24 17:26:12', 'video', 2058416127540396034, '2026-05-24 17:26:12', 'photo/results/20260524/result_20260524172614045_ed080cda.jpg', NULL, 'PASS', 'PASS', 'onnx-runtime', 'Triggered via Java ONNX Runtime detection; boxCount=0; remark=实时视频流关键帧留档');
-INSERT INTO `qcrecord` VALUES (2058479708927590401, 61001, 2058194754972876802, '2026-05-24 17:26:21', 'video', 2058416127540396034, '2026-05-24 17:26:21', 'photo/results/20260524/result_20260524172621967_bcb6ff26.jpg', 0.45, 'stain:0.45', 'FAIL', 'onnx-runtime', 'Triggered via Java ONNX Runtime detection; defectType=stain; boxCount=1; remark=实时视频流关键帧留档');
-INSERT INTO `qcrecord` VALUES (2058479737159450626, 61001, 2058194754972876802, '2026-05-24 17:26:28', 'video', 2058416127540396034, '2026-05-24 17:26:28', 'photo/results/20260524/result_20260524172628696_74c29a4e.jpg', 0.62, 'stain:0.62', 'FAIL', 'onnx-runtime', 'Triggered via Java ONNX Runtime detection; defectType=stain; boxCount=1; remark=实时视频流关键帧留档');
-INSERT INTO `qcrecord` VALUES (2058785023279685633, 61001, 2058194754972876802, '2026-05-25 13:39:35', 'offline', NULL, NULL, 'photo/results/20260525/result_20260525133934394_d49a0423.jpg', NULL, 'PASS', 'PASS', 'onnx-runtime', 'Triggered via Java ONNX Runtime detection; boxCount=0');
-INSERT INTO `qcrecord` VALUES (2058785122298814465, 61001, 2058194754972876802, '2026-05-25 13:39:58', 'offline', NULL, NULL, 'photo/results/20260525/result_20260525133958042_da8a2fa3.jpg', 0.77, 'size_stain:0.77', 'FAIL', 'onnx-runtime', 'Triggered via Java ONNX Runtime detection; defectType=size_stain; boxCount=1');
-INSERT INTO `qcrecord` VALUES (2058883651444871169, 61001, 2058194754972876802, '2026-05-25 20:11:27', 'video', 2058416127540396034, '2026-05-25 20:11:27', 'photo/results/20260525/result_20260525201129167_18458d1a.jpg', 0.16, 'stain:0.16', 'RECHECK', 'onnx-runtime', 'Triggered via Java ONNX Runtime detection; defectType=stain; boxCount=1; remark=实时视频流关键帧留档');
 
 -- ----------------------------
 -- Table structure for routestep
@@ -682,24 +466,31 @@ CREATE TABLE `routestep`  (
 -- ----------------------------
 INSERT INTO `routestep` VALUES (21001, 20001, 30001, 1, 1);
 INSERT INTO `routestep` VALUES (21002, 20001, 30002, 2, 1);
-INSERT INTO `routestep` VALUES (21003, 20001, 30003, 3, 1);
-INSERT INTO `routestep` VALUES (21004, 20001, 30004, 4, 1);
-INSERT INTO `routestep` VALUES (21005, 20001, 30005, 5, 1);
-INSERT INTO `routestep` VALUES (21006, 20001, 30007, 6, 1);
-INSERT INTO `routestep` VALUES (21007, 20001, 30008, 7, 1);
-INSERT INTO `routestep` VALUES (21008, 20001, 30009, 8, 1);
-INSERT INTO `routestep` VALUES (21009, 20002, 30004, 1, 1);
-INSERT INTO `routestep` VALUES (21010, 20002, 30005, 2, 1);
-INSERT INTO `routestep` VALUES (21011, 20002, 30007, 3, 1);
-INSERT INTO `routestep` VALUES (21012, 20002, 30008, 4, 1);
-INSERT INTO `routestep` VALUES (21013, 20002, 30009, 5, 1);
-INSERT INTO `routestep` VALUES (21014, 20003, 30001, 1, 1);
-INSERT INTO `routestep` VALUES (21015, 20003, 30002, 2, 1);
-INSERT INTO `routestep` VALUES (21016, 20003, 30004, 3, 1);
-INSERT INTO `routestep` VALUES (21017, 20003, 30006, 4, 1);
-INSERT INTO `routestep` VALUES (21018, 20003, 30007, 5, 1);
-INSERT INTO `routestep` VALUES (21019, 20003, 30008, 6, 1);
-INSERT INTO `routestep` VALUES (21020, 20003, 30009, 7, 1);
+INSERT INTO `routestep` VALUES (21003, 20001, 30004, 3, 1);
+INSERT INTO `routestep` VALUES (21004, 20001, 30005, 4, 1);
+INSERT INTO `routestep` VALUES (21005, 20001, 30007, 5, 1);
+INSERT INTO `routestep` VALUES (21006, 20001, 30008, 6, 1);
+INSERT INTO `routestep` VALUES (21007, 20001, 30009, 7, 1);
+INSERT INTO `routestep` VALUES (21008, 20002, 30001, 1, 1);
+INSERT INTO `routestep` VALUES (21009, 20002, 30002, 2, 1);
+INSERT INTO `routestep` VALUES (21010, 20002, 30003, 3, 1);
+INSERT INTO `routestep` VALUES (21011, 20002, 30004, 4, 1);
+INSERT INTO `routestep` VALUES (21012, 20002, 30005, 5, 1);
+INSERT INTO `routestep` VALUES (21013, 20002, 30007, 6, 1);
+INSERT INTO `routestep` VALUES (21014, 20002, 30008, 7, 1);
+INSERT INTO `routestep` VALUES (21015, 20002, 30009, 8, 1);
+INSERT INTO `routestep` VALUES (21016, 20003, 30004, 1, 1);
+INSERT INTO `routestep` VALUES (21017, 20003, 30005, 2, 1);
+INSERT INTO `routestep` VALUES (21018, 20003, 30007, 3, 1);
+INSERT INTO `routestep` VALUES (21019, 20003, 30008, 4, 1);
+INSERT INTO `routestep` VALUES (21020, 20003, 30009, 5, 1);
+INSERT INTO `routestep` VALUES (21021, 20004, 30002, 1, 1);
+INSERT INTO `routestep` VALUES (21022, 20004, 30004, 2, 1);
+INSERT INTO `routestep` VALUES (21023, 20004, 30005, 3, 1);
+INSERT INTO `routestep` VALUES (21024, 20004, 30006, 4, 1);
+INSERT INTO `routestep` VALUES (21025, 20004, 30007, 5, 1);
+INSERT INTO `routestep` VALUES (21026, 20004, 30008, 6, 1);
+INSERT INTO `routestep` VALUES (21027, 20004, 30009, 7, 1);
 
 -- ----------------------------
 -- Table structure for stepmachinecapability
@@ -727,12 +518,452 @@ CREATE TABLE `stepmachinecapability`  (
 INSERT INTO `stepmachinecapability` VALUES (50001, 30001, 40001, 150.00, 185.00, 45.00, 3500.00, 1);
 INSERT INTO `stepmachinecapability` VALUES (50002, 30002, 40002, 150.00, 185.00, 42.00, 3500.00, 1);
 INSERT INTO `stepmachinecapability` VALUES (50003, 30003, 40003, 150.00, 185.00, 38.00, 3200.00, 1);
-INSERT INTO `stepmachinecapability` VALUES (50004, 30004, 40004, 160.00, 185.00, 32.00, 3300.00, 1);
+INSERT INTO `stepmachinecapability` VALUES (50004, 30004, 40004, 150.00, 185.00, 32.00, 3300.00, 1);
 INSERT INTO `stepmachinecapability` VALUES (50005, 30004, 40005, 150.00, 185.00, 34.00, 3200.00, 1);
-INSERT INTO `stepmachinecapability` VALUES (50006, 30005, 40010, 150.00, 185.00, 40.00, 3500.00, 1);
-INSERT INTO `stepmachinecapability` VALUES (50007, 30006, 40006, 150.00, 182.00, 28.00, 3000.00, 1);
-INSERT INTO `stepmachinecapability` VALUES (50008, 30007, 40007, 150.00, 185.00, 30.00, 3400.00, 1);
-INSERT INTO `stepmachinecapability` VALUES (50009, 30008, 40008, 150.00, 185.00, 50.00, 3600.00, 1);
-INSERT INTO `stepmachinecapability` VALUES (50010, 30009, 40009, 150.00, 185.00, 55.00, 3600.00, 1);
+INSERT INTO `stepmachinecapability` VALUES (50006, 30005, 40006, 150.00, 185.00, 40.00, 3500.00, 1);
+INSERT INTO `stepmachinecapability` VALUES (50007, 30006, 40007, 150.00, 182.00, 28.00, 3000.00, 1);
+INSERT INTO `stepmachinecapability` VALUES (50008, 30007, 40008, 150.00, 185.00, 30.00, 3400.00, 1);
+INSERT INTO `stepmachinecapability` VALUES (50009, 30007, 40009, 150.00, 185.00, 30.00, 3400.00, 1);
+INSERT INTO `stepmachinecapability` VALUES (50010, 30008, 40010, 150.00, 185.00, 50.00, 3600.00, 1);
+INSERT INTO `stepmachinecapability` VALUES (50011, 30008, 40011, 150.00, 185.00, 55.00, 3600.00, 1);
+INSERT INTO `stepmachinecapability` VALUES (50012, 30009, 40012, 150.00, 185.00, 55.00, 3600.00, 1);
+
+-- ----------------------------
+-- Table structure for sys_dept
+-- ----------------------------
+DROP TABLE IF EXISTS `sys_dept`;
+CREATE TABLE `sys_dept`  (
+  `deptId` bigint NOT NULL,
+  `parentId` bigint NOT NULL DEFAULT 0,
+  `ancestors` varchar(500) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT '0',
+  `deptName` varchar(100) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
+  `orderNum` int NOT NULL DEFAULT 0,
+  `leader` varchar(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NULL DEFAULT NULL,
+  `phone` varchar(20) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NULL DEFAULT NULL,
+  `email` varchar(100) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NULL DEFAULT NULL,
+  `status` char(1) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT '0',
+  `deleted` tinyint NOT NULL DEFAULT 0,
+  `createdBy` bigint NULL DEFAULT NULL,
+  `createTime` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  `updatedBy` bigint NULL DEFAULT NULL,
+  `updateTime` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  PRIMARY KEY (`deptId`) USING BTREE,
+  INDEX `idx_sys_dept_parent`(`parentId` ASC) USING BTREE
+) ENGINE = InnoDB CHARACTER SET = utf8mb4 COLLATE = utf8mb4_unicode_ci ROW_FORMAT = Dynamic;
+
+-- ----------------------------
+-- Records of sys_dept
+-- ----------------------------
+INSERT INTO `sys_dept` VALUES (100, 0, '0', '织慧通公司', 1, NULL, NULL, NULL, '0', 0, NULL, '2026-06-19 21:24:45', NULL, '2026-06-19 21:24:45');
+INSERT INTO `sys_dept` VALUES (110, 100, '0,100', '第一工厂', 1, NULL, NULL, NULL, '0', 0, NULL, '2026-06-19 21:24:45', NULL, '2026-06-19 21:24:45');
+INSERT INTO `sys_dept` VALUES (111, 110, '0,100,110', '订单管理部', 1, NULL, NULL, NULL, '0', 0, NULL, '2026-06-19 21:24:45', NULL, '2026-06-19 21:24:45');
+INSERT INTO `sys_dept` VALUES (112, 110, '0,100,110', '来料仓', 2, NULL, NULL, NULL, '0', 0, NULL, '2026-06-19 21:24:45', NULL, '2026-06-19 21:24:45');
+INSERT INTO `sys_dept` VALUES (113, 110, '0,100,110', '工艺部', 3, NULL, NULL, NULL, '0', 0, NULL, '2026-06-19 21:24:45', NULL, '2026-06-19 21:24:45');
+INSERT INTO `sys_dept` VALUES (114, 110, '0,100,110', '生产车间', 4, NULL, NULL, NULL, '0', 0, NULL, '2026-06-19 21:24:45', NULL, '2026-06-19 21:24:45');
+INSERT INTO `sys_dept` VALUES (115, 110, '0,100,110', '质量部', 5, NULL, NULL, NULL, '0', 0, NULL, '2026-06-19 21:24:45', NULL, '2026-06-19 21:24:45');
+INSERT INTO `sys_dept` VALUES (116, 110, '0,100,110', '设备管理组', 6, NULL, NULL, NULL, '0', 0, NULL, '2026-06-19 21:24:45', NULL, '2026-06-19 21:24:45');
+
+-- ----------------------------
+-- Table structure for sys_login_log
+-- ----------------------------
+DROP TABLE IF EXISTS `sys_login_log`;
+CREATE TABLE `sys_login_log`  (
+  `infoId` bigint NOT NULL,
+  `userId` bigint NULL DEFAULT NULL,
+  `userName` varchar(64) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NULL DEFAULT NULL,
+  `sessionId` varchar(64) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NULL DEFAULT NULL,
+  `ipaddr` varchar(64) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NULL DEFAULT NULL,
+  `browser` varchar(100) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NULL DEFAULT NULL,
+  `os` varchar(100) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NULL DEFAULT NULL,
+  `status` varchar(20) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
+  `message` varchar(500) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NULL DEFAULT NULL,
+  `loginTime` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (`infoId`) USING BTREE,
+  INDEX `idx_login_log_user`(`userId` ASC) USING BTREE,
+  INDEX `idx_login_log_time`(`loginTime` ASC) USING BTREE
+) ENGINE = InnoDB CHARACTER SET = utf8mb4 COLLATE = utf8mb4_unicode_ci ROW_FORMAT = Dynamic;
+
+-- ----------------------------
+-- Records of sys_login_log
+-- ----------------------------
+INSERT INTO `sys_login_log` VALUES (2067965660532203521, 1, 'admin', 'fe62564b41b24fe2bfd63b62d936e660', '127.0.0.1', 'Mozilla/5.0 (Windows NT; Windows NT 10.0; zh-CN) WindowsPowerShell/5.1.26100.8655', NULL, '0', '登录成功', '2026-06-19 21:40:09');
+INSERT INTO `sys_login_log` VALUES (2067965722377216002, 1, 'admin', 'b63b3842459c4daf9180cfb28b5dfb31', '127.0.0.1', 'Mozilla/5.0 (Windows NT; Windows NT 10.0; zh-CN) WindowsPowerShell/5.1.26100.8655', NULL, '0', '登录成功', '2026-06-19 21:40:24');
+INSERT INTO `sys_login_log` VALUES (2067965787443453953, 1, 'admin', '256378a10e7e48dcb521d147d8dbdbcc', '127.0.0.1', 'Mozilla/5.0 (Windows NT; Windows NT 10.0; zh-CN) WindowsPowerShell/5.1.26100.8655', NULL, '0', '登录成功', '2026-06-19 21:40:39');
+INSERT INTO `sys_login_log` VALUES (2067967029645303810, 1, 'admin', 'ce2036e65e1743ce914bb5603bd2b7c3', '127.0.0.1', 'Mozilla/5.0 (Windows NT; Windows NT 10.0; zh-CN) WindowsPowerShell/5.1.26100.8655', NULL, '0', '登录成功', '2026-06-19 21:45:35');
+INSERT INTO `sys_login_log` VALUES (2067974110817431553, 1, 'admin', '73d408bb09ca4b88bbdbf7597790f581', '127.0.0.1', 'Mozilla/5.0 (Windows NT; Windows NT 10.0; zh-CN) WindowsPowerShell/5.1.26100.8655', NULL, '0', '登录成功', '2026-06-19 22:13:44');
+INSERT INTO `sys_login_log` VALUES (2067977283657449473, 1, 'admin', 'f272ef2e06bb47d2ad8c040837279a7a', '127.0.0.1', 'Mozilla/5.0 (Windows NT; Windows NT 10.0; zh-CN) WindowsPowerShell/5.1.26100.8655', NULL, '0', '登录成功', '2026-06-19 22:26:20');
+INSERT INTO `sys_login_log` VALUES (2067990554502377474, NULL, 'admin', NULL, '127.0.0.1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/149.', NULL, '1', '验证码已过期', '2026-06-19 23:19:04');
+INSERT INTO `sys_login_log` VALUES (2067991206154612738, 1, 'admin', 'f0ee762220404545bd2551299a44f14d', '127.0.0.1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/149.', NULL, '0', '登录成功', '2026-06-19 23:21:40');
+INSERT INTO `sys_login_log` VALUES (2067992816217894914, NULL, 'admin', NULL, '127.0.0.1', 'Mozilla/5.0 (Windows NT; Windows NT 10.0; zh-CN) WindowsPowerShell/5.1.26100.8655', NULL, '1', '验证码错误', '2026-06-19 23:28:04');
+INSERT INTO `sys_login_log` VALUES (2067992816473747458, NULL, 'admin', NULL, '127.0.0.1', 'Mozilla/5.0 (Windows NT; Windows NT 10.0; zh-CN) WindowsPowerShell/5.1.26100.8655', NULL, '1', '请输入验证码', '2026-06-19 23:28:04');
+INSERT INTO `sys_login_log` VALUES (2067992979334377474, NULL, 'admin', NULL, '127.0.0.1', 'Mozilla/5.0 (Windows NT; Windows NT 10.0; zh-CN) WindowsPowerShell/5.1.26100.8655', NULL, '1', '验证码错误', '2026-06-19 23:28:42');
+INSERT INTO `sys_login_log` VALUES (2067992979925774337, NULL, 'admin', NULL, '127.0.0.1', 'Mozilla/5.0 (Windows NT; Windows NT 10.0; zh-CN) WindowsPowerShell/5.1.26100.8655', NULL, '1', '用户名或密码错误', '2026-06-19 23:28:43');
+INSERT INTO `sys_login_log` VALUES (2067992980521365506, 1, 'admin', 'e0e9e3ae526648a4ab46e9563ff9d7b8', '127.0.0.1', 'Mozilla/5.0 (Windows NT; Windows NT 10.0; zh-CN) WindowsPowerShell/5.1.26100.8655', NULL, '0', '登录成功', '2026-06-19 23:28:43');
+INSERT INTO `sys_login_log` VALUES (2067993726511886338, NULL, 'admin', NULL, '127.0.0.1', 'Mozilla/5.0 (Windows NT; Windows NT 10.0; zh-CN) WindowsPowerShell/5.1.26100.8655', NULL, '1', '验证码错误', '2026-06-19 23:31:41');
+INSERT INTO `sys_login_log` VALUES (2067993727174586369, NULL, 'admin', NULL, '127.0.0.1', 'Mozilla/5.0 (Windows NT; Windows NT 10.0; zh-CN) WindowsPowerShell/5.1.26100.8655', NULL, '1', '用户名或密码错误', '2026-06-19 23:31:41');
+INSERT INTO `sys_login_log` VALUES (2067993727896006658, 1, 'admin', 'a8cef9e70501484793f7f73546dbeaa9', '127.0.0.1', 'Mozilla/5.0 (Windows NT; Windows NT 10.0; zh-CN) WindowsPowerShell/5.1.26100.8655', NULL, '0', '登录成功', '2026-06-19 23:31:41');
+INSERT INTO `sys_login_log` VALUES (2067994277714735106, NULL, 'admin', NULL, '127.0.0.1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/149.', NULL, '1', '用户名或密码错误', '2026-06-19 23:33:52');
+INSERT INTO `sys_login_log` VALUES (2067994390650564610, 1, 'admin', '64795b07caf84253b18b2ed5188df3f9', '127.0.0.1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/149.', NULL, '0', '登录成功', '2026-06-19 23:34:19');
+INSERT INTO `sys_login_log` VALUES (2067997164670976002, 1, 'admin', '2cb1865f81f844ca8d705e4baf0f0fe1', '127.0.0.1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/149.0.0.0 Sa', NULL, '0', '登录成功', '2026-06-19 23:45:20');
+INSERT INTO `sys_login_log` VALUES (2067999246413103105, 2067999177769123842, '17870120718', 'ef226c48343346329c7a09ca81265d0b', '127.0.0.1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/149.0.0.0 Sa', NULL, '0', '登录成功', '2026-06-19 23:53:37');
+INSERT INTO `sys_login_log` VALUES (2067999400671215617, 1, 'admin', '664a04eb7ac4446bbcb6247f40633f7a', '127.0.0.1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/149.0.0.0 Sa', NULL, '0', '登录成功', '2026-06-19 23:54:13');
+INSERT INTO `sys_login_log` VALUES (2067999536046571522, 1, 'admin', '9103207a08d845dd9fbb1261679b3173', '127.0.0.1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/149.0.0.0 Sa', NULL, '0', '登录成功', '2026-06-19 23:54:46');
+INSERT INTO `sys_login_log` VALUES (2068219245547401218, 2067999177769123842, '17870120718', 'f35ebe636a12435286ed1d66edcbdd39', '127.0.0.1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/149.0.0.0 Sa', NULL, '0', '登录成功', '2026-06-20 14:27:48');
+INSERT INTO `sys_login_log` VALUES (2068219480633946113, 1, 'admin', 'f57279a2b6f540bfa504f91229d7c8f0', '127.0.0.1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/149.0.0.0 Sa', NULL, '0', '登录成功', '2026-06-20 14:28:45');
+INSERT INTO `sys_login_log` VALUES (2068223120513826817, NULL, 'admin', NULL, '127.0.0.1', 'Mozilla/5.0 (Windows NT; Windows NT 10.0; zh-CN) WindowsPowerShell/5.1.26100.8655', NULL, '1', '用户名或密码错误', '2026-06-20 14:43:12');
+INSERT INTO `sys_login_log` VALUES (2068223173768904706, NULL, 'admin', NULL, '127.0.0.1', 'Mozilla/5.0 (Windows NT; Windows NT 10.0; zh-CN) WindowsPowerShell/5.1.26100.8655', NULL, '1', '用户名或密码错误', '2026-06-20 14:43:25');
+INSERT INTO `sys_login_log` VALUES (2068223225077825537, NULL, 'admin', NULL, '127.0.0.1', 'Mozilla/5.0 (Windows NT; Windows NT 10.0; zh-CN) WindowsPowerShell/5.1.26100.8655', NULL, '1', '用户名或密码错误', '2026-06-20 14:43:37');
+INSERT INTO `sys_login_log` VALUES (2068225529369722881, 2067999177769123842, '17870120718', 'db124fb897584a0e833f38f7249c52c9', '127.0.0.1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/149.0.0.0 Sa', NULL, '0', '登录成功', '2026-06-20 14:52:47');
+INSERT INTO `sys_login_log` VALUES (2068233146775281666, 1, 'admin', '99595ee4d1304cc7be779b6f93f52217', '127.0.0.1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/149.0.0.0 Sa', NULL, '0', '登录成功', '2026-06-20 15:23:03');
+INSERT INTO `sys_login_log` VALUES (2068233619599171585, 1, 'admin', '08d065076e464e4bbaf921e2f4aaa47d', '127.0.0.1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/149.0.0.0 Sa', NULL, '0', '登录成功', '2026-06-20 15:24:56');
+INSERT INTO `sys_login_log` VALUES (2068242785386553345, 1, 'admin', 'b7a5752fbffe4a768c23a687a0d75fca', '127.0.0.1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/149.0.0.0 Sa', NULL, '0', '登录成功', '2026-06-20 16:01:21');
+INSERT INTO `sys_login_log` VALUES (2068296827462672386, 1, 'admin', '871987598e40426ba3a9248c1c1ce0b2', '127.0.0.1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/149.0.0.0 Sa', NULL, '0', '登录成功', '2026-06-20 19:36:05');
+
+-- ----------------------------
+-- Table structure for sys_menu
+-- ----------------------------
+DROP TABLE IF EXISTS `sys_menu`;
+CREATE TABLE `sys_menu`  (
+  `menuId` bigint NOT NULL,
+  `menuKey` varchar(100) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
+  `menuName` varchar(100) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
+  `parentId` bigint NOT NULL DEFAULT 0,
+  `orderNum` int NOT NULL DEFAULT 0,
+  `path` varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NULL DEFAULT NULL,
+  `component` varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NULL DEFAULT NULL,
+  `menuType` char(1) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
+  `visible` char(1) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT '0',
+  `status` char(1) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT '0',
+  `perms` varchar(150) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NULL DEFAULT NULL,
+  `icon` varchar(100) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NULL DEFAULT NULL,
+  `deleted` tinyint NOT NULL DEFAULT 0,
+  `createdBy` bigint NULL DEFAULT NULL,
+  `createTime` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  `updatedBy` bigint NULL DEFAULT NULL,
+  `updateTime` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  `remark` varchar(500) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NULL DEFAULT NULL,
+  PRIMARY KEY (`menuId`) USING BTREE,
+  UNIQUE INDEX `uk_sys_menu_key`(`menuKey` ASC) USING BTREE,
+  INDEX `idx_sys_menu_parent`(`parentId` ASC) USING BTREE,
+  INDEX `idx_sys_menu_perms`(`perms` ASC) USING BTREE
+) ENGINE = InnoDB CHARACTER SET = utf8mb4 COLLATE = utf8mb4_unicode_ci ROW_FORMAT = Dynamic;
+
+-- ----------------------------
+-- Records of sys_menu
+-- ----------------------------
+INSERT INTO `sys_menu` VALUES (1000, 'dashboard', '看板', 0, 1, '/dashboard', NULL, 'C', '0', '0', 'dashboard:view', NULL, 0, NULL, '2026-06-19 21:24:45', NULL, '2026-06-19 21:24:45', NULL);
+INSERT INTO `sys_menu` VALUES (2000, 'order', '订单管理', 0, 2, NULL, NULL, 'M', '0', '0', NULL, NULL, 0, NULL, '2026-06-19 21:24:45', NULL, '2026-06-19 21:24:45', NULL);
+INSERT INTO `sys_menu` VALUES (2001, 'order-list', '订单列表', 2000, 1, '/order/list', NULL, 'C', '0', '0', 'order:order:list', NULL, 0, NULL, '2026-06-19 21:24:45', NULL, '2026-06-19 21:24:45', NULL);
+INSERT INTO `sys_menu` VALUES (2011, 'order-add', '订单新增', 2001, 1, NULL, NULL, 'F', '0', '0', 'order:order:add', NULL, 0, NULL, '2026-06-19 21:24:45', NULL, '2026-06-19 21:24:45', NULL);
+INSERT INTO `sys_menu` VALUES (2012, 'order-edit', '订单修改', 2001, 2, NULL, NULL, 'F', '0', '0', 'order:order:edit', NULL, 0, NULL, '2026-06-19 21:24:45', NULL, '2026-06-19 21:24:45', NULL);
+INSERT INTO `sys_menu` VALUES (2013, 'order-remove', '订单删除', 2001, 3, NULL, NULL, 'F', '0', '0', 'order:order:remove', NULL, 0, NULL, '2026-06-19 21:24:45', NULL, '2026-06-19 21:24:45', NULL);
+INSERT INTO `sys_menu` VALUES (3000, 'gray', '来料资源', 0, 3, NULL, NULL, 'M', '0', '0', NULL, NULL, 0, NULL, '2026-06-19 21:24:45', NULL, '2026-06-19 21:24:45', NULL);
+INSERT INTO `sys_menu` VALUES (3001, 'gray-inbound', '来料资源池', 3000, 1, '/gray/inbound', NULL, 'C', '0', '0', 'batch:resource:list', NULL, 0, NULL, '2026-06-19 21:24:45', NULL, '2026-06-19 21:24:45', NULL);
+INSERT INTO `sys_menu` VALUES (3011, 'batch-add', '来料新增', 3001, 1, NULL, NULL, 'F', '0', '0', 'batch:resource:add', NULL, 0, NULL, '2026-06-19 21:24:45', NULL, '2026-06-19 21:24:45', NULL);
+INSERT INTO `sys_menu` VALUES (3012, 'batch-edit', '来料修改', 3001, 2, NULL, NULL, 'F', '0', '0', 'batch:resource:edit', NULL, 0, NULL, '2026-06-19 21:24:45', NULL, '2026-06-19 21:24:45', NULL);
+INSERT INTO `sys_menu` VALUES (3013, 'batch-remove', '来料删除', 3001, 3, NULL, NULL, 'F', '0', '0', 'batch:resource:remove', NULL, 0, NULL, '2026-06-19 21:24:45', NULL, '2026-06-19 21:24:45', NULL);
+INSERT INTO `sys_menu` VALUES (4000, 'process-center', '工艺中心', 0, 4, NULL, NULL, 'M', '0', '0', NULL, NULL, 0, NULL, '2026-06-19 21:24:45', NULL, '2026-06-19 21:24:45', NULL);
+INSERT INTO `sys_menu` VALUES (4001, 'process-center-process', '工艺路线', 4000, 1, '/process-center/process', NULL, 'C', '0', '0', 'process:route:list', NULL, 0, NULL, '2026-06-19 21:24:45', NULL, '2026-06-19 21:24:45', NULL);
+INSERT INTO `sys_menu` VALUES (4002, 'master-machine', '设备管理', 4000, 2, '/master/machine', NULL, 'C', '0', '0', 'process:machine:list', NULL, 0, NULL, '2026-06-19 21:24:45', NULL, '2026-06-19 21:24:45', NULL);
+INSERT INTO `sys_menu` VALUES (4011, 'process-manage', '工艺维护', 4001, 1, NULL, NULL, 'F', '0', '0', 'process:route:edit', NULL, 0, NULL, '2026-06-19 21:24:45', NULL, '2026-06-19 21:24:45', NULL);
+INSERT INTO `sys_menu` VALUES (4012, 'machine-manage', '设备维护', 4002, 1, NULL, NULL, 'F', '0', '0', 'process:machine:edit', NULL, 0, NULL, '2026-06-19 21:24:45', NULL, '2026-06-19 21:24:45', NULL);
+INSERT INTO `sys_menu` VALUES (5000, 'schedule', '排产管理', 0, 5, NULL, NULL, 'M', '0', '0', NULL, NULL, 0, NULL, '2026-06-19 21:24:45', NULL, '2026-06-19 21:24:45', NULL);
+INSERT INTO `sys_menu` VALUES (5001, 'schedule-order-pool', '订单排产池', 5000, 1, '/schedule/order-pool', NULL, 'C', '0', '0', 'plan:production:list', NULL, 0, NULL, '2026-06-19 21:24:45', NULL, '2026-06-19 21:24:45', NULL);
+INSERT INTO `sys_menu` VALUES (5002, 'schedule-pool', '批次执行池', 5000, 2, '/schedule/pool', NULL, 'C', '0', '0', 'plan:production:list', NULL, 0, NULL, '2026-06-19 21:24:45', NULL, '2026-06-19 21:24:45', NULL);
+INSERT INTO `sys_menu` VALUES (5003, 'schedule-main', '生产计划', 5000, 3, '/schedule/main', NULL, 'C', '0', '0', 'plan:production:list', NULL, 0, NULL, '2026-06-19 21:24:45', NULL, '2026-06-19 21:24:45', NULL);
+INSERT INTO `sys_menu` VALUES (5004, 'schedule-board', '调度甘特图', 5000, 4, '/schedule/board', NULL, 'C', '0', '0', 'plan:production:list', NULL, 0, NULL, '2026-06-19 21:24:45', NULL, '2026-06-19 21:24:45', NULL);
+INSERT INTO `sys_menu` VALUES (5005, 'schedule-ai-advisor', 'AI智能排产', 5000, 5, '/schedule/ai-advisor', NULL, 'C', '0', '0', 'plan:production:list', NULL, 0, NULL, '2026-06-20 16:00:43', NULL, '2026-06-20 16:00:43', NULL);
+INSERT INTO `sys_menu` VALUES (5011, 'plan-create', '创建计划', 5003, 1, NULL, NULL, 'F', '0', '0', 'plan:production:create', NULL, 0, NULL, '2026-06-19 21:24:45', NULL, '2026-06-19 21:24:45', NULL);
+INSERT INTO `sys_menu` VALUES (5012, 'plan-edit', '修改计划', 5003, 2, NULL, NULL, 'F', '0', '0', 'plan:production:edit', NULL, 0, NULL, '2026-06-19 21:24:45', NULL, '2026-06-19 21:24:45', NULL);
+INSERT INTO `sys_menu` VALUES (5013, 'plan-reschedule', '计划重排', 5003, 3, NULL, NULL, 'F', '0', '0', 'plan:production:reschedule', NULL, 0, NULL, '2026-06-19 21:24:45', NULL, '2026-06-19 21:24:45', NULL);
+INSERT INTO `sys_menu` VALUES (6000, 'quality', '质量管理', 0, 6, NULL, NULL, 'M', '0', '0', NULL, NULL, 0, NULL, '2026-06-19 21:24:45', NULL, '2026-06-19 21:24:45', NULL);
+INSERT INTO `sys_menu` VALUES (6001, 'quality-realtime', '实时质检', 6000, 1, '/quality/realtime', NULL, 'C', '0', '0', 'quality:realtime:view', NULL, 0, NULL, '2026-06-19 21:24:45', NULL, '2026-06-19 21:24:45', NULL);
+INSERT INTO `sys_menu` VALUES (6002, 'quality-ncr', '异常闭环', 6000, 2, '/quality/ncr', NULL, 'C', '0', '0', 'exception:record:list', NULL, 0, NULL, '2026-06-19 21:24:45', NULL, '2026-06-19 21:24:45', NULL);
+INSERT INTO `sys_menu` VALUES (6003, 'quality-rework', '返工处理', 6000, 3, '/quality/rework', NULL, 'C', '0', '0', 'exception:record:list', NULL, 0, NULL, '2026-06-19 21:24:45', NULL, '2026-06-19 21:24:45', NULL);
+INSERT INTO `sys_menu` VALUES (6004, 'quality-ai-analysis', 'AI质检分析', 6000, 4, '/quality/ai-analysis', NULL, 'C', '0', '0', 'quality:realtime:view', NULL, 0, NULL, '2026-06-20 16:00:43', NULL, '2026-06-20 16:00:43', NULL);
+INSERT INTO `sys_menu` VALUES (6011, 'quality-detect', '执行质检', 6001, 1, NULL, NULL, 'F', '0', '0', 'quality:realtime:detect', NULL, 0, NULL, '2026-06-19 21:24:45', NULL, '2026-06-19 21:24:45', NULL);
+INSERT INTO `sys_menu` VALUES (6012, 'quality-review', '质检复核', 6001, 2, NULL, NULL, 'F', '0', '0', 'quality:record:review', NULL, 0, NULL, '2026-06-19 21:24:45', NULL, '2026-06-19 21:24:45', NULL);
+INSERT INTO `sys_menu` VALUES (6013, 'exception-handle', '异常处理', 6002, 1, NULL, NULL, 'F', '0', '0', 'exception:record:handle', NULL, 0, NULL, '2026-06-19 21:24:45', NULL, '2026-06-19 21:24:45', NULL);
+INSERT INTO `sys_menu` VALUES (6014, 'exception-rework', '返工登记', 6003, 1, NULL, NULL, 'F', '0', '0', 'exception:record:rework', NULL, 0, NULL, '2026-06-19 21:24:45', NULL, '2026-06-19 21:24:45', NULL);
+INSERT INTO `sys_menu` VALUES (7000, 'system', '系统管理', 0, 7, NULL, NULL, 'M', '0', '0', NULL, NULL, 0, NULL, '2026-06-19 21:24:45', NULL, '2026-06-19 21:24:45', NULL);
+INSERT INTO `sys_menu` VALUES (7001, 'system-user', '用户管理', 7000, 1, '/system/user', NULL, 'C', '0', '0', 'system:user:list', NULL, 0, NULL, '2026-06-19 21:24:45', NULL, '2026-06-19 21:24:45', NULL);
+INSERT INTO `sys_menu` VALUES (7002, 'system-role', '角色管理', 7000, 2, '/system/role', NULL, 'C', '0', '0', 'system:role:list', NULL, 0, NULL, '2026-06-19 21:24:45', NULL, '2026-06-19 21:24:45', NULL);
+INSERT INTO `sys_menu` VALUES (7003, 'system-menu', '菜单管理', 7000, 3, '/system/menu', NULL, 'C', '0', '0', 'system:menu:list', NULL, 0, NULL, '2026-06-19 21:24:45', NULL, '2026-06-19 21:24:45', NULL);
+INSERT INTO `sys_menu` VALUES (7004, 'system-dept', '部门管理', 7000, 4, '/system/dept', NULL, 'C', '0', '0', 'system:dept:list', NULL, 0, NULL, '2026-06-19 21:24:45', NULL, '2026-06-19 21:24:45', NULL);
+INSERT INTO `sys_menu` VALUES (7005, 'system-post', '岗位管理', 7000, 5, '/system/post', NULL, 'C', '0', '0', 'system:post:list', NULL, 0, NULL, '2026-06-19 21:24:45', NULL, '2026-06-19 21:24:45', NULL);
+INSERT INTO `sys_menu` VALUES (7006, 'system-online', '在线用户', 7000, 6, '/system/online', NULL, 'C', '0', '0', 'system:online:list', NULL, 0, NULL, '2026-06-19 21:24:45', NULL, '2026-06-19 21:24:45', NULL);
+INSERT INTO `sys_menu` VALUES (7011, 'system-user-manage', '用户维护', 7001, 1, NULL, NULL, 'F', '0', '0', 'system:user:manage', NULL, 0, NULL, '2026-06-19 21:24:45', NULL, '2026-06-19 21:24:45', NULL);
+INSERT INTO `sys_menu` VALUES (7012, 'system-role-manage', '角色维护', 7002, 1, NULL, NULL, 'F', '0', '0', 'system:role:manage', NULL, 0, NULL, '2026-06-19 21:24:45', NULL, '2026-06-19 21:24:45', NULL);
+INSERT INTO `sys_menu` VALUES (7013, 'system-menu-manage', '菜单维护', 7003, 1, NULL, NULL, 'F', '0', '0', 'system:menu:manage', NULL, 0, NULL, '2026-06-19 21:24:45', NULL, '2026-06-19 21:24:45', NULL);
+INSERT INTO `sys_menu` VALUES (7014, 'system-dept-manage', '部门维护', 7004, 1, NULL, NULL, 'F', '0', '0', 'system:dept:manage', NULL, 0, NULL, '2026-06-19 21:24:45', NULL, '2026-06-19 21:24:45', NULL);
+INSERT INTO `sys_menu` VALUES (7015, 'system-post-manage', '岗位维护', 7005, 1, NULL, NULL, 'F', '0', '0', 'system:post:manage', NULL, 0, NULL, '2026-06-19 21:24:45', NULL, '2026-06-19 21:24:45', NULL);
+INSERT INTO `sys_menu` VALUES (7016, 'system-online-force', '强制下线', 7006, 1, NULL, NULL, 'F', '0', '0', 'system:online:forceLogout', NULL, 0, NULL, '2026-06-19 21:24:45', NULL, '2026-06-19 21:24:45', NULL);
+
+-- ----------------------------
+-- Table structure for sys_post
+-- ----------------------------
+DROP TABLE IF EXISTS `sys_post`;
+CREATE TABLE `sys_post`  (
+  `postId` bigint NOT NULL,
+  `postCode` varchar(64) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
+  `postName` varchar(100) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
+  `postSort` int NOT NULL DEFAULT 0,
+  `status` char(1) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT '0',
+  `deleted` tinyint NOT NULL DEFAULT 0,
+  `createdBy` bigint NULL DEFAULT NULL,
+  `createTime` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  `updatedBy` bigint NULL DEFAULT NULL,
+  `updateTime` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  `remark` varchar(500) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NULL DEFAULT NULL,
+  PRIMARY KEY (`postId`) USING BTREE,
+  UNIQUE INDEX `uk_sys_post_code`(`postCode` ASC) USING BTREE
+) ENGINE = InnoDB CHARACTER SET = utf8mb4 COLLATE = utf8mb4_unicode_ci ROW_FORMAT = Dynamic;
+
+-- ----------------------------
+-- Records of sys_post
+-- ----------------------------
+INSERT INTO `sys_post` VALUES (1, 'SYSTEM_ADMIN', '系统管理员', 1, '0', 0, NULL, '2026-06-19 21:24:45', NULL, '2026-06-19 21:24:45', NULL);
+INSERT INTO `sys_post` VALUES (2, 'ORDER_CLERK', '订单专员', 2, '0', 0, NULL, '2026-06-19 21:24:45', NULL, '2026-06-19 21:24:45', NULL);
+INSERT INTO `sys_post` VALUES (3, 'WAREHOUSE_MANAGER', '仓库管理员', 3, '0', 0, NULL, '2026-06-19 21:24:45', NULL, '2026-06-19 21:24:45', NULL);
+INSERT INTO `sys_post` VALUES (4, 'PROCESS_ENGINEER', '工艺工程师', 4, '0', 0, NULL, '2026-06-19 21:24:45', NULL, '2026-06-19 21:24:45', NULL);
+INSERT INTO `sys_post` VALUES (5, 'SCHEDULER', '排产员', 5, '0', 0, NULL, '2026-06-19 21:24:45', NULL, '2026-06-19 21:24:45', NULL);
+INSERT INTO `sys_post` VALUES (6, 'QC_INSPECTOR', '质检员', 6, '0', 0, NULL, '2026-06-19 21:24:45', NULL, '2026-06-19 21:24:45', NULL);
+INSERT INTO `sys_post` VALUES (7, 'QC_MANAGER', '质量主管', 7, '0', 0, NULL, '2026-06-19 21:24:45', NULL, '2026-06-19 21:24:45', NULL);
+INSERT INTO `sys_post` VALUES (8, 'EQUIPMENT_MANAGER', '设备管理员', 8, '0', 0, NULL, '2026-06-19 21:24:45', NULL, '2026-06-19 21:24:45', NULL);
+INSERT INTO `sys_post` VALUES (9, 'VIEWER', '只读人员', 9, '0', 0, NULL, '2026-06-19 21:24:45', NULL, '2026-06-19 21:24:45', NULL);
+
+-- ----------------------------
+-- Table structure for sys_role
+-- ----------------------------
+DROP TABLE IF EXISTS `sys_role`;
+CREATE TABLE `sys_role`  (
+  `roleId` bigint NOT NULL,
+  `roleName` varchar(100) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
+  `roleKey` varchar(100) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
+  `roleSort` int NOT NULL DEFAULT 0,
+  `dataScope` varchar(32) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT 'DEPT',
+  `status` char(1) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT '0',
+  `deleted` tinyint NOT NULL DEFAULT 0,
+  `createdBy` bigint NULL DEFAULT NULL,
+  `createTime` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  `updatedBy` bigint NULL DEFAULT NULL,
+  `updateTime` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  `remark` varchar(500) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NULL DEFAULT NULL,
+  PRIMARY KEY (`roleId`) USING BTREE,
+  UNIQUE INDEX `uk_sys_role_key`(`roleKey` ASC) USING BTREE,
+  UNIQUE INDEX `uk_sys_role_name`(`roleName` ASC) USING BTREE
+) ENGINE = InnoDB CHARACTER SET = utf8mb4 COLLATE = utf8mb4_unicode_ci ROW_FORMAT = Dynamic;
+
+-- ----------------------------
+-- Records of sys_role
+-- ----------------------------
+INSERT INTO `sys_role` VALUES (1, '超级管理员', 'admin', 1, 'ALL', '0', 0, NULL, '2026-06-19 21:24:45', NULL, '2026-06-19 21:24:45', '系统内置，不可删除或停用');
+INSERT INTO `sys_role` VALUES (2, '订单管理员', 'order_manager', 2, 'DEPT', '0', 0, NULL, '2026-06-19 21:24:45', NULL, '2026-06-19 21:24:45', '订单与批次分配');
+INSERT INTO `sys_role` VALUES (3, '来料管理员', 'material_manager', 3, 'DEPT', '0', 0, NULL, '2026-06-19 21:24:45', NULL, '2026-06-19 21:24:45', '来料与资源池');
+INSERT INTO `sys_role` VALUES (4, '工艺工程师', 'process_engineer', 4, 'DEPT', '0', 0, NULL, '2026-06-19 21:24:45', NULL, '2026-06-19 21:24:45', '工艺与设备能力');
+INSERT INTO `sys_role` VALUES (5, '排产员', 'scheduler', 5, 'DEPT_AND_CHILD', '0', 0, NULL, '2026-06-19 21:24:45', NULL, '2026-06-19 21:24:45', '排产与计划');
+INSERT INTO `sys_role` VALUES (6, '质检员', 'qc_inspector', 6, 'SELF', '0', 0, NULL, '2026-06-19 21:24:45', NULL, '2026-06-19 21:24:45', '质检执行');
+INSERT INTO `sys_role` VALUES (7, '质量主管', 'qc_manager', 7, 'DEPT_AND_CHILD', '0', 0, NULL, '2026-06-19 21:24:45', NULL, '2026-06-19 21:24:45', '质量复核与异常');
+INSERT INTO `sys_role` VALUES (8, '只读用户', 'viewer', 8, 'DEPT', '0', 0, NULL, '2026-06-19 21:24:45', NULL, '2026-06-19 21:24:45', '只读访问');
+
+-- ----------------------------
+-- Table structure for sys_role_dept
+-- ----------------------------
+DROP TABLE IF EXISTS `sys_role_dept`;
+CREATE TABLE `sys_role_dept`  (
+  `roleId` bigint NOT NULL,
+  `deptId` bigint NOT NULL,
+  PRIMARY KEY (`roleId`, `deptId`) USING BTREE,
+  INDEX `fk_role_dept_dept`(`deptId` ASC) USING BTREE,
+  CONSTRAINT `fk_role_dept_dept` FOREIGN KEY (`deptId`) REFERENCES `sys_dept` (`deptId`) ON DELETE CASCADE ON UPDATE RESTRICT,
+  CONSTRAINT `fk_role_dept_role` FOREIGN KEY (`roleId`) REFERENCES `sys_role` (`roleId`) ON DELETE CASCADE ON UPDATE RESTRICT
+) ENGINE = InnoDB CHARACTER SET = utf8mb4 COLLATE = utf8mb4_unicode_ci ROW_FORMAT = Dynamic;
+
+-- ----------------------------
+-- Records of sys_role_dept
+-- ----------------------------
+INSERT INTO `sys_role_dept` VALUES (8, 110);
+INSERT INTO `sys_role_dept` VALUES (2, 111);
+INSERT INTO `sys_role_dept` VALUES (3, 112);
+INSERT INTO `sys_role_dept` VALUES (4, 113);
+INSERT INTO `sys_role_dept` VALUES (5, 114);
+INSERT INTO `sys_role_dept` VALUES (6, 115);
+INSERT INTO `sys_role_dept` VALUES (7, 115);
+
+-- ----------------------------
+-- Table structure for sys_role_menu
+-- ----------------------------
+DROP TABLE IF EXISTS `sys_role_menu`;
+CREATE TABLE `sys_role_menu`  (
+  `roleId` bigint NOT NULL,
+  `menuId` bigint NOT NULL,
+  PRIMARY KEY (`roleId`, `menuId`) USING BTREE,
+  INDEX `fk_role_menu_menu`(`menuId` ASC) USING BTREE,
+  CONSTRAINT `fk_role_menu_menu` FOREIGN KEY (`menuId`) REFERENCES `sys_menu` (`menuId`) ON DELETE CASCADE ON UPDATE RESTRICT,
+  CONSTRAINT `fk_role_menu_role` FOREIGN KEY (`roleId`) REFERENCES `sys_role` (`roleId`) ON DELETE CASCADE ON UPDATE RESTRICT
+) ENGINE = InnoDB CHARACTER SET = utf8mb4 COLLATE = utf8mb4_unicode_ci ROW_FORMAT = Dynamic;
+
+-- ----------------------------
+-- Records of sys_role_menu
+-- ----------------------------
+INSERT INTO `sys_role_menu` VALUES (1, 1000);
+INSERT INTO `sys_role_menu` VALUES (2, 1000);
+INSERT INTO `sys_role_menu` VALUES (3, 1000);
+INSERT INTO `sys_role_menu` VALUES (4, 1000);
+INSERT INTO `sys_role_menu` VALUES (5, 1000);
+INSERT INTO `sys_role_menu` VALUES (6, 1000);
+INSERT INTO `sys_role_menu` VALUES (7, 1000);
+INSERT INTO `sys_role_menu` VALUES (8, 1000);
+INSERT INTO `sys_role_menu` VALUES (1, 2000);
+INSERT INTO `sys_role_menu` VALUES (2, 2000);
+INSERT INTO `sys_role_menu` VALUES (5, 2000);
+INSERT INTO `sys_role_menu` VALUES (8, 2000);
+INSERT INTO `sys_role_menu` VALUES (1, 2001);
+INSERT INTO `sys_role_menu` VALUES (2, 2001);
+INSERT INTO `sys_role_menu` VALUES (5, 2001);
+INSERT INTO `sys_role_menu` VALUES (8, 2001);
+INSERT INTO `sys_role_menu` VALUES (1, 2011);
+INSERT INTO `sys_role_menu` VALUES (2, 2011);
+INSERT INTO `sys_role_menu` VALUES (1, 2012);
+INSERT INTO `sys_role_menu` VALUES (2, 2012);
+INSERT INTO `sys_role_menu` VALUES (1, 2013);
+INSERT INTO `sys_role_menu` VALUES (2, 2013);
+INSERT INTO `sys_role_menu` VALUES (1, 3000);
+INSERT INTO `sys_role_menu` VALUES (2, 3000);
+INSERT INTO `sys_role_menu` VALUES (3, 3000);
+INSERT INTO `sys_role_menu` VALUES (5, 3000);
+INSERT INTO `sys_role_menu` VALUES (8, 3000);
+INSERT INTO `sys_role_menu` VALUES (1, 3001);
+INSERT INTO `sys_role_menu` VALUES (2, 3001);
+INSERT INTO `sys_role_menu` VALUES (3, 3001);
+INSERT INTO `sys_role_menu` VALUES (5, 3001);
+INSERT INTO `sys_role_menu` VALUES (8, 3001);
+INSERT INTO `sys_role_menu` VALUES (1, 3011);
+INSERT INTO `sys_role_menu` VALUES (3, 3011);
+INSERT INTO `sys_role_menu` VALUES (1, 3012);
+INSERT INTO `sys_role_menu` VALUES (3, 3012);
+INSERT INTO `sys_role_menu` VALUES (1, 3013);
+INSERT INTO `sys_role_menu` VALUES (3, 3013);
+INSERT INTO `sys_role_menu` VALUES (1, 4000);
+INSERT INTO `sys_role_menu` VALUES (4, 4000);
+INSERT INTO `sys_role_menu` VALUES (8, 4000);
+INSERT INTO `sys_role_menu` VALUES (1, 4001);
+INSERT INTO `sys_role_menu` VALUES (4, 4001);
+INSERT INTO `sys_role_menu` VALUES (8, 4001);
+INSERT INTO `sys_role_menu` VALUES (1, 4002);
+INSERT INTO `sys_role_menu` VALUES (4, 4002);
+INSERT INTO `sys_role_menu` VALUES (8, 4002);
+INSERT INTO `sys_role_menu` VALUES (1, 4011);
+INSERT INTO `sys_role_menu` VALUES (4, 4011);
+INSERT INTO `sys_role_menu` VALUES (1, 4012);
+INSERT INTO `sys_role_menu` VALUES (4, 4012);
+INSERT INTO `sys_role_menu` VALUES (1, 5000);
+INSERT INTO `sys_role_menu` VALUES (5, 5000);
+INSERT INTO `sys_role_menu` VALUES (8, 5000);
+INSERT INTO `sys_role_menu` VALUES (1, 5001);
+INSERT INTO `sys_role_menu` VALUES (5, 5001);
+INSERT INTO `sys_role_menu` VALUES (8, 5001);
+INSERT INTO `sys_role_menu` VALUES (1, 5002);
+INSERT INTO `sys_role_menu` VALUES (5, 5002);
+INSERT INTO `sys_role_menu` VALUES (8, 5002);
+INSERT INTO `sys_role_menu` VALUES (1, 5003);
+INSERT INTO `sys_role_menu` VALUES (5, 5003);
+INSERT INTO `sys_role_menu` VALUES (8, 5003);
+INSERT INTO `sys_role_menu` VALUES (1, 5004);
+INSERT INTO `sys_role_menu` VALUES (5, 5004);
+INSERT INTO `sys_role_menu` VALUES (8, 5004);
+INSERT INTO `sys_role_menu` VALUES (1, 5005);
+INSERT INTO `sys_role_menu` VALUES (5, 5005);
+INSERT INTO `sys_role_menu` VALUES (8, 5005);
+INSERT INTO `sys_role_menu` VALUES (1, 5011);
+INSERT INTO `sys_role_menu` VALUES (5, 5011);
+INSERT INTO `sys_role_menu` VALUES (1, 5012);
+INSERT INTO `sys_role_menu` VALUES (5, 5012);
+INSERT INTO `sys_role_menu` VALUES (1, 5013);
+INSERT INTO `sys_role_menu` VALUES (5, 5013);
+INSERT INTO `sys_role_menu` VALUES (1, 6000);
+INSERT INTO `sys_role_menu` VALUES (6, 6000);
+INSERT INTO `sys_role_menu` VALUES (7, 6000);
+INSERT INTO `sys_role_menu` VALUES (8, 6000);
+INSERT INTO `sys_role_menu` VALUES (1, 6001);
+INSERT INTO `sys_role_menu` VALUES (6, 6001);
+INSERT INTO `sys_role_menu` VALUES (7, 6001);
+INSERT INTO `sys_role_menu` VALUES (8, 6001);
+INSERT INTO `sys_role_menu` VALUES (1, 6002);
+INSERT INTO `sys_role_menu` VALUES (6, 6002);
+INSERT INTO `sys_role_menu` VALUES (7, 6002);
+INSERT INTO `sys_role_menu` VALUES (8, 6002);
+INSERT INTO `sys_role_menu` VALUES (1, 6003);
+INSERT INTO `sys_role_menu` VALUES (6, 6003);
+INSERT INTO `sys_role_menu` VALUES (7, 6003);
+INSERT INTO `sys_role_menu` VALUES (8, 6003);
+INSERT INTO `sys_role_menu` VALUES (1, 6004);
+INSERT INTO `sys_role_menu` VALUES (6, 6004);
+INSERT INTO `sys_role_menu` VALUES (7, 6004);
+INSERT INTO `sys_role_menu` VALUES (8, 6004);
+INSERT INTO `sys_role_menu` VALUES (1, 6011);
+INSERT INTO `sys_role_menu` VALUES (6, 6011);
+INSERT INTO `sys_role_menu` VALUES (1, 6012);
+INSERT INTO `sys_role_menu` VALUES (7, 6012);
+INSERT INTO `sys_role_menu` VALUES (1, 6013);
+INSERT INTO `sys_role_menu` VALUES (7, 6013);
+INSERT INTO `sys_role_menu` VALUES (1, 6014);
+INSERT INTO `sys_role_menu` VALUES (7, 6014);
+INSERT INTO `sys_role_menu` VALUES (1, 7000);
+INSERT INTO `sys_role_menu` VALUES (1, 7001);
+INSERT INTO `sys_role_menu` VALUES (1, 7002);
+INSERT INTO `sys_role_menu` VALUES (1, 7003);
+INSERT INTO `sys_role_menu` VALUES (1, 7004);
+INSERT INTO `sys_role_menu` VALUES (1, 7005);
+INSERT INTO `sys_role_menu` VALUES (1, 7006);
+INSERT INTO `sys_role_menu` VALUES (1, 7011);
+INSERT INTO `sys_role_menu` VALUES (1, 7012);
+INSERT INTO `sys_role_menu` VALUES (1, 7013);
+INSERT INTO `sys_role_menu` VALUES (1, 7014);
+INSERT INTO `sys_role_menu` VALUES (1, 7015);
+INSERT INTO `sys_role_menu` VALUES (1, 7016);
+
+-- ----------------------------
+-- Table structure for sys_user
+-- ----------------------------
+DROP TABLE IF EXISTS `sys_user`;
+CREATE TABLE `sys_user`  (
+  `userId` bigint NOT NULL,
+  `deptId` bigint NOT NULL,
+  `postId` bigint NOT NULL,
+  `roleId` bigint NOT NULL,
+  `userName` varchar(64) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
+  `nickName` varchar(100) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
+  `email` varchar(100) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NULL DEFAULT NULL,
+  `phonenumber` varchar(20) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NULL DEFAULT NULL,
+  `avatar` varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NULL DEFAULT NULL,
+  `password` varchar(100) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
+  `status` char(1) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT '0',
+  `deleted` tinyint NOT NULL DEFAULT 0,
+  `loginIp` varchar(64) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NULL DEFAULT NULL,
+  `loginDate` datetime NULL DEFAULT NULL,
+  `pwdUpdateTime` datetime NULL DEFAULT NULL,
+  `createdBy` bigint NULL DEFAULT NULL,
+  `createTime` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  `updatedBy` bigint NULL DEFAULT NULL,
+  `updateTime` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  `remark` varchar(500) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NULL DEFAULT NULL,
+  PRIMARY KEY (`userId`) USING BTREE,
+  UNIQUE INDEX `uk_sys_user_name`(`userName` ASC) USING BTREE,
+  UNIQUE INDEX `uk_sys_user_phone`(`phonenumber` ASC) USING BTREE,
+  UNIQUE INDEX `uk_sys_user_email`(`email` ASC) USING BTREE,
+  INDEX `idx_sys_user_dept`(`deptId` ASC) USING BTREE,
+  INDEX `idx_sys_user_role`(`roleId` ASC) USING BTREE,
+  INDEX `fk_sys_user_post`(`postId` ASC) USING BTREE,
+  CONSTRAINT `fk_sys_user_dept` FOREIGN KEY (`deptId`) REFERENCES `sys_dept` (`deptId`) ON DELETE RESTRICT ON UPDATE RESTRICT,
+  CONSTRAINT `fk_sys_user_post` FOREIGN KEY (`postId`) REFERENCES `sys_post` (`postId`) ON DELETE RESTRICT ON UPDATE RESTRICT,
+  CONSTRAINT `fk_sys_user_role` FOREIGN KEY (`roleId`) REFERENCES `sys_role` (`roleId`) ON DELETE RESTRICT ON UPDATE RESTRICT
+) ENGINE = InnoDB CHARACTER SET = utf8mb4 COLLATE = utf8mb4_unicode_ci ROW_FORMAT = Dynamic;
+
+-- ----------------------------
+-- Records of sys_user
+-- ----------------------------
+INSERT INTO `sys_user` VALUES (1, 100, 1, 1, 'admin', '超级管理员', 'admin@zhihuitong.local', NULL, NULL, '$2a$10$.FHZCqNd7uPHJrQ37stJ6.80g4yzR0BLdSVg1XUDGQGll1/zOxhHO', '0', 0, '127.0.0.1', '2026-06-20 19:36:05', '2026-06-19 23:54:32', NULL, '2026-06-19 21:24:45', 1, '2026-06-20 19:36:05', '初始密码 Admin@123，首次部署后必须修改');
+INSERT INTO `sys_user` VALUES (2067999177769123842, 115, 7, 6, '17870120718', '麋鹿超人', '3210783832@qq.com', '17870120718', NULL, '$2a$10$TnK0W.twnqHufNSrsBUyGOI.20KL43Ct3wLBBzQqJwrQ47usDTqPS', '0', 0, '127.0.0.1', '2026-06-20 14:52:47', '2026-06-19 23:53:20', 1, '2026-06-19 23:53:20', NULL, '2026-06-20 14:52:46', '');
 
 SET FOREIGN_KEY_CHECKS = 1;

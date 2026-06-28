@@ -34,6 +34,7 @@ import com.zhihuitong.modules.process.service.MachineService;
 import com.zhihuitong.modules.process.service.ProcessRouteService;
 import com.zhihuitong.modules.process.service.ProcessStepService;
 import com.zhihuitong.modules.process.service.StepMachineCapabilityService;
+import com.zhihuitong.security.service.DataScopeService;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
@@ -64,6 +65,7 @@ public class ProductionPlanService {
     private final ProcessStepService processStepService;
     private final MachineService machineService;
     private final StepMachineCapabilityService capabilityService;
+    private final DataScopeService dataScopeService;
 
     public ProductionPlanService(ProductionPlanMapper productionPlanMapper,
                                  PlanStepMapper planStepMapper,
@@ -72,7 +74,8 @@ public class ProductionPlanService {
                                  ProcessRouteService processRouteService,
                                  ProcessStepService processStepService,
                                  MachineService machineService,
-                                 StepMachineCapabilityService capabilityService) {
+                                 StepMachineCapabilityService capabilityService,
+                                 DataScopeService dataScopeService) {
         this.productionPlanMapper = productionPlanMapper;
         this.planStepMapper = planStepMapper;
         this.batchService = batchService;
@@ -81,11 +84,12 @@ public class ProductionPlanService {
         this.processStepService = processStepService;
         this.machineService = machineService;
         this.capabilityService = capabilityService;
+        this.dataScopeService = dataScopeService;
     }
 
     public TableDataInfo<ProductionPlanListVo> list(ProductionPlanQuery query) {
         validateTimeRange(query.getPlanStartFrom(), query.getPlanStartTo(), "planStartFrom 不能晚于 planStartTo");
-        Page<ProductionPlan> page = productionPlanMapper.selectPage(query.toPage(), Wrappers.<ProductionPlan>lambdaQuery()
+        Page<ProductionPlan> page = productionPlanMapper.selectPage(query.toPage(), dataScopeService.apply(Wrappers.<ProductionPlan>lambdaQuery(), ProductionPlan::getDeptId, ProductionPlan::getCreatedBy)
                 .eq(query.getOrderId() != null, ProductionPlan::getOrderId, query.getOrderId())
                 .eq(query.getOrderItemId() != null, ProductionPlan::getOrderItemId, query.getOrderItemId())
                 .eq(query.getBatchId() != null, ProductionPlan::getBatchId, query.getBatchId())

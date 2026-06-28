@@ -33,6 +33,7 @@ import com.zhihuitong.modules.process.mapper.RouteStepMapper;
 import com.zhihuitong.modules.process.mapper.StepMachineCapabilityMapper;
 import com.zhihuitong.modules.quality.entity.QcRecord;
 import com.zhihuitong.modules.quality.mapper.QcRecordMapper;
+import com.zhihuitong.security.service.DataScopeService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -82,6 +83,8 @@ class OrderServiceTest {
     private QcRecordMapper qcRecordMapper;
     @Mock
     private ExceptionRecordMapper exceptionRecordMapper;
+    @Mock
+    private DataScopeService dataScopeService;
 
     private OrderService orderService;
 
@@ -101,8 +104,11 @@ class OrderServiceTest {
                 stepMachineCapabilityMapper,
                 machineMapper,
                 qcRecordMapper,
-                exceptionRecordMapper
+                exceptionRecordMapper,
+                dataScopeService
         );
+        org.mockito.Mockito.lenient().when(dataScopeService.apply(any(), any(), any()))
+                .thenAnswer(invocation -> invocation.getArgument(0));
     }
 
     @Test

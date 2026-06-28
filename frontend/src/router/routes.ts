@@ -1,7 +1,7 @@
 import type { Component } from 'vue'
 import type { RouteRecordRaw } from 'vue-router'
 
-export type AppMenuSectionKey = 'dashboard' | 'gray' | 'process-center' | 'schedule' | 'quality' | 'order'
+export type AppMenuSectionKey = 'dashboard' | 'gray' | 'process-center' | 'schedule' | 'quality' | 'order' | 'system'
 
 export interface AppRouteMeta {
   title: string
@@ -9,6 +9,7 @@ export interface AppRouteMeta {
   sectionKey: AppMenuSectionKey
   menuOrder: number
   showInMenu?: boolean
+  menuKey?: string
 }
 
 export interface AppMenuItem {
@@ -117,6 +118,12 @@ export const appRoutes: RouteRecordRaw[] = [
     meta: { title: '生产调度甘特图', section: '排产管理', sectionKey: 'schedule', menuOrder: 34, showInMenu: true },
   },
   {
+    path: '/schedule/ai-advisor',
+    name: 'schedule-ai-advisor',
+    component: view(() => import('@/views/plan/AiScheduleAdvisor.vue')),
+    meta: { title: 'AI智能排产', section: '排产管理', sectionKey: 'schedule', menuOrder: 35, showInMenu: true },
+  },
+  {
     path: '/schedule/reschedule-log',
     name: 'schedule-reschedule-log',
     component: view(() => import('@/views/plan/PlanLog.vue')),
@@ -152,7 +159,36 @@ export const appRoutes: RouteRecordRaw[] = [
     component: view(() => import('@/views/order/OrderDetail.vue')),
     meta: { title: '订单详情', section: '订单管理', sectionKey: 'order', menuOrder: 52, showInMenu: false },
   },
-]
+  {
+    path: '/system/user', name: 'system-user', component: view(() => import('@/views/system/UserList.vue')),
+    meta: { title: '用户管理', section: '系统管理', sectionKey: 'system', menuOrder: 71, showInMenu: true, menuKey: 'system-user' },
+  },
+  {
+    path: '/quality/ai-analysis',
+    name: 'quality-ai-analysis',
+    component: view(() => import('@/views/quality/AiQualityAnalysis.vue')),
+    meta: { title: 'AI质检分析', section: '质量管理', sectionKey: 'quality', menuOrder: 44, showInMenu: true },
+  },
+  {
+    path: '/system/role', name: 'system-role', component: view(() => import('@/views/system/RoleList.vue')),
+    meta: { title: '角色管理', section: '系统管理', sectionKey: 'system', menuOrder: 72, showInMenu: true, menuKey: 'system-role' },
+  },
+  {
+    path: '/system/menu', name: 'system-menu', component: view(() => import('@/views/system/MenuList.vue')),
+    meta: { title: '菜单管理', section: '系统管理', sectionKey: 'system', menuOrder: 73, showInMenu: true, menuKey: 'system-menu' },
+  },
+  {
+    path: '/system/dept', name: 'system-dept', component: view(() => import('@/views/system/DeptList.vue')),
+    meta: { title: '部门管理', section: '系统管理', sectionKey: 'system', menuOrder: 74, showInMenu: true, menuKey: 'system-dept' },
+  },
+  {
+    path: '/system/post', name: 'system-post', component: view(() => import('@/views/system/PostList.vue')),
+    meta: { title: '岗位管理', section: '系统管理', sectionKey: 'system', menuOrder: 75, showInMenu: true, menuKey: 'system-post' },
+  },
+  {
+    path: '/system/online', name: 'system-online', component: view(() => import('@/views/system/OnlineUserList.vue')),
+    meta: { title: '在线用户', section: '系统管理', sectionKey: 'system', menuOrder: 76, showInMenu: true, menuKey: 'system-online' },
+  },]
 
 const typedAppRoutes = appRoutes as Array<RouteRecordRaw & { meta: AppRouteMeta }>
 
@@ -163,6 +199,7 @@ const menuSectionDefinitions: Omit<AppMenuSection, 'items'>[] = [
   { key: 'process-center', title: '工艺中心' },
   { key: 'schedule', title: '排产管理' },
   { key: 'quality', title: '质量管理' },
+  { key: 'system', title: '系统管理' },
 ]
 
 export const appMenuSections: AppMenuSection[] = menuSectionDefinitions

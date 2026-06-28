@@ -1,142 +1,84 @@
 <script setup lang="ts">
-import { computed } from 'vue'
-import { useRoute } from 'vue-router'
-import {
-  CalendarOutlined,
-  CarryOutOutlined,
-  DashboardOutlined,
-  InboxOutlined,
-  MenuFoldOutlined,
-  MenuUnfoldOutlined,
-  SafetyCertificateOutlined,
-  SettingOutlined,
-  BellOutlined,
-  UserOutlined,
-} from '@ant-design/icons-vue'
+import { computed, reactive, ref } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
+import { CalendarOutlined, CarryOutOutlined, DashboardOutlined, InboxOutlined, MenuFoldOutlined, MenuUnfoldOutlined, SafetyCertificateOutlined, SettingOutlined, BellOutlined, UserOutlined, TeamOutlined, LogoutOutlined, KeyOutlined } from '@ant-design/icons-vue'
+import { message } from 'ant-design-vue'
 import { storeToRefs } from 'pinia'
 import { appMenuSections, type AppMenuSectionKey } from '@/router/routes'
 import { useAppStore } from '@/stores/app'
+import { useAuthStore } from '@/stores/auth'
+import { changePassword } from '@/api/system/auth'
 
 const route = useRoute()
+const router = useRouter()
+const authStore = useAuthStore()
 const appStore = useAppStore()
 const { collapsed } = storeToRefs(appStore)
+const passwordModalOpen = ref(false)
+const passwordSaving = ref(false)
+const passwordForm = reactive({ currentPassword: '', newPassword: '', confirmPassword: '' })
 
 const sectionIcons: Record<AppMenuSectionKey, typeof DashboardOutlined> = {
-  dashboard: DashboardOutlined,
-  gray: InboxOutlined,
-  'process-center': SettingOutlined,
-  schedule: CalendarOutlined,
-  quality: SafetyCertificateOutlined,
-  order: CarryOutOutlined,
+  dashboard: DashboardOutlined, gray: InboxOutlined, 'process-center': SettingOutlined,
+  schedule: CalendarOutlined, quality: SafetyCertificateOutlined, order: CarryOutOutlined, system: TeamOutlined,
 }
-
+const visibleMenuSections = computed(() => appMenuSections.map(section => ({ ...section, items: section.items.filter(item => authStore.hasMenu(item.key)) })).filter(section => section.items.length > 0))
 const selectedKeys = computed(() => [route.path])
-
-const activeSectionKey = computed<AppMenuSectionKey | undefined>(() => {
-  const matchedRoute = [...appMenuSections]
-    .flatMap((section) => section.items.map((item) => ({ sectionKey: section.key, to: item.to })))
-    .find((item) => route.path.startsWith(item.to))
-
-  return matchedRoute?.sectionKey ?? (route.meta.sectionKey as AppMenuSectionKey | undefined)
-})
-
-const openKeys = computed(() => (activeSectionKey.value ? [activeSectionKey.value] : []))
-
+const activeSectionKey = computed<AppMenuSectionKey | undefined>(() => visibleMenuSections.value.flatMap(section => section.items.map(item => ({ sectionKey: section.key, to: item.to }))).find(item => route.path.startsWith(item.to))?.sectionKey ?? (route.meta.sectionKey as AppMenuSectionKey | undefined))
+const openKeys = computed(() => activeSectionKey.value ? [activeSectionKey.value] : [])
 const breadcrumbItems = computed(() => {
   const items: string[] = []
-  if (typeof route.meta.section === 'string') {
-    items.push(route.meta.section)
-  }
-  if (typeof route.meta.title === 'string' && route.meta.title !== route.meta.section) {
-    items.push(route.meta.title)
-  }
+  if (typeof route.meta.section === 'string') items.push(route.meta.section)
+  if (typeof route.meta.title === 'string' && route.meta.title !== route.meta.section) items.push(route.meta.title)
   return items
 })
+
+const openPasswordModal = () => { Object.assign(passwordForm, { currentPassword: '', newPassword: '', confirmPassword: '' }); passwordModalOpen.value = true }
+const submitPassword = async () => {
+  if (passwordForm.newPassword.length < 8) return void message.warning('新密码至少 8 位')
+  if (passwordForm.newPassword !== passwordForm.confirmPassword) return void message.warning('两次输入的新密码不一致')
+  passwordSaving.value = true
+  try {
+    await changePassword({ currentPassword: passwordForm.currentPassword, newPassword: passwordForm.newPassword })
+    message.success('密码已修改，请重新登录')
+    passwordModalOpen.value = false
+    authStore.clearSession()
+    await router.replace('/login')
+  } finally { passwordSaving.value = false }
+}
+const handleLogout = async () => { await authStore.logout(); await router.replace('/login') }
 </script>
 
 <template>
   <a-layout class="app-shell">
     <a-layout-header class="app-header">
       <div class="header-left">
-        <a-button type="text" class="collapse-btn" @click="appStore.toggleCollapsed()">
-          <MenuUnfoldOutlined v-if="collapsed" />
-          <MenuFoldOutlined v-else />
-        </a-button>
-        <div class="brand">
-          <img class="brand-logo" src="/images/branding/logo.png" alt="织慧通" />
-          <div class="brand-copy">
-            <strong>织慧通</strong>
-            <span>胚布排产质检系统</span>
-          </div>
-        </div>
+        <a-button type="text" class="collapse-btn" @click="appStore.toggleCollapsed()"><MenuUnfoldOutlined v-if="collapsed" /><MenuFoldOutlined v-else /></a-button>
+        <div class="brand"><img class="brand-logo" src="/images/branding/logo.png" alt="织慧通" /><div class="brand-copy"><strong>织慧通</strong><span>AI胚布排产质检系统</span></div></div>
       </div>
-
-      <div class="header-right">
-        <a-space size="middle">
-          <a-badge dot color="#d66f22">
-            <BellOutlined class="header-icon" />
-          </a-badge>
-          <div class="user-chip">
-            <a-avatar size="small" class="login-avatar">
-              <template #icon><UserOutlined /></template>
-            </a-avatar>
-            <span class="user-name">admin</span>
-          </div>
-        </a-space>
-      </div>
+      <div class="header-right"><a-space size="middle"><a-badge dot color="#d66f22"><BellOutlined class="header-icon" /></a-badge>
+        <a-dropdown placement="bottomRight"><div class="user-chip" role="button" tabindex="0"><a-avatar size="small" class="login-avatar"><template #icon><UserOutlined /></template></a-avatar><span class="user-name">{{ authStore.user?.nickName || authStore.user?.userName }}</span></div>
+          <template #overlay><a-menu><a-menu-item @click="openPasswordModal"><KeyOutlined /> 修改密码</a-menu-item><a-menu-divider /><a-menu-item @click="handleLogout"><LogoutOutlined /> 退出登录</a-menu-item></a-menu></template>
+        </a-dropdown>
+      </a-space></div>
     </a-layout-header>
-
     <a-layout class="app-body">
-      <a-layout-sider
-        :width="224"
-        :collapsed-width="54"
-        :collapsed="collapsed"
-        class="app-sider"
-        theme="light"
-      >
+      <a-layout-sider :width="224" :collapsed-width="54" :collapsed="collapsed" class="app-sider" theme="light">
         <div v-if="!collapsed" class="sider-title">核心业务导航</div>
         <a-menu mode="inline" theme="light" :selected-keys="selectedKeys" :open-keys="openKeys" class="app-menu">
-          <template v-for="section in appMenuSections" :key="section.key">
-            <a-menu-item v-if="section.items.length === 1" :key="section.items[0]?.to">
-              <template #icon>
-                <component :is="sectionIcons[section.key]" />
-              </template>
-              <router-link :to="section.items[0]?.to || '/dashboard'">{{ section.title }}</router-link>
-            </a-menu-item>
-
-            <a-sub-menu
-              v-else
-              :key="section.key"
-              :title="section.title"
-            >
-              <template #icon>
-                <component :is="sectionIcons[section.key]" />
-              </template>
-              <a-menu-item v-for="item in section.items" :key="item.to">
-                <router-link :to="item.to">{{ item.title }}</router-link>
-              </a-menu-item>
-            </a-sub-menu>
+          <template v-for="section in visibleMenuSections" :key="section.key">
+            <a-menu-item v-if="section.items.length === 1" :key="section.items[0]?.to"><template #icon><component :is="sectionIcons[section.key]" /></template><router-link :to="section.items[0]?.to || '/dashboard'">{{ section.title }}</router-link></a-menu-item>
+            <a-sub-menu v-else :key="section.key" :title="section.title"><template #icon><component :is="sectionIcons[section.key]" /></template><a-menu-item v-for="item in section.items" :key="item.to"><router-link :to="item.to">{{ item.title }}</router-link></a-menu-item></a-sub-menu>
           </template>
         </a-menu>
       </a-layout-sider>
-
-      <a-layout class="app-main">
-        <a-layout-content
-          class="app-content"
-          :class="{ 'app-content--dashboard': route.path === '/dashboard' }"
-        >
-          <a-breadcrumb class="app-breadcrumb">
-            <a-breadcrumb-item v-for="item in breadcrumbItems" :key="item">
-              {{ item }}
-            </a-breadcrumb-item>
-          </a-breadcrumb>
-          <router-view />
-        </a-layout-content>
-      </a-layout>
+      <a-layout class="app-main"><a-layout-content class="app-content" :class="{ 'app-content--dashboard': route.path === '/dashboard' }"><a-breadcrumb class="app-breadcrumb"><a-breadcrumb-item v-for="item in breadcrumbItems" :key="item">{{ item }}</a-breadcrumb-item></a-breadcrumb><router-view /></a-layout-content></a-layout>
     </a-layout>
   </a-layout>
+  <a-modal v-model:open="passwordModalOpen" title="修改密码" :confirm-loading="passwordSaving" @ok="submitPassword">
+    <a-form layout="vertical"><a-form-item label="当前密码" required><a-input-password v-model:value="passwordForm.currentPassword" autocomplete="current-password" /></a-form-item><a-form-item label="新密码" required><a-input-password v-model:value="passwordForm.newPassword" autocomplete="new-password" /></a-form-item><a-form-item label="确认新密码" required><a-input-password v-model:value="passwordForm.confirmPassword" autocomplete="new-password" /></a-form-item></a-form>
+  </a-modal>
 </template>
-
 <style scoped>
 .app-shell {
   min-height: 100vh;

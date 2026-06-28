@@ -1,0 +1,31 @@
+# IDE / editor
+.idea/
+.vscode/
+*.iml
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+logs/
+
+# Java / Maven
+backend/target/
+target/
+
+# Node / Vite
+frontend/node_modules/
+frontend/dist/
+node_modules/
+dist/
+
+# Runtime data
+photo/upload/
+photo/results/
+
+# Local env / secrets
+.env
+.env.*
+!.env.example
