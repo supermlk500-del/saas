@@ -29,6 +29,7 @@ import type {
   OrderLineItem,
   OrderPlanSummaryItem,
 } from '@/types/domain'
+import { formatPlanId } from '@/utils/idFormat'
 
 type RouteStepFlowItem = {
   key: string
@@ -492,14 +493,6 @@ const formatAllocation = (weight?: number | null, quantity?: number | null) => {
   return '未分配'
 }
 
-const formatShortId = (value?: IdValue) => {
-  const text = String(value ?? '')
-  if (!text) {
-    return '-'
-  }
-  return text.length > 10 ? `...${text.slice(-8)}` : text
-}
-
 const resetOrderItemForm = () => {
   orderItemForm.productCode = ''
   orderItemForm.productName = ''
@@ -882,7 +875,7 @@ onMounted(() => {
                   {{ formatAllocation(record.remainingWeight, record.remainingQuantity) }}
                 </template>
                 <template v-else-if="column.key === 'lockedByPlan'">
-                  <a-tooltip :title="record.lockedByPlan ? `计划 ${record.currentPlanId || ''} 占用` : '可排产'">
+                  <a-tooltip :title="record.lockedByPlan ? `计划 ${formatPlanId(record.currentPlanId)} 占用（${record.currentPlanId || '-'}）` : '可排产'">
                     <a-tag :color="record.lockedByPlan ? 'processing' : 'success'">
                       {{ record.lockedByPlan ? '已占用' : '可排产' }}
                     </a-tag>
@@ -951,7 +944,7 @@ onMounted(() => {
                   <div class="detail-action-grid detail-plan-links">
                     <a-tooltip :title="String(record.planId)">
                       <a-button type="link" size="small" @click="jumpToPlanMain(record)">
-                        {{ formatShortId(record.planId) }}
+                        {{ formatPlanId(record.planId) }}
                       </a-button>
                     </a-tooltip>
                     <a-button type="link" size="small" @click="jumpToPlanBoard(record)">甘特图</a-button>
@@ -985,7 +978,7 @@ onMounted(() => {
               <a-collapse-panel
                 v-for="group in stepGroups"
                 :key="String(group.planId)"
-                :header="`计划 #${group.planId} / ${group.routeName || '未配置路线'} / ${group.batchNo || '未关联批次'}`"
+                :header="`${formatPlanId(group.planId)} / ${group.routeName || '未配置路线'} / ${group.batchNo || '未关联批次'}`"
               >
                 <a-table
                   :columns="stepColumns"

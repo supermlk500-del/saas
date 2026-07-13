@@ -11,6 +11,7 @@ import { useTable } from '@/hooks/useTable'
 import type { IdValue, InspectionDataItem, QcDetectionBox, QcItem, QcRecordItem } from '@/types/domain'
 import type { InspectType, ResultJudge } from '@/types/dictionary'
 import { formatDateTime } from '@/utils/date'
+import { formatInspectionId, formatPlanStepId } from '@/utils/idFormat'
 import { isLikelyResultImage, isLikelySourceImage, normalizeImagePath, resolveImageUrl } from '@/utils/image'
 
 const judgeOptions: { label: string; value: ResultJudge; color: string }[] = [
@@ -52,7 +53,7 @@ const searchFields = computed(() => [
 
 const columns = [
   { title: '记录ID', dataIndex: 'inspectionId', key: 'inspectionId', width: 84 },
-  { title: '工序计划ID', dataIndex: 'planStepId', key: 'planStepId', width: 104 },
+  { title: '工序计划ID', dataIndex: 'planStepId', key: 'planStepId', width: 96 },
   { title: '质检项', dataIndex: 'qcItemId', key: 'qcItemId', width: 156 },
   { title: '检测方式', dataIndex: 'inspectType', key: 'inspectType', width: 92 },
   { title: '检测信息', key: 'detectionMeta', width: 122 },
@@ -271,7 +272,17 @@ onMounted(async () => {
     </template>
 
     <template #bodyCell="{ column, record }">
-      <template v-if="column.key === 'qcItemId'">
+      <template v-if="column.key === 'inspectionId'">
+        <a-tooltip :title="String(record.inspectionId)">
+          {{ formatInspectionId(record.inspectionId) }}
+        </a-tooltip>
+      </template>
+      <template v-else-if="column.key === 'planStepId'">
+        <a-tooltip :title="String(record.planStepId)">
+          {{ formatPlanStepId(record.planStepId) }}
+        </a-tooltip>
+      </template>
+      <template v-else-if="column.key === 'qcItemId'">
         <a-tooltip :title="getQcItemLabel(record.qcItemId)" placement="topLeft">
           <span class="single-line-cell">{{ getQcItemLabel(record.qcItemId) }}</span>
         </a-tooltip>
@@ -317,8 +328,16 @@ onMounted(async () => {
     <a-spin :spinning="detailLoading">
       <div v-if="detailRecord" class="detail-layout">
         <a-descriptions :column="2" bordered size="small">
-          <a-descriptions-item label="记录ID">{{ detailRecord.inspectionId }}</a-descriptions-item>
-          <a-descriptions-item label="工序计划ID">{{ detailRecord.planStepId }}</a-descriptions-item>
+          <a-descriptions-item label="记录ID">
+            <a-tooltip :title="String(detailRecord.inspectionId)">
+              {{ formatInspectionId(detailRecord.inspectionId) }}
+            </a-tooltip>
+          </a-descriptions-item>
+          <a-descriptions-item label="工序计划ID">
+            <a-tooltip :title="String(detailRecord.planStepId)">
+              {{ formatPlanStepId(detailRecord.planStepId) }}
+            </a-tooltip>
+          </a-descriptions-item>
           <a-descriptions-item label="质检项">{{ getQcItemLabel(detailRecord.qcItemId) }}</a-descriptions-item>
           <a-descriptions-item label="检测方式">{{ getInspectTypeLabel(detailRecord.inspectType) }}</a-descriptions-item>
           <a-descriptions-item label="摄像头ID">{{ detailRecord.cameraId ?? '-' }}</a-descriptions-item>

@@ -13,6 +13,7 @@ import {
 } from '@/api/ai/decision'
 import { fetchPlans } from '@/api/plan/plan'
 import type { IdValue, ProductionPlanItem } from '@/types/domain'
+import { formatPlanId } from '@/utils/idFormat'
 
 const loading = ref(false)
 const applying = ref<string>()
@@ -25,14 +26,14 @@ const selectedRecordId = ref<IdValue>()
 const planOptions = computed(() =>
   plans.value.map((item) => ({
     value: item.planId,
-    label: `${item.orderNo || item.planId} · ${item.batchNo || item.batchId} · ${item.routeName || '未命名路线'}`,
+    label: `${formatPlanId(item.planId)} · ${item.orderNo || '未绑定订单'} · ${item.batchNo || item.batchId} · ${item.routeName || '未命名路线'}`,
   })),
 )
 
 const recordOptions = computed(() =>
   records.value.map((item) => ({
     value: item.recordId,
-    label: `${item.createTime} · ${item.orderNo || item.planId} · ${item.status === 'APPLIED' ? `已应用 ${item.selectedStrategy}` : '待确认'}`,
+    label: `${item.createTime} · ${formatPlanId(item.planId)} · ${item.orderNo || '未绑定订单'} · ${item.status === 'APPLIED' ? `已应用 ${item.selectedStrategy}` : '待确认'}`,
   })),
 )
 

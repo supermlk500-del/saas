@@ -8,6 +8,7 @@ import { exceptionLevelOptions, exceptionStatusOptions } from '@/constants/dicti
 import { useTable } from '@/hooks/useTable'
 import type { ExceptionRecordItem, IdValue } from '@/types/domain'
 import { formatDateTime } from '@/utils/date'
+import { formatPlanStepId } from '@/utils/idFormat'
 
 const searchForm = reactive({
   planStepId: undefined as IdValue | undefined,
@@ -23,7 +24,7 @@ const searchFields = [
 
 const columns = [
   { title: '异常ID', dataIndex: 'exceptionId', key: 'exceptionId', width: 100 },
-  { title: '工序计划ID', dataIndex: 'planStepId', key: 'planStepId', width: 120 },
+  { title: '工序计划ID', dataIndex: 'planStepId', key: 'planStepId', width: 96 },
   { title: '异常等级', dataIndex: 'exceptionLevel', key: 'exceptionLevel', width: 120 },
   { title: '异常描述', dataIndex: 'description', key: 'description' },
   { title: '处理结果', dataIndex: 'handleResult', key: 'handleResult' },
@@ -168,7 +169,12 @@ onMounted(() => {
     </template>
 
     <template #bodyCell="{ column, record }">
-      <template v-if="column.key === 'exceptionLevel'">
+      <template v-if="column.key === 'planStepId'">
+        <a-tooltip :title="String(record.planStepId)">
+          {{ formatPlanStepId(record.planStepId) }}
+        </a-tooltip>
+      </template>
+      <template v-else-if="column.key === 'exceptionLevel'">
         <a-tag :color="getLevelMeta(record.exceptionLevel)?.color">
           {{ getLevelMeta(record.exceptionLevel)?.label || record.exceptionLevel }}
         </a-tag>

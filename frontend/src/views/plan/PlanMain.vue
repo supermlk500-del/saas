@@ -36,6 +36,7 @@ import {
   planStepStatusOptions,
 } from '@/constants/dictionaries'
 import { useTable } from '@/hooks/useTable'
+import { formatPlanId } from '@/utils/idFormat'
 import type {
   BatchItem,
   IdValue,
@@ -122,7 +123,7 @@ const searchFields = [
 ]
 
 const columns = [
-  { title: '计划ID', dataIndex: 'planId', key: 'planId', width: 96 },
+  { title: '计划ID', dataIndex: 'planId', key: 'planId', width: 82 },
   { title: '订单信息', key: 'orderSummary', width: 142 },
   { title: '生产对象', key: 'productionTarget', width: 190 },
   { title: '工艺路线', dataIndex: 'routeName', key: 'routeName', width: 148 },
@@ -143,14 +144,6 @@ const planStepColumns = [
   { title: '备注', dataIndex: 'remark', key: 'remark' },
   { title: '操作', key: 'action', width: 220 },
 ]
-
-const formatShortId = (value?: IdValue) => {
-  const text = String(value ?? '')
-  if (!text) {
-    return '-'
-  }
-  return text.length > 10 ? `...${text.slice(-8)}` : text
-}
 
 const { data, loading, pagination } = useTable<ProductionPlanItem>()
 const displayRows = computed(() =>
@@ -728,7 +721,7 @@ onMounted(() => {
     <template #bodyCell="{ column, record }">
       <template v-if="column.key === 'planId'">
         <a-tooltip :title="String(record.planId)">
-          <span class="plan-id">{{ formatShortId(record.planId) }}</span>
+          <span class="plan-id">{{ formatPlanId(record.planId) }}</span>
         </a-tooltip>
       </template>
       <template v-else-if="column.key === 'orderSummary'">
@@ -948,7 +941,11 @@ onMounted(() => {
     <a-spin :spinning="detailLoading">
       <div v-if="currentPlanDetail" class="plan-detail">
         <a-descriptions :column="4" bordered size="small">
-          <a-descriptions-item label="计划ID">{{ currentPlanDetail.planId }}</a-descriptions-item>
+          <a-descriptions-item label="计划ID">
+            <a-tooltip :title="String(currentPlanDetail.planId)">
+              {{ formatPlanId(currentPlanDetail.planId) }}
+            </a-tooltip>
+          </a-descriptions-item>
           <a-descriptions-item label="订单号">{{ currentPlanDetail.orderInfo?.orderNo || '-' }}</a-descriptions-item>
           <a-descriptions-item label="客户">{{ currentPlanDetail.orderInfo?.customerName || '-' }}</a-descriptions-item>
           <a-descriptions-item label="订单明细">

@@ -3,6 +3,7 @@ import { computed } from 'vue'
 import type { InspectionDataItem, PlanStepItem, QcDetectionBox, QcDetectionResult, QcRecordItem } from '@/types/domain'
 import type { ResultJudge } from '@/types/dictionary'
 import { formatDateTime } from '@/utils/date'
+import { formatInspectionId, formatPlanStepId } from '@/utils/idFormat'
 import { isLikelyResultImage, isLikelySourceImage, normalizeImagePath } from '@/utils/image'
 
 const props = defineProps<{
@@ -103,13 +104,16 @@ const boxSummaryText = computed(() => {
       <a-card size="small" title="检测结果详情" class="inner-card">
         <a-descriptions :column="1" size="small" bordered>
           <a-descriptions-item label="工序">
-            {{ activePlanStep?.stepName || activeRecord?.planStepId || detectionResult?.planStepId || '-' }}
+            {{
+              activePlanStep?.stepName ||
+              formatPlanStepId(activeRecord?.planStepId || detectionResult?.planStepId)
+            }}
           </a-descriptions-item>
           <a-descriptions-item label="设备">
             {{ activePlanStep?.machineName || '-' }}
           </a-descriptions-item>
           <a-descriptions-item label="记录ID">
-            {{ activeRecord?.inspectionId || detectionResult?.inspectionId || '-' }}
+            {{ formatInspectionId(activeRecord?.inspectionId || detectionResult?.inspectionId) }}
           </a-descriptions-item>
           <a-descriptions-item label="检测方式">
             {{ activeRecord?.inspectType || detectionResult?.inspectType || '-' }}

@@ -3,6 +3,7 @@ import { computed, onMounted, ref } from 'vue'
 import { fetchPlans } from '@/api/plan/plan'
 import { planStatusOptions } from '@/constants/dictionaries'
 import type { ProductionPlanItem } from '@/types/domain'
+import { formatPlanId } from '@/utils/idFormat'
 
 const loading = ref(false)
 const plans = ref<ProductionPlanItem[]>([])
@@ -43,7 +44,12 @@ onMounted(() => {
           <a-col :span="8" v-for="item in boardCards" :key="item.planId">
             <a-card :title="item.routeName || `路线 ${item.routeId}`" bordered>
               <a-space direction="vertical">
-                <div>计划号：#{{ item.planId }}</div>
+                <div>
+                  计划号：
+                  <a-tooltip :title="String(item.planId)">
+                    {{ formatPlanId(item.planId) }}
+                  </a-tooltip>
+                </div>
                 <div>批次号：{{ item.batchNo || item.batchId }}</div>
                 <div>开始时间：{{ item.planStartTime }}</div>
                 <div>结束时间：{{ item.planEndTime || '-' }}</div>

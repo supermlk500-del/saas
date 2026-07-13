@@ -5,6 +5,7 @@ import { message } from 'ant-design-vue'
 import { analyzeQcRecord, type AiQualityAnalysis } from '@/api/ai/decision'
 import { fetchQcRecords } from '@/api/quality/qcRecord'
 import type { IdValue, QcRecordItem } from '@/types/domain'
+import { formatInspectionId } from '@/utils/idFormat'
 
 const records = ref<QcRecordItem[]>([])
 const selectedId = ref<IdValue>()
@@ -14,7 +15,7 @@ const analysis = ref<AiQualityAnalysis>()
 const recordOptions = computed(() =>
   records.value.map((item) => ({
     value: item.inspectionId,
-    label: `${item.inspectTime} · ${item.resultJudge} · ${item.resultValue || '无缺陷'}`,
+    label: `${formatInspectionId(item.inspectionId)} · ${item.inspectTime} · ${item.resultJudge} · ${item.resultValue || '无缺陷'}`,
   })),
 )
 

@@ -36,6 +36,7 @@ import type {
 } from '@/types/domain'
 import type { ResultJudge } from '@/types/dictionary'
 import { formatDateTime } from '@/utils/date'
+import { formatInspectionId, formatPlanId, formatPlanStepId } from '@/utils/idFormat'
 import { isLikelyResultImage, isLikelySourceImage, resolveImageUrl } from '@/utils/image'
 
 type IdValue = number | string
@@ -183,7 +184,7 @@ const reviewRules = {
 
 const planStepOptions = computed(() =>
   planSteps.value.map((item) => ({
-    label: `#${item.planStepId} / ${item.stepName || item.stepId} / ${item.machineName || '未分配设备'}`,
+    label: `${formatPlanStepId(item.planStepId)} / ${item.stepName || item.stepId} / ${item.machineName || '未分配设备'}`,
     value: item.planStepId,
   })),
 )
@@ -1227,7 +1228,9 @@ onBeforeUnmount(() => {
       <div class="recent-list">
         <div v-for="item in recentRecords" :key="item.inspectionId" class="recent-item" @click="loadRecordDetail(item.inspectionId)">
           <div>
-            <div class="recent-title">#{{ item.inspectionId }} / 工序计划 {{ item.planStepId }}</div>
+            <div class="recent-title">
+              {{ formatInspectionId(item.inspectionId) }} / 工序计划 {{ formatPlanStepId(item.planStepId) }}
+            </div>
             <div class="recent-sub">{{ formatDateTime(item.inspectTime) }} / {{ item.inspectType }}</div>
           </div>
           <a-tag :color="getJudgeMeta(item.resultJudge)?.color">
@@ -1325,8 +1328,18 @@ onBeforeUnmount(() => {
       <div class="settings-session">
         <div class="section-heading">实时会话</div>
         <a-descriptions :column="1" size="small" bordered>
-          <a-descriptions-item label="计划ID">{{ selectedMonitorPlanStep?.planId || '-' }}</a-descriptions-item>
-          <a-descriptions-item label="工序计划ID">{{ selectedMonitorPlanStep?.planStepId || '-' }}</a-descriptions-item>
+          <a-descriptions-item label="计划ID">
+            <a-tooltip v-if="selectedMonitorPlanStep?.planId" :title="String(selectedMonitorPlanStep.planId)">
+              {{ formatPlanId(selectedMonitorPlanStep.planId) }}
+            </a-tooltip>
+            <template v-else>-</template>
+          </a-descriptions-item>
+          <a-descriptions-item label="工序计划ID">
+            <a-tooltip v-if="selectedMonitorPlanStep?.planStepId" :title="String(selectedMonitorPlanStep.planStepId)">
+              {{ formatPlanStepId(selectedMonitorPlanStep.planStepId) }}
+            </a-tooltip>
+            <template v-else>-</template>
+          </a-descriptions-item>
           <a-descriptions-item label="工序">{{ selectedMonitorPlanStep?.stepName || '未选择' }}</a-descriptions-item>
           <a-descriptions-item label="当前摄像头">{{ selectedCamera?.cameraName || '未选择' }}</a-descriptions-item>
           <a-descriptions-item label="摄像头类型">{{ selectedCamera?.cameraType || '-' }}</a-descriptions-item>

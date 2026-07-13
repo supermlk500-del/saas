@@ -18,6 +18,7 @@ import {
   resultJudgeOptions,
 } from '@/constants/dictionaries'
 import type { BatchItem, ExceptionRecordItem, ProductionPlanItem, QcRecordItem } from '@/types/domain'
+import { formatInspectionId, formatPlanId, formatPlanStepId } from '@/utils/idFormat'
 
 type MetricCard = {
   title: string
@@ -262,8 +263,8 @@ onMounted(() => {
               <div class="activity-left">
                 <div class="activity-indicator" :class="(getJudgeMeta(item.resultJudge)?.value || '').toLowerCase()"></div>
                 <div>
-                  <div class="activity-title">质检记录 #{{ item.inspectionId }}</div>
-                  <div class="activity-subtitle">工序计划：{{ item.planStepId }}</div>
+                  <div class="activity-title">质检记录 {{ formatInspectionId(item.inspectionId) }}</div>
+                  <div class="activity-subtitle">工序计划：{{ formatPlanStepId(item.planStepId) }}</div>
                 </div>
               </div>
 
@@ -349,7 +350,9 @@ onMounted(() => {
           </div>
           <div class="summary-list">
             <div v-for="item in productionPlans.slice(0, 3)" :key="item.planId" class="summary-item">
-              <span>#{{ item.planId }}</span>
+              <a-tooltip :title="String(item.planId)">
+                <span>{{ formatPlanId(item.planId) }}</span>
+              </a-tooltip>
               <span>{{ item.batchNo || `批次 ${item.batchId}` }}</span>
               <a-tag :color="getPlanMeta(item.status)?.color || 'default'">
                 {{ getPlanMeta(item.status)?.label || item.status }}

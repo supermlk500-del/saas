@@ -6,6 +6,7 @@ import SearchBar from '@/components/SearchBar.vue'
 import { fetchTasks, type TaskItem, type TaskQuery } from '@/api/quality/task'
 import { useTable } from '@/hooks/useTable'
 import type { IdValue } from '@/types/domain'
+import { formatPlanId, formatPlanStepId } from '@/utils/idFormat'
 
 const router = useRouter()
 
@@ -32,8 +33,8 @@ const searchFields = [
 
 const columns = [
   { title: '任务号', dataIndex: 'taskNo', key: 'taskNo', width: 140 },
-  { title: '工序计划ID', dataIndex: 'planStepId', key: 'planStepId', width: 110 },
-  { title: '所属计划ID', dataIndex: 'planId', key: 'planId', width: 110 },
+  { title: '工序计划ID', dataIndex: 'planStepId', key: 'planStepId', width: 96 },
+  { title: '所属计划ID', dataIndex: 'planId', key: 'planId', width: 96 },
   { title: '工序名称', dataIndex: 'stepName', key: 'stepName', width: 160 },
   { title: '设备', dataIndex: 'machineName', key: 'machineName', width: 160 },
   { title: '最近检验时间', dataIndex: 'latestInspectTime', key: 'latestInspectTime', width: 180 },
@@ -95,7 +96,17 @@ onMounted(() => {
     </template>
 
     <template #bodyCell="{ column, record }">
-      <template v-if="column.key === 'stepName'">
+      <template v-if="column.key === 'planStepId'">
+        <a-tooltip :title="String(record.planStepId)">
+          {{ formatPlanStepId(record.planStepId) }}
+        </a-tooltip>
+      </template>
+      <template v-else-if="column.key === 'planId'">
+        <a-tooltip :title="String(record.planId)">
+          {{ formatPlanId(record.planId) }}
+        </a-tooltip>
+      </template>
+      <template v-else-if="column.key === 'stepName'">
         {{ record.stepName || '-' }}
       </template>
       <template v-else-if="column.key === 'machineName'">
