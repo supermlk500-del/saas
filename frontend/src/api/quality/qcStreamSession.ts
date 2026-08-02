@@ -1,11 +1,12 @@
 import request, { type ApiSuccessResponse } from '@/utils/request'
 import { readAccessToken } from '@/utils/authToken'
 import type { IdValue, QcDetectionBox, QcDetectionResult } from '@/types/domain'
+import type { BrowserInferenceResult } from '@/inference/types'
 
 export type QcStreamSessionCreateRequest = {
   planStepId: IdValue
   qcItemId: IdValue
-  cameraId: IdValue
+  cameraId?: IdValue | null
   inspector?: string
   remark?: string
 }
@@ -44,6 +45,14 @@ export type QcStreamSnapshotRequest = {
   confidenceScore?: number | null
   resultValue?: string | null
   remark?: string
+}
+
+export type QcStreamClientEventRequest = {
+  eventId: string
+  frameIndex: number
+  sourceFile: File
+  resultFile: File
+  result: BrowserInferenceResult
 }
 
 const appendFormValue = (formData: FormData, key: string, value?: string | number | null) => {
@@ -85,6 +94,44 @@ export const closeQcStreamSession = (sessionId: string) =>
     url: `/api/qc-stream-sessions/${sessionId}/close`,
     method: 'post',
   })
+
+export const saveQcStreamClientEvent = async (
+  sessionId: string,
+  payload: QcStreamClientEventRequest,
+): Promise<QcDetectionResult> => {
+  const formData = new FormData()
+  formData.append('sourceFile', payload.sourceFile)
+  formData.append('resultFile', payload.resultFile)
+  formData.append('payload', new Blob([JSON.stringify({
+    eventId: payload.eventId,
+    modelSha256: payload.result.modelSha256,
+    frameIndex: payload.frameIndex,
+    imageWidth: payload.result.imageWidth,
+    imageHeight: payload.result.imageHeight,
+    preprocessTimeMs: payload.result.preprocessTimeMs,
+    inferenceTimeMs: payload.result.inferenceTimeMs,
+    postprocessTimeMs: payload.result.postprocessTimeMs,
+    providerStrategy: payload.result.providerStrategy,
+    detections: payload.result.detections.map((item) => ({
+      classIndex: item.classIndex,
+      code: item.code,
+      label: item.label,
+      score: item.score,
+      x1: item.x1,
+      y1: item.y1,
+      x2: item.x2,
+      y2: item.y2,
+    })),
+  })], { type: 'application/json' }))
+
+  const response = await request<ApiSuccessResponse<QcDetectionResult>>({
+    url: `/api/qc-stream-sessions/${sessionId}/client-events`,
+    method: 'post',
+    data: formData,
+    timeout: 60_000,
+  })
+  return response.data
+}
 
 export const buildQcStreamSocketUrl = (sessionId: string) => {
   const baseApi = (import.meta.env.VITE_APP_BASE_API ?? '/prod-api').replace(/\/+$/, '')

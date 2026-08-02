@@ -18,6 +18,7 @@ import {
   resultJudgeOptions,
 } from '@/constants/dictionaries'
 import type { BatchItem, ExceptionRecordItem, ProductionPlanItem, QcRecordItem } from '@/types/domain'
+import { parseDateTime } from '@/utils/date'
 import { formatInspectionId, formatPlanId, formatPlanStepId } from '@/utils/idFormat'
 
 type MetricCard = {
@@ -42,18 +43,8 @@ const productionPlans = ref<ProductionPlanItem[]>([])
 
 const ACTIVE_EXCEPTION_STATUSES = new Set(['OPEN', 'PROCESSING'])
 
-const parseDate = (value?: string | null) => {
-  if (!value) {
-    return null
-  }
-
-  const normalized = value.includes('T') ? value : value.replace(' ', 'T')
-  const date = new Date(normalized)
-  return Number.isNaN(date.getTime()) ? null : date
-}
-
 const formatShortTime = (value?: string | null) => {
-  const date = parseDate(value)
+  const date = parseDateTime(value)
   if (!date) {
     return '--'
   }
@@ -65,7 +56,7 @@ const formatShortTime = (value?: string | null) => {
 }
 
 const formatDateLabel = (value?: string | null) => {
-  const date = parseDate(value)
+  const date = parseDateTime(value)
   if (!date) {
     return '--'
   }
@@ -187,8 +178,8 @@ const metricCards = computed<MetricCard[]>(() => {
 const qualityActivities = computed(() =>
   [...recentQcRecords.value]
     .sort((left, right) => {
-      const leftTime = parseDate(left.inspectTime)?.getTime() ?? 0
-      const rightTime = parseDate(right.inspectTime)?.getTime() ?? 0
+      const leftTime = parseDateTime(left.inspectTime)?.getTime() ?? 0
+      const rightTime = parseDateTime(right.inspectTime)?.getTime() ?? 0
       return rightTime - leftTime
     })
     .slice(0, 2),
@@ -197,8 +188,8 @@ const qualityActivities = computed(() =>
 const upcomingBatches = computed(() =>
   [...pendingBatches.value]
     .sort((left, right) => {
-      const leftTime = parseDate(left.inDate)?.getTime() ?? 0
-      const rightTime = parseDate(right.inDate)?.getTime() ?? 0
+      const leftTime = parseDateTime(left.inDate)?.getTime() ?? 0
+      const rightTime = parseDateTime(right.inDate)?.getTime() ?? 0
       return leftTime - rightTime
     })
     .slice(0, 2),

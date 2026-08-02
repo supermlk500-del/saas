@@ -8,13 +8,16 @@
     "build": "run-p type-check \"build-only {@}\" --",
     "preview": "vite preview",
     "build-only": "vite build",
+    "test:e2e:onnx": "node e2e/browser-onnx.e2e.mjs",
+    "test": "vitest run",
     "type-check": "vue-tsc --build",
     "format": "prettier --write --experimental-cli src/"
   },
   "dependencies": {
     "@ant-design/icons-vue": "^7.0.1",
     "ant-design-vue": "^4.2.6",
-    "axios": "^1.15.2",
+    "axios": "^1.18.1",
+    "onnxruntime-web": "1.27.0",
     "pinia": "^3.0.4",
     "vue": "beta",
     "vue-router": "^5.0.3"
@@ -23,13 +26,13 @@
     "@tsconfig/node24": "^24.0.4",
     "@types/node": "^24.12.0",
     "@vitejs/plugin-vue": "^6.0.4",
-    "@vitejs/plugin-vue-jsx": "^5.1.4",
     "@vue/tsconfig": "^0.9.0",
     "npm-run-all2": "^8.0.4",
+    "playwright-core": "1.61.1",
     "prettier": "3.8.1",
     "typescript": "~5.9.3",
-    "vite": "^7.3.1",
-    "vite-plugin-vue-devtools": "^8.0.7",
+    "vite": "^7.3.6",
+    "vitest": "3.2.7",
     "vue-tsc": "^3.2.5"
   },
   "engines": {

@@ -1,0 +1,8 @@
+node_modules
+dist
+test-results
+.idea
+.vscode
+.claude
+npm-debug.log*
+*.local

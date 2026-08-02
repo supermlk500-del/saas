@@ -72,6 +72,8 @@ public class QcRecordService {
         validateRequest(request);
         QcRecord entity = new QcRecord();
         copyRequest(request, entity);
+        entity.setDeptId(dataScopeService.currentDeptId());
+        entity.setCreatedBy(dataScopeService.currentUserId());
         qcRecordMapper.insert(entity);
         autoCreateExceptionIfNeeded(entity);
         return entity;

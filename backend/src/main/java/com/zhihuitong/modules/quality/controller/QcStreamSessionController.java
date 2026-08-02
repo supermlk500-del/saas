@@ -1,6 +1,7 @@
 package com.zhihuitong.modules.quality.controller;
 
 import com.zhihuitong.common.domain.AjaxResult;
+import com.zhihuitong.modules.quality.dto.ClientRealtimeEventRequest;
 import com.zhihuitong.modules.quality.dto.QcStreamSessionCreateRequest;
 import com.zhihuitong.modules.quality.dto.QcStreamSnapshotRequest;
 import com.zhihuitong.modules.quality.service.QcStreamSessionService;
@@ -16,7 +17,9 @@ import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestPart;
 import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.multipart.MultipartFile;
 
 @Validated
 @RestController
@@ -42,6 +45,16 @@ public class QcStreamSessionController {
     public AjaxResult snapshot(@PathVariable @NotBlank(message = "sessionId must not be blank") String sessionId,
                                @Valid @ModelAttribute QcStreamSnapshotRequest request) {
         InspectionIntegrationResultVo result = qcStreamSessionService.snapshot(sessionId, request);
+        return AjaxResult.success(result);
+    }
+
+    @PreAuthorize("@auth.hasPermission('quality:realtime:detect')")
+    @PostMapping(value = "/{sessionId}/client-events", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    public AjaxResult clientEvent(@PathVariable @NotBlank(message = "sessionId must not be blank") String sessionId,
+                                  @Valid @RequestPart("payload") ClientRealtimeEventRequest payload,
+                                  @RequestPart("sourceFile") MultipartFile sourceFile,
+                                  @RequestPart("resultFile") MultipartFile resultFile) {
+        InspectionIntegrationResultVo result = qcStreamSessionService.persistClientEvent(sessionId, payload, sourceFile, resultFile);
         return AjaxResult.success(result);
     }
 

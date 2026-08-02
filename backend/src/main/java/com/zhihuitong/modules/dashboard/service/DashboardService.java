@@ -6,13 +6,10 @@ import com.zhihuitong.modules.batch.service.BatchService;
 import com.zhihuitong.modules.batch.vo.BatchListVo;
 import com.zhihuitong.modules.dashboard.vo.DashboardOverviewVo;
 import com.zhihuitong.modules.exception.dto.ExceptionRecordQuery;
-import com.zhihuitong.modules.exception.entity.ExceptionRecord;
 import com.zhihuitong.modules.exception.service.ExceptionRecordService;
 import com.zhihuitong.modules.plan.dto.ProductionPlanQuery;
 import com.zhihuitong.modules.plan.service.ProductionPlanService;
-import com.zhihuitong.modules.plan.vo.ProductionPlanListVo;
 import com.zhihuitong.modules.quality.dto.QcRecordQuery;
-import com.zhihuitong.modules.quality.entity.QcRecord;
 import com.zhihuitong.modules.quality.service.QcRecordService;
 import org.springframework.stereotype.Service;
 

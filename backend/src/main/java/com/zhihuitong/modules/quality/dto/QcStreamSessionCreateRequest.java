@@ -15,8 +15,6 @@ public class QcStreamSessionCreateRequest {
     @Min(value = 1, message = "qcItemId must be greater than 0")
     private Long qcItemId;
 
-    @NotNull(message = "cameraId must not be null")
-    @Min(value = 1, message = "cameraId must be greater than 0")
     private Long cameraId;
 
     private String inspector;

@@ -8,8 +8,10 @@ type Field = {
   width?: string
 }
 
+type SearchValue = string | number | boolean | null | undefined
+
 defineProps<{
-  model: Record<string, any>
+  model: Record<string, SearchValue | SearchValue[]>
   fields: Field[]
 }>()
 

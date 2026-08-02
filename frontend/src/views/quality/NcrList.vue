@@ -11,7 +11,6 @@ import {
   type ExceptionRecordUpsertRequest,
   type ExceptionStatusPatchRequest,
 } from '@/api/exception/exceptionRecord'
-import { fetchNcrs } from '@/api/quality/ncr'
 import { fetchPlanSteps } from '@/api/plan/planStep'
 import TablePage from '@/components/TablePage.vue'
 import SearchBar from '@/components/SearchBar.vue'
@@ -107,7 +106,7 @@ const loadData = async () => {
       exceptionLevel: searchForm.exceptionLevel,
       status: searchForm.status,
     }
-    const response = await fetchNcrs(query)
+    const response = await fetchExceptionRecords(query)
     data.value = response.list
     pagination.total = response.total
   } finally {

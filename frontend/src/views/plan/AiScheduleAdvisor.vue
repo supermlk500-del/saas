@@ -37,6 +37,13 @@ const recordOptions = computed(() =>
   })),
 )
 
+type SelectSearchOption = {
+  label?: string | number
+}
+
+const labelMatches = (input: string, option?: SelectSearchOption) =>
+  String(option?.label ?? '').toLowerCase().includes(input.toLowerCase())
+
 const strategyTone: Record<string, string> = {
   DELIVERY: 'amber',
   UTILIZATION: 'teal',
@@ -152,7 +159,7 @@ onMounted(async () => {
           v-model:value="selectedPlanId"
           show-search
           :options="planOptions"
-          :filter-option="(input: string, option: any) => option.label.toLowerCase().includes(input.toLowerCase())"
+          :filter-option="labelMatches"
           placeholder="订单 / 批次 / 工艺路线"
         />
       </div>

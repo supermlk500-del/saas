@@ -1,9 +1,13 @@
 spring:
+  config:
+    import:
+      - optional:file:.env[.properties]
+      - optional:file:../.env[.properties]
   datasource:
     driver-class-name: com.mysql.cj.jdbc.Driver
     url: jdbc:mysql://${MYSQL_HOST:localhost}:${MYSQL_PORT:3306}/${MYSQL_DATABASE:zhihuitong}?useUnicode=true&characterEncoding=UTF-8&serverTimezone=Asia/Shanghai&allowPublicKeyRetrieval=true&useSSL=false
     username: ${MYSQL_USERNAME:root}
-    password: ${MYSQL_PASSWORD:dev-local-password}
+    password: ${MYSQL_PASSWORD}
     hikari:
       minimum-idle: 5
       maximum-pool-size: 20

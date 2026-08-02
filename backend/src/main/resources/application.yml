@@ -22,7 +22,6 @@ spring:
     redis:
       host: ${REDIS_HOST:localhost}
       port: ${REDIS_PORT:6379}
-
       password: ${REDIS_PASSWORD:}
       database: ${REDIS_DATABASE:0}
       timeout: 3s
@@ -41,10 +40,19 @@ management:
   endpoints:
     web:
       exposure:
-        include: health,info
+        include:
+          - health
+          - info
+          - metrics
+          - prometheus
   endpoint:
     health:
-      show-details: when-authorized
+      show-details: always
+
+
+  metrics:
+    tags:
+      application: zhihuitong
 
 logging:
   level:

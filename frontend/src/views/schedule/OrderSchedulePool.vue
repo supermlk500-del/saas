@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed, onMounted, reactive, ref } from 'vue'
 import { message } from 'ant-design-vue'
-import { fetchOrderSchedulePool } from '@/api/order'
+import { fetchOrderSchedulePool } from '@/api/order/order'
 import { fetchOrderDetail } from '@/api/order/orderDetail'
 import { fetchProcesses } from '@/api/master/process'
 import { createPlan, type ProductionPlanCreateRequest } from '@/api/plan/plan'

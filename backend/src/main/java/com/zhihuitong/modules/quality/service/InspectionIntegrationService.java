@@ -4,7 +4,11 @@ import com.zhihuitong.common.exception.BusinessException;
 import com.zhihuitong.modules.ai.model.YoloDetectResult;
 import com.zhihuitong.modules.ai.util.ImagePreprocessUtils;
 import com.zhihuitong.modules.ai.service.OnnxYoloService;
+import com.zhihuitong.modules.ai.dto.BrowserInferenceClassItem;
 import com.zhihuitong.modules.plan.service.PlanStepService;
+import com.zhihuitong.modules.quality.dto.ClientDetectionBox;
+import com.zhihuitong.modules.quality.dto.ClientImageDetectionRequest;
+import com.zhihuitong.modules.quality.dto.ClientRealtimeEventRequest;
 import com.zhihuitong.modules.quality.dto.InspectionDataUpsertRequest;
 import com.zhihuitong.modules.quality.dto.QcDetectFrameRequest;
 import com.zhihuitong.modules.quality.dto.QcDetectImageRequest;
@@ -27,6 +31,7 @@ import java.io.IOException;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -42,6 +47,7 @@ public class InspectionIntegrationService {
     private final QcCameraService qcCameraService;
     private final PlanStepService planStepService;
     private final InspectionFileStorageService inspectionFileStorageService;
+    private final ClientInferenceResultValidator clientInferenceResultValidator;
 
     public InspectionIntegrationService(OnnxYoloService onnxYoloService,
                                         QcItemService qcItemService,
@@ -49,7 +55,8 @@ public class InspectionIntegrationService {
                                         InspectionDataService inspectionDataService,
                                         QcCameraService qcCameraService,
                                         PlanStepService planStepService,
-                                        InspectionFileStorageService inspectionFileStorageService) {
+                                        InspectionFileStorageService inspectionFileStorageService,
+                                        ClientInferenceResultValidator clientInferenceResultValidator) {
         this.onnxYoloService = onnxYoloService;
         this.qcItemService = qcItemService;
         this.qcRecordService = qcRecordService;
@@ -57,6 +64,7 @@ public class InspectionIntegrationService {
         this.qcCameraService = qcCameraService;
         this.planStepService = planStepService;
         this.inspectionFileStorageService = inspectionFileStorageService;
+        this.clientInferenceResultValidator = clientInferenceResultValidator;
     }
 
     @Transactional
@@ -190,6 +198,108 @@ public class InspectionIntegrationService {
                 storedSourceFile,
                 inspectType,
                 request.getFrameTime()
+        );
+        return buildResult(qcRecord, inspectionDataList, algorithmResult);
+    }
+
+    @Transactional
+    public InspectionIntegrationResultVo persistClientStreamEvent(QcStreamSessionContext sessionContext,
+                                                                 ClientRealtimeEventRequest eventRequest,
+                                                                 MultipartFile sourceFile,
+                                                                 MultipartFile resultFile) {
+        ClientImageDetectionRequest validationRequest = new ClientImageDetectionRequest();
+        validationRequest.setPlanStepId(sessionContext.getPlanStepId());
+        validationRequest.setQcItemId(sessionContext.getQcItemId());
+        validationRequest.setCameraId(sessionContext.getCameraId());
+        validationRequest.setInspector(sessionContext.getInspector());
+        validationRequest.setRemark(sessionContext.getRemark());
+        validationRequest.setModelSha256(eventRequest.getModelSha256());
+        validationRequest.setImageWidth(eventRequest.getImageWidth());
+        validationRequest.setImageHeight(eventRequest.getImageHeight());
+        validationRequest.setPreprocessTimeMs(eventRequest.getPreprocessTimeMs());
+        validationRequest.setInferenceTimeMs(eventRequest.getInferenceTimeMs());
+        validationRequest.setPostprocessTimeMs(eventRequest.getPostprocessTimeMs());
+        validationRequest.setProviderStrategy(eventRequest.getProviderStrategy());
+        validationRequest.setDetections(eventRequest.getDetections());
+
+        planStepService.requirePlanStep(sessionContext.getPlanStepId());
+        qcItemService.requireQcItem(sessionContext.getQcItemId());
+        if (sessionContext.getCameraId() != null) {
+            qcCameraService.requireCamera(sessionContext.getCameraId());
+        }
+        Map<Integer, BrowserInferenceClassItem> classMap = clientInferenceResultValidator.validateImageResult(
+                validationRequest,
+                sourceFile,
+                resultFile
+        );
+
+        StoredInspectionFile storedSourceFile = inspectionFileStorageService.storeSourceImage(sourceFile);
+        StoredInspectionFile storedResultFile = inspectionFileStorageService.storeResultImage(resultFile);
+        YoloDetectResult algorithmResult = buildClientAlgorithmResult(validationRequest, classMap);
+        algorithmResult.setSourceImageUrl(storedSourceFile.getRelativePath());
+        algorithmResult.setImageUrl(storedResultFile.getRelativePath());
+
+        LocalDateTime frameTime = LocalDateTime.now();
+        QcRecord qcRecord = qcRecordService.create(buildQcRecordRequest(
+                sessionContext.getPlanStepId(),
+                sessionContext.getQcItemId(),
+                sessionContext.getCameraId(),
+                "video",
+                algorithmResult,
+                StringUtils.hasText(sessionContext.getInspector()) ? sessionContext.getInspector() : "browser-onnx",
+                mergeRemark(sessionContext.getRemark(), "client-event=" + eventRequest.getEventId()),
+                frameTime
+        ));
+        List<InspectionData> inspectionDataList = persistInspectionData(
+                qcRecord,
+                sessionContext.getCameraId(),
+                algorithmResult,
+                storedSourceFile,
+                "video",
+                frameTime
+        );
+        return buildResult(qcRecord, inspectionDataList, algorithmResult);
+    }
+
+    @Transactional
+    public InspectionIntegrationResultVo persistClientImageDetection(ClientImageDetectionRequest request,
+                                                                    MultipartFile sourceFile,
+                                                                    MultipartFile resultFile) {
+        planStepService.requirePlanStep(request.getPlanStepId());
+        if (request.getCameraId() != null) {
+            qcCameraService.requireCamera(request.getCameraId());
+        }
+        qcItemService.requireQcItem(request.getQcItemId());
+        Map<Integer, BrowserInferenceClassItem> classMap = clientInferenceResultValidator.validateImageResult(
+                request,
+                sourceFile,
+                resultFile
+        );
+
+        StoredInspectionFile storedSourceFile = inspectionFileStorageService.storeSourceImage(sourceFile);
+        StoredInspectionFile storedResultFile = inspectionFileStorageService.storeResultImage(resultFile);
+        YoloDetectResult algorithmResult = buildClientAlgorithmResult(request, classMap);
+        algorithmResult.setSourceImageUrl(storedSourceFile.getRelativePath());
+        algorithmResult.setImageUrl(storedResultFile.getRelativePath());
+
+        String inspectType = "offline";
+        QcRecord qcRecord = qcRecordService.create(buildQcRecordRequest(
+                request.getPlanStepId(),
+                request.getQcItemId(),
+                request.getCameraId(),
+                inspectType,
+                algorithmResult,
+                StringUtils.hasText(request.getInspector()) ? request.getInspector() : "browser-onnx",
+                request.getRemark(),
+                null
+        ));
+        List<InspectionData> inspectionDataList = persistInspectionData(
+                qcRecord,
+                request.getCameraId(),
+                algorithmResult,
+                storedSourceFile,
+                inspectType,
+                null
         );
         return buildResult(qcRecord, inspectionDataList, algorithmResult);
     }
@@ -365,7 +475,7 @@ public class InspectionIntegrationService {
     }
 
     private String resolveQcRemark(YoloDetectResult algorithmResult, String userRemark) {
-        StringBuilder builder = new StringBuilder("Triggered via Java ONNX Runtime detection");
+        StringBuilder builder = new StringBuilder("Triggered via ONNX detection");
         if (StringUtils.hasText(algorithmResult.getDefectType())) {
             builder.append("; defectType=").append(algorithmResult.getDefectType());
         }
@@ -393,7 +503,7 @@ public class InspectionIntegrationService {
     }
 
     private String buildInspectionRemark(String inspectType, boolean resultImage) {
-        StringBuilder builder = new StringBuilder("Stored by Java ONNX detection");
+        StringBuilder builder = new StringBuilder("Stored by ONNX detection");
         builder.append("; inspectType=").append(inspectType);
         if (resultImage) {
             builder.append("; variant=annotated");
@@ -444,5 +554,36 @@ public class InspectionIntegrationService {
             return snapshotRemark.trim();
         }
         return sessionRemark;
+    }
+
+    private YoloDetectResult buildClientAlgorithmResult(ClientImageDetectionRequest request,
+                                                        Map<Integer, BrowserInferenceClassItem> classMap) {
+        List<com.zhihuitong.modules.ai.model.YoloBox> boxes = new ArrayList<>();
+        for (ClientDetectionBox item : request.getDetections()) {
+            BrowserInferenceClassItem classItem = classMap.get(item.getClassIndex());
+            com.zhihuitong.modules.ai.model.YoloBox box = new com.zhihuitong.modules.ai.model.YoloBox();
+            box.setLabel(classItem.getName());
+            box.setScore(item.getScore());
+            box.setX1((int) Math.round(item.getX1()));
+            box.setY1((int) Math.round(item.getY1()));
+            box.setX2((int) Math.round(item.getX2()));
+            box.setY2((int) Math.round(item.getY2()));
+            boxes.add(box);
+        }
+        boxes.sort((left, right) -> Double.compare(right.getScore(), left.getScore()));
+
+        YoloDetectResult result = new YoloDetectResult();
+        result.setInspectType("offline");
+        result.setBoxes(boxes);
+        result.setResultJudge(boxes.isEmpty() ? "PASS" : "FAIL");
+        result.setConfidenceScore(boxes.isEmpty() ? null : java.math.BigDecimal.valueOf(boxes.get(0).getScore()));
+        result.setDefectType(boxes.isEmpty() ? null : boxes.get(0).getLabel());
+        result.setResultValue(boxes.isEmpty()
+                ? "PASS"
+                : boxes.stream()
+                .limit(3)
+                .map(item -> item.getLabel() + ":" + String.format(java.util.Locale.US, "%.2f", item.getScore()))
+                .collect(java.util.stream.Collectors.joining(",")));
+        return result;
     }
 }

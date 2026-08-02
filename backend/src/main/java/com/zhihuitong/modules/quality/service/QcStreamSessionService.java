@@ -5,6 +5,7 @@ import com.zhihuitong.modules.ai.model.YoloDetectResult;
 import com.zhihuitong.modules.ai.service.OnnxYoloService;
 import com.zhihuitong.modules.plan.service.PlanStepService;
 import com.zhihuitong.modules.quality.config.QcStreamProperties;
+import com.zhihuitong.modules.quality.dto.ClientRealtimeEventRequest;
 import com.zhihuitong.modules.quality.dto.QcStreamSessionCreateRequest;
 import com.zhihuitong.modules.quality.dto.QcStreamSnapshotRequest;
 import com.zhihuitong.modules.quality.model.QcStreamSessionContext;
@@ -57,7 +58,9 @@ public class QcStreamSessionService {
     public QcStreamSessionVo createSession(QcStreamSessionCreateRequest request) {
         planStepService.requirePlanStep(request.getPlanStepId());
         qcItemService.requireQcItem(request.getQcItemId());
-        qcCameraService.requireCamera(request.getCameraId());
+        if (request.getCameraId() != null) {
+            qcCameraService.requireCamera(request.getCameraId());
+        }
 
         String sessionId = UUID.randomUUID().toString().replace("-", "");
         LocalDateTime now = LocalDateTime.now();
@@ -149,6 +152,46 @@ public class QcStreamSessionService {
         }
         touch(context);
         return inspectionIntegrationService.snapshotFromStreamSession(context, request);
+    }
+
+    public InspectionIntegrationResultVo persistClientEvent(String sessionId,
+                                                           ClientRealtimeEventRequest request,
+                                                           MultipartFile sourceFile,
+                                                           MultipartFile resultFile) {
+        QcStreamSessionContext context = requireSession(sessionId);
+        touch(context);
+        Map<String, InspectionIntegrationResultVo> acceptedEvents = context.getAcceptedEvents();
+        synchronized (acceptedEvents) {
+            InspectionIntegrationResultVo accepted = acceptedEvents.get(request.getEventId());
+            if (accepted != null) {
+                return accepted;
+            }
+            InspectionIntegrationResultVo result = inspectionIntegrationService.persistClientStreamEvent(
+                    context,
+                    request,
+                    sourceFile,
+                    resultFile
+            );
+            acceptedEvents.put(request.getEventId(), result);
+            updateLatestClientEvent(context, result);
+            return result;
+        }
+    }
+
+    private void updateLatestClientEvent(QcStreamSessionContext context, InspectionIntegrationResultVo result) {
+        QcStreamFrameResultVo latest = new QcStreamFrameResultVo();
+        latest.setSessionId(context.getSessionId());
+        latest.setInspectionId(result.getInspectionId());
+        latest.setFrameTime(LocalDateTime.now());
+        latest.setResultJudge(result.getResultJudge());
+        latest.setConfidenceScore(result.getConfidenceScore());
+        latest.setResultValue(result.getResultValue());
+        latest.setBoxes(result.getBoxes());
+        latest.setRenderMode("overlay");
+        latest.setImageUrl(result.getImageUrl());
+        latest.setSourceImageUrl(result.getSourceImageUrl());
+        latest.setAutoSaved(true);
+        context.setLatestResult(latest);
     }
 
     public void closeSession(String sessionId) {

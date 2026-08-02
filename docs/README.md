@@ -16,6 +16,8 @@
 10. [10-AI能力说明.md](10-AI能力说明.md)
 11. [11-测试与排错.md](11-测试与排错.md)
 12. [12-部署运维.md](12-部署运维.md)
+13. [13-前端ONNX推理完整实施方案.md](13-前端ONNX推理完整实施方案.md)
+14. [浏览器ONNX推理实施记录](browser-onnx-implementation/README.md)
 
 ## 文档目录约定
 
@@ -26,6 +28,8 @@ docs/
 ├── 02-快速启动.md
 ├── ...
 ├── 12-部署运维.md
+├── 13-前端ONNX推理完整实施方案.md
+├── browser-onnx-implementation/ # 当前实现、验收结果和数据补丁
 ├── database/                 # SQL 初始化与迁移脚本
 │   ├── zhihuitong.sql
 │   ├── auth_schema.sql

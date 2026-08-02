@@ -2,7 +2,7 @@
 import { computed, onMounted, reactive, ref, watch } from 'vue'
 import { message } from 'ant-design-vue'
 import { useRoute, useRouter } from 'vue-router'
-import { fetchOrderItems, fetchOrders } from '@/api/order'
+import { fetchOrderItems, fetchOrders } from '@/api/order/order'
 import { fetchBatches } from '@/api/batch/batch'
 import { fetchEquipments } from '@/api/master/equipment'
 import { fetchProcesses } from '@/api/master/process'

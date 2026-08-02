@@ -15,6 +15,7 @@ import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.security.authentication.AuthenticationManager;
+import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.crypto.password.PasswordEncoder;
@@ -23,6 +24,7 @@ import java.util.Set;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatCode;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.verify;
@@ -72,13 +74,33 @@ class AuthServiceTest {
         assertThatCode(() -> service.login(loginRequest(), servletRequest)).doesNotThrowAnyException();
     }
 
+    @Test
+    void loginConvertsAuthenticationFailureToBusinessError() {
+        prepareLoginRequestContext("Chrome");
+        when(authenticationManager.authenticate(any(UsernamePasswordAuthenticationToken.class)))
+                .thenThrow(new BadCredentialsException("bad credentials"));
+
+        assertThatThrownBy(() -> service.login(loginRequest(), servletRequest))
+                .isInstanceOf(com.zhihuitong.common.exception.BusinessException.class)
+                .hasMessage("用户名或密码错误");
+    }
+
+    @Test
+    void loginDoesNotHideUnexpectedAuthenticationInfrastructureError() {
+        prepareClientIpContext();
+        when(authenticationManager.authenticate(any(UsernamePasswordAuthenticationToken.class)))
+                .thenThrow(new IllegalStateException("authentication provider unavailable"));
+
+        assertThatThrownBy(() -> service.login(loginRequest(), servletRequest))
+                .isInstanceOf(IllegalStateException.class)
+                .hasMessage("authentication provider unavailable");
+    }
+
     private void prepareSuccessfulLogin(String userAgent) {
+        prepareLoginRequestContext(userAgent);
         LoginPrincipal principal = new LoginPrincipal(
                 1L, 100L, 1L, 1L, "admin", "超级管理员", null,
                 "admin", Set.of("*:*:*"), Set.of("*"), true);
-        when(servletRequest.getRemoteAddr()).thenReturn("127.0.0.1");
-        when(servletRequest.getHeader("X-Forwarded-For")).thenReturn(null);
-        when(servletRequest.getHeader("User-Agent")).thenReturn(userAgent);
         when(authenticationManager.authenticate(any(UsernamePasswordAuthenticationToken.class)))
                 .thenReturn(authentication);
         when(authentication.getPrincipal()).thenReturn(principal);
@@ -88,6 +110,16 @@ class AuthServiceTest {
             session.setSessionId("session-id");
             return session;
         });
+    }
+
+    private void prepareLoginRequestContext(String userAgent) {
+        prepareClientIpContext();
+        when(servletRequest.getHeader("User-Agent")).thenReturn(userAgent);
+    }
+
+    private void prepareClientIpContext() {
+        when(servletRequest.getRemoteAddr()).thenReturn("127.0.0.1");
+        when(servletRequest.getHeader("X-Forwarded-For")).thenReturn(null);
     }
 
     private LoginRequest loginRequest() {

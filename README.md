@@ -17,7 +17,7 @@
 | 前端 | Vue 3、TypeScript、Vite、Ant Design Vue、Pinia |
 | 后端 | Spring Boot 3、Spring Security、MyBatis-Plus、WebSocket |
 | 数据 | MySQL、Redis |
-| AI | ONNX Runtime、OR-Tools、DeepSeek |
+| AI | ONNX Runtime Web（WebGPU/WASM）、OR-Tools、DeepSeek |
 
 ## 目录
 

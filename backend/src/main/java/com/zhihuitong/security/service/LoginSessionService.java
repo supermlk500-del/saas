@@ -4,6 +4,8 @@ import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.zhihuitong.security.config.SecurityProperties;
 import com.zhihuitong.security.model.LoginSession;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.stereotype.Service;
 
@@ -16,6 +18,8 @@ import java.util.UUID;
 
 @Service
 public class LoginSessionService {
+    private static final Logger log = LoggerFactory.getLogger(LoginSessionService.class);
+
     private static final String SESSION_PREFIX = "auth:session:";
     private static final String USER_SESSION_PREFIX = "auth:user-session:";
 
@@ -58,6 +62,7 @@ public class LoginSessionService {
             }
             return session;
         } catch (JsonProcessingException exception) {
+            log.warn("Invalid login session payload found, session will be deleted: {}", exception.getMessage());
             delete(sessionId);
             return null;
         }
@@ -109,7 +114,8 @@ public class LoginSessionService {
                 if (value == null) continue;
                 try {
                     sessions.add(objectMapper.readValue(value, LoginSession.class));
-                } catch (JsonProcessingException ignored) {
+                } catch (JsonProcessingException exception) {
+                    log.warn("Invalid online session payload found, key will be deleted: {}", exception.getMessage());
                     redisTemplate.delete(key);
                 }
             }
@@ -122,7 +128,8 @@ public class LoginSessionService {
         if (value == null) return null;
         try {
             return objectMapper.readValue(value, LoginSession.class);
-        } catch (JsonProcessingException ignored) {
+        } catch (JsonProcessingException exception) {
+            log.debug("Failed to parse login session without refresh: {}", exception.getMessage());
             return null;
         }
     }

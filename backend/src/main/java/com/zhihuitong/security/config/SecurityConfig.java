@@ -59,7 +59,15 @@ public class SecurityConfig {
                         .accessDeniedHandler(accessDeniedHandler))
                 .authorizeHttpRequests(authorize -> authorize
                         .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
-                        .requestMatchers("/auth/login", "/auth/captcha", "/actuator/health", "/actuator/info").permitAll()
+                        .requestMatchers(
+                                "/auth/login",
+                                "/auth/captcha",
+                                "/actuator",
+                                "/actuator/health/**",
+                                "/actuator/info/**",
+                                "/actuator/metrics/**",
+                                "/actuator/prometheus/**")
+                        .permitAll()
                         .anyRequest().authenticated())
                 .addFilterBefore(jwtFilter, UsernamePasswordAuthenticationFilter.class)
                 .build();

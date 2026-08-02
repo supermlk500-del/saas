@@ -2,6 +2,7 @@ import request, { type ApiListResponse, type ApiSuccessResponse } from '@/utils/
 import type { InspectType } from '@/types/dictionary'
 import type { IdValue, InspectionDataItem, QcDetectionResult, QcRecordItem } from '@/types/domain'
 import type { PageQuery, PageResult } from '@/types/http'
+import type { BrowserInferenceResult } from '@/inference/types'
 
 export type QcRecordQuery = PageQuery & {
   planStepId?: IdValue
@@ -44,6 +45,17 @@ export type QcDetectRequest = {
   cameraId?: IdValue | null
   inspectType?: InspectType
   frameTime?: string | null
+  inspector?: string
+  remark?: string
+}
+
+export type ClientDetectResultRequest = {
+  sourceFile: File
+  resultFile: File
+  result: BrowserInferenceResult
+  planStepId: IdValue
+  qcItemId: IdValue
+  cameraId?: IdValue | null
   inspector?: string
   remark?: string
 }
@@ -151,6 +163,45 @@ export const detectImageQcRecord = (payload: QcDetectRequest) =>
     inspectType: 'offline',
     cameraId: payload.cameraId ?? undefined,
   })
+
+export const saveClientDetectResult = async (payload: ClientDetectResultRequest): Promise<QcDetectionResult> => {
+  const formData = new FormData()
+  formData.append('sourceFile', payload.sourceFile)
+  formData.append('resultFile', payload.resultFile)
+  formData.append('payload', new Blob([JSON.stringify({
+    planStepId: payload.planStepId,
+    qcItemId: payload.qcItemId,
+    cameraId: payload.cameraId ?? null,
+    inspector: payload.inspector?.trim(),
+    remark: payload.remark?.trim(),
+    modelSha256: payload.result.modelSha256,
+    imageWidth: payload.result.imageWidth,
+    imageHeight: payload.result.imageHeight,
+    preprocessTimeMs: payload.result.preprocessTimeMs,
+    inferenceTimeMs: payload.result.inferenceTimeMs,
+    postprocessTimeMs: payload.result.postprocessTimeMs,
+    providerStrategy: payload.result.providerStrategy,
+    detections: payload.result.detections.map((item) => ({
+      classIndex: item.classIndex,
+      code: item.code,
+      label: item.label,
+      score: item.score,
+      x1: item.x1,
+      y1: item.y1,
+      x2: item.x2,
+      y2: item.y2,
+    })),
+  })], { type: 'application/json' }))
+
+  const response = await request<ApiSuccessResponse<RawDetectResponse>>({
+    url: '/api/qc-records/client-detect-results',
+    method: 'post',
+    data: formData,
+    timeout: 60_000,
+  })
+
+  return normalizeDetectResponse(response.data)
+}
 
 export const detectFrameQcRecord = (payload: QcDetectRequest) =>
   postDetect('/api/qc-records/detect-frame', {

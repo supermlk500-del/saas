@@ -35,6 +35,10 @@ public class InspectionFileStorageService {
         return store(file, Path.of(storageProperties.getUploadRoot()), "photo/upload", "source");
     }
 
+    public StoredInspectionFile storeResultImage(MultipartFile file) {
+        return store(file, Path.of(storageProperties.getResultRoot()), "photo/results", "result");
+    }
+
     public StoredInspectionFile storeSourceImage(byte[] imageBytes, String extension) {
         return store(imageBytes, Path.of(storageProperties.getUploadRoot()), "photo/upload", "source", extension);
     }

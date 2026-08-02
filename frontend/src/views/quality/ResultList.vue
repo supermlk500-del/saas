@@ -1,8 +1,7 @@
 <script setup lang="ts">
 import { computed, onMounted, reactive, ref } from 'vue'
 import { message } from 'ant-design-vue'
-import { closeQcRecord, getQcRecord, reviewQcRecord, type QcRecordCloseRequest, type QcRecordQuery, type QcRecordReviewRequest } from '@/api/quality/qcRecord'
-import { fetchResults } from '@/api/quality/result'
+import { closeQcRecord, fetchQcRecords, getQcRecord, reviewQcRecord, type QcRecordCloseRequest, type QcRecordQuery, type QcRecordReviewRequest } from '@/api/quality/qcRecord'
 import { fetchInspectionData } from '@/api/quality/inspectionData'
 import { fetchQcItems } from '@/api/quality/qcItem'
 import TablePage from '@/components/TablePage.vue'
@@ -155,7 +154,7 @@ const loadData = async () => {
       inspectTimeFrom: searchForm.inspectTimeFrom || undefined,
       inspectTimeTo: searchForm.inspectTimeTo || undefined,
     }
-    const response = await fetchResults(query)
+    const response = await fetchQcRecords(query)
     data.value = response.list
     pagination.total = response.total
   } finally {

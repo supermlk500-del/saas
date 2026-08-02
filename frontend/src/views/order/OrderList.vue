@@ -14,7 +14,7 @@ import {
   type OrderQuery,
   type OrderItemUpsertRequest,
   type OrderUpsertRequest,
-} from '@/api/order'
+} from '@/api/order/order'
 import { orderStatusOptions } from '@/constants/dictionaries'
 import { useTable } from '@/hooks/useTable'
 import type { IdValue, OrderSummaryItem } from '@/types/domain'

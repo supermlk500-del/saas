@@ -68,7 +68,8 @@ public class DeepSeekExplanationService {
             }
             return new ExplanationResult(content.trim(), properties.getModel(), true, null);
         } catch (Exception exception) {
-            log.warn("DeepSeek explanation failed, deterministic fallback will be used: {}", exception.getMessage());
+            log.warn("DeepSeek explanation failed, deterministic fallback will be used: type={}, message={}",
+                    exception.getClass().getSimpleName(), exception.getMessage());
             return new ExplanationResult(fallbackText, properties.getModel(), false, "MODEL_CALL_FAILED");
         }
     }

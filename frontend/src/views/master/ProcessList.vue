@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed, onMounted, reactive, ref } from 'vue'
-import { message } from 'ant-design-vue'
+import { message, type TableColumnsType } from 'ant-design-vue'
 import {
   createProcessRoute,
   createProcessStep,
@@ -75,7 +75,7 @@ const searchFields = [
   },
 ]
 
-const columns = [
+const columns: TableColumnsType<ProcessRouteItem> = [
   { title: '路线ID', dataIndex: 'routeId', key: 'routeId', width: 90, responsive: ['xl'] },
   { title: '路线名称', dataIndex: 'routeName', key: 'routeName', width: 190 },
   { title: '描述', dataIndex: 'description', key: 'description' },
@@ -84,7 +84,7 @@ const columns = [
   { title: '操作', key: 'action', width: 220 },
 ]
 
-const routeStepColumns = [
+const routeStepColumns: TableColumnsType<RouteStepItem> = [
   { title: '顺序号', dataIndex: 'sortOrder', key: 'sortOrder', width: 90 },
   { title: '工序编码', dataIndex: 'stepCode', key: 'stepCode', width: 140 },
   { title: '工序名称', dataIndex: 'stepName', key: 'stepName', width: 180 },
@@ -92,7 +92,7 @@ const routeStepColumns = [
   { title: '操作', key: 'action', width: 150 },
 ]
 
-const processStepColumns = [
+const processStepColumns: TableColumnsType<ProcessStepItem> = [
   { title: '工序ID', dataIndex: 'stepId', key: 'stepId', width: 100 },
   { title: '工序编码', dataIndex: 'stepCode', key: 'stepCode', width: 140 },
   { title: '工序名称', dataIndex: 'stepName', key: 'stepName', width: 160 },

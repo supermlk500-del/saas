@@ -4,6 +4,7 @@ import { useRoute, useRouter } from 'vue-router'
 import { fetchPlans, getPlan, getPlanGantt, type GanttResponse } from '@/api/plan/plan'
 import { planStepStatusOptions } from '@/constants/dictionaries'
 import type { GanttTaskItem, IdValue, ProductionPlanDetailItem, ProductionPlanItem } from '@/types/domain'
+import { formatDateTime as formatCommonDateTime, parseDateTime } from '@/utils/date'
 import { formatPlanId, formatPlanStepId } from '@/utils/idFormat'
 
 const route = useRoute()
@@ -66,29 +67,7 @@ const loadPlanOptions = async () => {
   }
 }
 
-const parseDate = (value?: string | null) => {
-  if (!value) {
-    return null
-  }
-
-  const normalized = value.includes('T') ? value : value.replace(' ', 'T')
-  const date = new Date(normalized)
-  return Number.isNaN(date.getTime()) ? null : date
-}
-
-const formatDateTime = (value?: string | null) => {
-  const date = parseDate(value)
-  if (!date) {
-    return '-'
-  }
-
-  const year = date.getFullYear()
-  const month = String(date.getMonth() + 1).padStart(2, '0')
-  const day = String(date.getDate()).padStart(2, '0')
-  const hours = String(date.getHours()).padStart(2, '0')
-  const minutes = String(date.getMinutes()).padStart(2, '0')
-  return `${year}-${month}-${day} ${hours}:${minutes}`
-}
+const formatDateTime = (value?: string | null) => formatCommonDateTime(value, false)
 
 const formatShortTime = (time: number) => {
   const date = new Date(time)
@@ -101,8 +80,8 @@ const formatMonthDay = (time: number) => {
 }
 
 const formatDuration = (start?: string | null, end?: string | null) => {
-  const startDate = parseDate(start)
-  const endDate = parseDate(end)
+  const startDate = parseDateTime(start)
+  const endDate = parseDateTime(end)
   if (!startDate || !endDate || endDate <= startDate) {
     return '-'
   }
@@ -126,8 +105,8 @@ const getStatusMeta = (status?: string) =>
 const taskTimes = computed(() => {
   const tasks = gantt.value?.tasks ?? []
   const timestamps = tasks.flatMap((item) => {
-    const start = parseDate(item.start)?.getTime()
-    const end = parseDate(item.end)?.getTime()
+    const start = parseDateTime(item.start)?.getTime()
+    const end = parseDateTime(item.end)?.getTime()
     return [start, end].filter((value): value is number => typeof value === 'number')
   })
 
@@ -204,8 +183,8 @@ const ganttRows = computed<GanttRow[]>(() => {
   const span = range.max - range.min
 
   return tasks.map((task) => {
-    const start = parseDate(task.start)?.getTime() ?? range.min
-    const end = parseDate(task.end)?.getTime() ?? range.min
+    const start = parseDateTime(task.start)?.getTime() ?? range.min
+    const end = parseDateTime(task.end)?.getTime() ?? range.min
     const rawLeft = ((start - range.min) / span) * 100
     const rawWidth = ((Math.max(end, start + 15 * 60 * 1000) - start) / span) * 100
     const statusMeta = getStatusMeta(task.status)

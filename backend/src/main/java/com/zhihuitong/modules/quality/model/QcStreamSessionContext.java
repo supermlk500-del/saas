@@ -1,6 +1,7 @@
 package com.zhihuitong.modules.quality.model;
 
 import com.zhihuitong.modules.quality.vo.QcStreamFrameResultVo;
+import com.zhihuitong.modules.quality.vo.InspectionIntegrationResultVo;
 import lombok.Data;
 import org.springframework.web.socket.WebSocketSession;
 
@@ -34,4 +35,6 @@ public class QcStreamSessionContext {
     private volatile QcStreamFrameResultVo latestResult;
 
     private final Map<String, WebSocketSession> sockets = new ConcurrentHashMap<>();
+
+    private final Map<String, InspectionIntegrationResultVo> acceptedEvents = new ConcurrentHashMap<>();
 }

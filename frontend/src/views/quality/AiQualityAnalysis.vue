@@ -21,6 +21,13 @@ const recordOptions = computed(() =>
 
 const riskColor = computed(() => ({ HIGH: 'error', MEDIUM: 'warning', LOW: 'success' }[analysis.value?.riskLevel || 'LOW']))
 
+type SelectSearchOption = {
+  label?: string | number
+}
+
+const labelMatches = (input: string, option?: SelectSearchOption) =>
+  String(option?.label ?? '').toLowerCase().includes(input.toLowerCase())
+
 const loadRecords = async () => {
   const response = await fetchQcRecords({ pageNum: 1, pageSize: 100 })
   records.value = response.list
@@ -59,7 +66,7 @@ onMounted(loadRecords)
         v-model:value="selectedId"
         show-search
         :options="recordOptions"
-        :filter-option="(input: string, option: any) => option.label.toLowerCase().includes(input.toLowerCase())"
+        :filter-option="labelMatches"
         placeholder="选择一条质检记录"
       />
       <a-button type="primary" size="large" :loading="loading" @click="runAnalysis">生成分析报告</a-button>

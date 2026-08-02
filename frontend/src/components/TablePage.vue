@@ -1,15 +1,12 @@
 <script setup lang="ts">
+import type { TableColumnsType, TablePaginationConfig } from 'ant-design-vue'
+
 defineProps<{
   title: string
-  columns: any[]
-  data: any[]
+  columns: TableColumnsType
+  data: object[]
   loading?: boolean
-  pagination?: {
-    current: number
-    pageSize: number
-    total: number
-    onChange: (page: number, pageSize: number) => void
-  }
+  pagination?: false | TablePaginationConfig
 }>()
 </script>
 

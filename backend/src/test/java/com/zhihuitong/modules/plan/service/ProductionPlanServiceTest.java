@@ -113,7 +113,7 @@ class ProductionPlanServiceTest {
         route.setRouteId(401L);
         route.setRouteName("染整路线");
 
-        when(productionPlanMapper.selectPage(any(Page.class), any())).thenReturn(page);
+        when(productionPlanMapper.selectPage(any(), any())).thenReturn(page);
         when(orderService.fetchOrderMap(any())).thenReturn(Map.of(101L, orderInfo));
         when(orderService.fetchOrderItemMap(any())).thenReturn(Map.of(201L, orderItem));
         when(batchService.requireBatch(301L)).thenReturn(batchInfo);

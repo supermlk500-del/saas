@@ -17,6 +17,7 @@ import org.slf4j.LoggerFactory;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.Authentication;
+import org.springframework.security.core.AuthenticationException;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
@@ -67,7 +68,7 @@ public class AuthService {
         try {
             authentication = authenticationManager.authenticate(
                     new UsernamePasswordAuthenticationToken(username, request.getPassword()));
-        } catch (Exception exception) {
+        } catch (AuthenticationException exception) {
             recordLogin(null, username, null, ipAddress, servletRequest.getHeader("User-Agent"), "1", "用户名或密码错误");
             throw new BusinessException(401, "用户名或密码错误");
         }
