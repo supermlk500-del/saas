@@ -1,6 +1,6 @@
 # Zhihuitong Backend
 
-AI胚布排产质检系统后端，基于 Spring Boot、Spring Security、MyBatis-Plus、MySQL、Redis、WebSocket 和 ONNX Runtime。
+AI 胚布排产质检系统后端，基于 Spring Boot、Spring Security、MyBatis-Plus、MySQL 和 Redis。质检 ONNX 模型在浏览器 Worker 中运行，后端只负责模型分发、结果校验、文件保存和业务落库。
 
 ## 本地启动
 

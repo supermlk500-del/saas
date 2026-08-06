@@ -1,5 +1,4 @@
 import request, { type ApiListResponse, type ApiSuccessResponse } from '@/utils/request'
-import type { InspectType } from '@/types/dictionary'
 import type { IdValue, InspectionDataItem, QcDetectionResult, QcRecordItem } from '@/types/domain'
 import type { PageQuery, PageResult } from '@/types/http'
 import type { BrowserInferenceResult } from '@/inference/types'
@@ -38,17 +37,6 @@ export type QcRecordCloseRequest = {
   closeRemark?: string
 }
 
-export type QcDetectRequest = {
-  file: File
-  planStepId: IdValue
-  qcItemId: IdValue
-  cameraId?: IdValue | null
-  inspectType?: InspectType
-  frameTime?: string | null
-  inspector?: string
-  remark?: string
-}
-
 export type ClientDetectResultRequest = {
   sourceFile: File
   resultFile: File
@@ -64,12 +52,6 @@ type RawDetectResponse = QcDetectionResult & {
   algorithmResult?: QcDetectionResult
   qcRecord?: QcRecordItem
   inspectionDataList?: InspectionDataItem[]
-}
-
-const appendFormValue = (formData: FormData, key: string, value?: string | number | null) => {
-  if (value !== undefined && value !== null && value !== '') {
-    formData.append(key, String(value))
-  }
 }
 
 const normalizeDetectResponse = (raw: RawDetectResponse): QcDetectionResult => {
@@ -134,36 +116,6 @@ export const closeQcRecord = (inspectionId: IdValue, payload: QcRecordCloseReque
     data: payload,
   })
 
-const buildDetectFormData = (payload: QcDetectRequest) => {
-  const formData = new FormData()
-  formData.append('file', payload.file)
-  appendFormValue(formData, 'planStepId', payload.planStepId)
-  appendFormValue(formData, 'qcItemId', payload.qcItemId)
-  appendFormValue(formData, 'cameraId', payload.cameraId)
-  appendFormValue(formData, 'inspectType', payload.inspectType)
-  appendFormValue(formData, 'frameTime', payload.frameTime)
-  appendFormValue(formData, 'inspector', payload.inspector?.trim())
-  appendFormValue(formData, 'remark', payload.remark?.trim())
-  return formData
-}
-
-const postDetect = async (url: string, payload: QcDetectRequest): Promise<QcDetectionResult> => {
-  const response = await request<ApiSuccessResponse<RawDetectResponse>>({
-    url,
-    method: 'post',
-    data: buildDetectFormData(payload),
-  })
-
-  return normalizeDetectResponse(response.data)
-}
-
-export const detectImageQcRecord = (payload: QcDetectRequest) =>
-  postDetect('/api/qc-records/detect-image', {
-    ...payload,
-    inspectType: 'offline',
-    cameraId: payload.cameraId ?? undefined,
-  })
-
 export const saveClientDetectResult = async (payload: ClientDetectResultRequest): Promise<QcDetectionResult> => {
   const formData = new FormData()
   formData.append('sourceFile', payload.sourceFile)
@@ -202,12 +154,6 @@ export const saveClientDetectResult = async (payload: ClientDetectResultRequest)
 
   return normalizeDetectResponse(response.data)
 }
-
-export const detectFrameQcRecord = (payload: QcDetectRequest) =>
-  postDetect('/api/qc-records/detect-frame', {
-    ...payload,
-    inspectType: 'video',
-  })
 
 export const fetchQcRecords = async (query?: QcRecordQuery): Promise<PageResult<QcRecordItem>> => {
   const response = await listQcRecords(query)

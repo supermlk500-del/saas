@@ -24,6 +24,7 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
+import org.mockito.ArgumentCaptor;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.time.LocalDateTime;
@@ -33,6 +34,7 @@ import java.util.Map;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.doNothing;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
@@ -175,6 +177,37 @@ class ProductionPlanServiceTest {
                 .containsExactly(409, "该批次已有活跃生产计划，计划ID：888，请先处理后再创建");
 
         verify(productionPlanMapper, never()).insert(any(ProductionPlan.class));
+    }
+
+    @Test
+    void createShouldPopulateAuditFieldsFromCurrentUserContext() {
+        BatchInfo batchInfo = new BatchInfo();
+        batchInfo.setBatchId(301L);
+        ProcessRoute route = new ProcessRoute();
+        route.setRouteId(401L);
+        route.setIsActive(1);
+
+        when(orderService.requireOrder(101L)).thenReturn(new OrderInfo());
+        doNothing().when(orderService).validateOrderItemForOrder(101L, 201L);
+        doNothing().when(orderService).ensureBatchAllocatedToOrderItem(101L, 201L, 301L);
+        when(productionPlanMapper.selectList(any())).thenReturn(List.of());
+        when(batchService.requireBatch(301L)).thenReturn(batchInfo);
+        when(processRouteService.requireRoute(401L)).thenReturn(route);
+        when(processRouteService.listRequiredRouteSteps(401L)).thenReturn(List.of());
+        when(dataScopeService.currentDeptId()).thenReturn(100L);
+        when(dataScopeService.currentUserId()).thenReturn(200L);
+        doAnswer(invocation -> {
+            ProductionPlan plan = invocation.getArgument(0);
+            plan.setPlanId(500L);
+            return 1;
+        }).when(productionPlanMapper).insert(any(ProductionPlan.class));
+
+        productionPlanService.create(buildCreateRequest());
+
+        ArgumentCaptor<ProductionPlan> planCaptor = ArgumentCaptor.forClass(ProductionPlan.class);
+        verify(productionPlanMapper).insert(planCaptor.capture());
+        assertThat(planCaptor.getValue().getDeptId()).isEqualTo(100L);
+        assertThat(planCaptor.getValue().getCreatedBy()).isEqualTo(200L);
     }
 
     private ProductionPlanCreateRequest buildCreateRequest() {

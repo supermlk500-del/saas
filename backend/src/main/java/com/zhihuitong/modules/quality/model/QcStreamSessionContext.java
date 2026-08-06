@@ -1,9 +1,7 @@
 package com.zhihuitong.modules.quality.model;
 
-import com.zhihuitong.modules.quality.vo.QcStreamFrameResultVo;
 import com.zhihuitong.modules.quality.vo.InspectionIntegrationResultVo;
 import lombok.Data;
-import org.springframework.web.socket.WebSocketSession;
 
 import java.time.LocalDateTime;
 import java.util.Map;
@@ -13,28 +11,17 @@ import java.util.concurrent.ConcurrentHashMap;
 public class QcStreamSessionContext {
 
     private String sessionId;
-
     private Long planStepId;
-
     private Long qcItemId;
-
     private Long cameraId;
-
     private String inspector;
-
     private String remark;
-
     private LocalDateTime startedAt;
-
     private volatile LocalDateTime lastActiveAt;
 
-    private volatile LocalDateTime lastProcessedAt;
-
-    private volatile LocalDateTime lastAutoSavedAt;
-
-    private volatile QcStreamFrameResultVo latestResult;
-
-    private final Map<String, WebSocketSession> sockets = new ConcurrentHashMap<>();
-
+    /**
+     * Session-local idempotency cache for retried evidence uploads.
+     * The client event id is generated once per continuous hit.
+     */
     private final Map<String, InspectionIntegrationResultVo> acceptedEvents = new ConcurrentHashMap<>();
 }

@@ -1,6 +1,5 @@
 package com.zhihuitong.modules.quality.service;
 
-import com.zhihuitong.modules.ai.service.OnnxYoloService;
 import com.zhihuitong.modules.plan.service.PlanStepService;
 import com.zhihuitong.modules.quality.config.QcStreamProperties;
 import com.zhihuitong.modules.quality.dto.ClientRealtimeEventRequest;
@@ -31,7 +30,6 @@ class QcStreamSessionServiceTest {
                 mock(PlanStepService.class),
                 mock(QcItemService.class),
                 mock(QcCameraService.class),
-                mock(OnnxYoloService.class),
                 inspectionIntegrationService
         );
     }

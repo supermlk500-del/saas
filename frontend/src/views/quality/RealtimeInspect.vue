@@ -38,6 +38,10 @@ import { formatDateTime } from '@/utils/date'
 import { formatInspectionId, formatPlanId, formatPlanStepId } from '@/utils/idFormat'
 import { isLikelyResultImage, isLikelySourceImage, resolveImageUrl } from '@/utils/image'
 import { browserInferenceClient } from '@/inference/browserInferenceClient'
+import {
+  EvidenceUploadQueue,
+  type EvidenceQueueSnapshot,
+} from '@/inference/evidenceUploadQueue'
 import { renderDetectionsToBlob } from '@/inference/rendering'
 import { RealtimeHitTracker } from '@/inference/realtimeHitTracker'
 import type { BrowserInferenceResult, InferenceInitializationStage } from '@/inference/types'
@@ -56,7 +60,7 @@ type MonitorFormModel = {
 
 const MAX_UPLOAD_SIZE_MB = 50
 const MAX_UPLOAD_SIZE = MAX_UPLOAD_SIZE_MB * 1024 * 1024
-const DEFAULT_STREAM_FRAME_INTERVAL_MS = 100
+const DEFAULT_TARGET_INFERENCE_FPS = 10
 const MAX_REALTIME_FRAME_EDGE = 1280
 const REALTIME_EVIDENCE_JPEG_QUALITY = 0.88
 
@@ -106,7 +110,6 @@ const monitorFormRef = ref()
 const reviewFormRef = ref()
 
 const videoRef = ref<HTMLVideoElement | null>(null)
-const frameCanvasRef = ref<HTMLCanvasElement | null>(null)
 const overlayCanvasRef = ref<HTMLCanvasElement | null>(null)
 
 const loading = ref(false)
@@ -153,6 +156,7 @@ const latestSavedFrameTime = ref('')
 const latestFrameFile = ref<File | null>(null)
 const frameSending = ref(false)
 const streamMessageCount = ref(0)
+const streamSkippedFrameCount = ref(0)
 const renderMode = ref('overlay')
 const motionCompensationEnabled = ref(true)
 const motionCompensationDirection = ref<MotionCompensationDirection>('none')
@@ -163,14 +167,40 @@ const overlayJudge = ref<ResultJudge | undefined>()
 const overlayStatusText = ref('点击“开始检测”后显示实时叠框')
 const overlaySourceSize = ref({ width: 0, height: 0 })
 
-const frameLoopTimerId = ref<number | null>(null)
+const frameLoopAnimationId = ref<number | null>(null)
 const realtimeFrameIndex = ref(0)
-const eventUploadInFlight = ref(false)
 const latestBrowserInferenceResult = ref<BrowserInferenceResult | null>(null)
 const streamRunToken = ref(0)
+const evidenceQueueSnapshot = ref<EvidenceQueueSnapshot>({
+  queued: 0,
+  uploading: 0,
+  succeeded: 0,
+  failed: 0,
+  dropped: 0,
+})
+const evidenceQueueError = ref('')
+const recentRecordsRefreshTimerId = ref<number | null>(null)
+let lastInferenceStartedAt = 0
 
 const realtimeHitTracker = new RealtimeHitTracker()
 let unsubscribeInitializationStage: (() => void) | null = null
+
+const evidenceUploadQueue = new EvidenceUploadQueue<QcDetectionResult>({
+  concurrency: 1,
+  maxPending: 2,
+  maxRetries: 2,
+  retryDelayMs: 500,
+  onStatus: (event) => {
+    evidenceQueueSnapshot.value = event.snapshot
+    if (event.status === 'failed') {
+      evidenceQueueError.value = event.error instanceof Error ? event.error.message : '证据保存失败'
+    } else if (event.status === 'succeeded') {
+      evidenceQueueError.value = ''
+    } else if (event.status === 'dropped') {
+      evidenceQueueError.value = '证据队列已满，已跳过本次重复证据'
+    }
+  },
+})
 
 const monitorForm = reactive<MonitorFormModel>({
   inspector: '',
@@ -457,6 +487,16 @@ const reloadRecentRecords = async () => {
   recentRecords.value = qcRecordRes.list
 }
 
+const scheduleRecentRecordsRefresh = () => {
+  if (recentRecordsRefreshTimerId.value !== null) {
+    return
+  }
+  recentRecordsRefreshTimerId.value = window.setTimeout(() => {
+    recentRecordsRefreshTimerId.value = null
+    void reloadRecentRecords().catch(() => undefined)
+  }, 1000)
+}
+
 const loadBaseData = async () => {
   loading.value = true
   try {
@@ -662,11 +702,12 @@ const ensureCameraPreview = async () => {
   }
 }
 
-const clearFrameLoopTimer = () => {
-  if (frameLoopTimerId.value !== null) {
-    window.clearTimeout(frameLoopTimerId.value)
-    frameLoopTimerId.value = null
+const clearFrameLoop = () => {
+  if (frameLoopAnimationId.value !== null) {
+    window.cancelAnimationFrame(frameLoopAnimationId.value)
+    frameLoopAnimationId.value = null
   }
+  lastInferenceStartedAt = 0
 }
 
 const resetStreamVisualState = (statusText = '点击“开始检测”后显示实时叠框') => {
@@ -676,6 +717,7 @@ const resetStreamVisualState = (statusText = '点击“开始检测”后显示�
   latestFramePayloadSize.value = 0
   latestBrowserInferenceResult.value = null
   streamMessageCount.value = 0
+  streamSkippedFrameCount.value = 0
   renderMode.value = 'overlay'
   overlaySourceSize.value = { width: 0, height: 0 }
   clearOverlay(statusText)
@@ -694,39 +736,50 @@ const renderFrameBlob = async (canvas: HTMLCanvasElement, quality: number) =>
 
 type CapturedRealtimeFrame = {
   bitmap: ImageBitmap
-  canvas: HTMLCanvasElement
-  width: number
-  height: number
 }
 
-const captureCurrentFrame = async (targetCanvas?: HTMLCanvasElement): Promise<CapturedRealtimeFrame> => {
+const getRealtimeCaptureSize = (video: HTMLVideoElement) => {
+  const maxEdge = Math.max(video.videoWidth, video.videoHeight)
+  const scale = maxEdge > MAX_REALTIME_FRAME_EDGE ? MAX_REALTIME_FRAME_EDGE / maxEdge : 1
+  return {
+    width: Math.max(Math.round(video.videoWidth * scale), 1),
+    height: Math.max(Math.round(video.videoHeight * scale), 1),
+  }
+}
+
+const captureCurrentFrame = async (): Promise<CapturedRealtimeFrame> => {
   const video = videoRef.value
-  const canvas = targetCanvas ?? frameCanvasRef.value
-  if (!video || !canvas || !video.videoWidth || !video.videoHeight) {
+  if (!video || !video.videoWidth || !video.videoHeight) {
     throw new Error('摄像头画面未就绪')
   }
 
-  const sourceWidth = video.videoWidth
-  const sourceHeight = video.videoHeight
-  const context = canvas.getContext('2d')
-  if (!context) {
-    throw new Error('无法创建视频帧画布')
+  const { width, height } = getRealtimeCaptureSize(video)
+  const bitmap = await createImageBitmap(video, {
+    resizeWidth: width,
+    resizeHeight: height,
+    resizeQuality: 'low',
+  })
+  return {
+    bitmap,
   }
-  const maxEdge = Math.max(sourceWidth, sourceHeight)
-  const scale = maxEdge > MAX_REALTIME_FRAME_EDGE ? MAX_REALTIME_FRAME_EDGE / maxEdge : 1
-  const width = Math.max(Math.round(sourceWidth * scale), 1)
-  const height = Math.max(Math.round(sourceHeight * scale), 1)
+}
+
+const captureEvidenceCanvas = () => {
+  const video = videoRef.value
+  const canvas = document.createElement('canvas')
+  if (!video || !video.videoWidth || !video.videoHeight) {
+    throw new Error('摄像头画面未就绪')
+  }
+  const { width, height } = getRealtimeCaptureSize(video)
   canvas.width = width
   canvas.height = height
+  const context = canvas.getContext('2d')
+  if (!context) {
+    throw new Error('无法创建证据图画布')
+  }
   context.clearRect(0, 0, width, height)
   context.drawImage(video, 0, 0, width, height)
-  overlaySourceSize.value = { width, height }
-  return {
-    bitmap: await createImageBitmap(canvas),
-    canvas,
-    width,
-    height,
-  }
+  return canvas
 }
 
 const createEvidenceSourceFile = async (canvas: HTMLCanvasElement, prefix = 'stream') => {
@@ -734,21 +787,107 @@ const createEvidenceSourceFile = async (canvas: HTMLCanvasElement, prefix = 'str
   return new File([blob], `${prefix}_${Date.now()}.jpg`, { type: 'image/jpeg' })
 }
 
-const getRealtimeFrameIntervalMs = () => {
-  const targetFps = browserInferenceClient.currentManifest?.targetInferenceFps
-  return targetFps && targetFps > 0
-    ? Math.max(20, Math.round(1000 / targetFps))
-    : DEFAULT_STREAM_FRAME_INTERVAL_MS
+const disposeEvidenceCanvas = (canvas: HTMLCanvasElement) => {
+  canvas.width = 1
+  canvas.height = 1
+  canvas.remove()
 }
 
-const scheduleNextFrameSend = (delay = getRealtimeFrameIntervalMs()) => {
-  clearFrameLoopTimer()
-  if (!streamRunning.value) {
+const applySavedStreamEvent = (
+  sessionId: string,
+  frameTime: string,
+  frameFile: File,
+  resultFile: File,
+  savedResult: QcDetectionResult,
+  runToken: number,
+) => {
+  if (runToken !== streamRunToken.value) {
     return
   }
-  frameLoopTimerId.value = window.setTimeout(() => {
-    void pushCurrentFrame()
-  }, delay)
+  latestFrameFile.value = frameFile
+  latestFramePayloadSize.value = frameFile.size + resultFile.size
+  latestSavedFrameTime.value = frameTime
+  detectionResult.value = savedResult
+  if (savedResult.qcRecord) {
+    activeRecord.value = savedResult.qcRecord
+  }
+  if (savedResult.inspectionDataList) {
+    activeAttachments.value = savedResult.inspectionDataList
+  }
+  if (streamResult.value?.sessionId === sessionId) {
+    streamResult.value = {
+      ...streamResult.value,
+      inspectionId: savedResult.inspectionId,
+      imageUrl: savedResult.imageUrl,
+      sourceImageUrl: savedResult.sourceImageUrl,
+      autoSaved: true,
+    }
+  }
+  streamStatusText.value = '缺陷证据已异步保存'
+  scheduleRecentRecordsRefresh()
+}
+
+const enqueueEvidenceSave = (
+  sessionId: string,
+  frameTime: string,
+  frameIndex: number,
+  sourceCanvas: HTMLCanvasElement,
+  result: BrowserInferenceResult,
+  runToken: number,
+) => {
+  const eventId = `${sessionId}-${frameIndex}-${Date.now()}`
+  return evidenceUploadQueue.enqueue({
+    id: eventId,
+    dispose: () => disposeEvidenceCanvas(sourceCanvas),
+    run: async () => {
+      const frameFile = await createEvidenceSourceFile(sourceCanvas)
+      const renderBitmap = await createImageBitmap(sourceCanvas)
+      let resultBlob: Blob
+      try {
+        resultBlob = await renderDetectionsToBlob(renderBitmap, result.imageWidth, result.imageHeight, result.detections)
+      } finally {
+        renderBitmap.close()
+      }
+      const resultFile = new File([resultBlob], `stream_result_${Date.now()}.jpg`, { type: 'image/jpeg' })
+      const savedResult = await saveQcStreamClientEvent(sessionId, {
+        eventId,
+        frameIndex,
+        frameTime,
+        sourceFile: frameFile,
+        resultFile,
+        result,
+      })
+      applySavedStreamEvent(sessionId, frameTime, frameFile, resultFile, savedResult, runToken)
+      return savedResult
+    },
+  })
+}
+
+const getRealtimeFrameIntervalMs = () => {
+  const targetFps = browserInferenceClient.currentManifest?.targetInferenceFps
+  const safeTargetFps = targetFps && targetFps > 0 ? targetFps : DEFAULT_TARGET_INFERENCE_FPS
+  return Math.max(16, Math.round(1000 / safeTargetFps))
+}
+
+const startFrameLoop = () => {
+  clearFrameLoop()
+  lastInferenceStartedAt = performance.now() - getRealtimeFrameIntervalMs()
+
+  const tick = (timestamp: number) => {
+    if (!streamRunning.value) {
+      return
+    }
+    const intervalMs = getRealtimeFrameIntervalMs()
+    if (frameSending.value) {
+      streamSkippedFrameCount.value += 1
+    } else if (timestamp - lastInferenceStartedAt >= intervalMs) {
+      lastInferenceStartedAt = timestamp
+      void pushCurrentFrame()
+    }
+    frameLoopAnimationId.value = window.requestAnimationFrame(tick)
+  }
+
+  frameLoopAnimationId.value = window.requestAnimationFrame(tick)
 }
 
 const pushCurrentFrame = async () => {
@@ -757,7 +896,6 @@ const pushCurrentFrame = async () => {
     return
   }
   if (frameSending.value) {
-    scheduleNextFrameSend(20)
     return
   }
 
@@ -800,36 +938,15 @@ const pushCurrentFrame = async () => {
     drawBoxesOnOverlay(result.detections, result.resultJudge)
 
     const hitState = realtimeHitTracker.consume(result.detections.length > 0, browserInferenceClient.currentManifest?.continuousHitFrames ?? 3)
-    if (hitState.shouldPersist && !eventUploadInFlight.value) {
-      eventUploadInFlight.value = true
+    if (hitState.shouldPersist) {
+      let accepted = false
       try {
-        const frameFile = await createEvidenceSourceFile(frame.canvas)
-        const renderBitmap = await createImageBitmap(frame.canvas)
-        const resultBlob = await renderDetectionsToBlob(renderBitmap, result.imageWidth, result.imageHeight, result.detections)
-        renderBitmap.close()
-        const resultFile = new File([resultBlob], `stream_result_${Date.now()}.jpg`, { type: 'image/jpeg' })
-        if (!streamRunning.value || runToken !== streamRunToken.value) {
-          return
-        }
-        const savedResult = await saveQcStreamClientEvent(sessionId, {
-          eventId: `${sessionId}-${realtimeFrameIndex.value}-${Date.now()}`,
-          frameIndex: realtimeFrameIndex.value,
-          sourceFile: frameFile,
-          resultFile,
-          result,
-        })
-        latestFrameFile.value = frameFile
-        latestFramePayloadSize.value = frameFile.size + resultFile.size
-        latestSavedFrameTime.value = frameTime
-        messageData.autoSaved = true
-        messageData.inspectionId = savedResult.inspectionId
-        messageData.imageUrl = savedResult.imageUrl
-        messageData.sourceImageUrl = savedResult.sourceImageUrl
-        await acceptStoredResult(savedResult)
-        streamStatusText.value = '连续缺陷成立，已保存证据图'
-      } finally {
-        eventUploadInFlight.value = false
+        const evidenceCanvas = captureEvidenceCanvas()
+        accepted = enqueueEvidenceSave(sessionId, frameTime, realtimeFrameIndex.value, evidenceCanvas, result, runToken)
+      } catch (error) {
+        evidenceQueueError.value = error instanceof Error ? error.message : '证据图快照失败'
       }
+      streamStatusText.value = accepted ? '连续缺陷成立，证据进入异步保存队列' : '连续缺陷成立，但证据队列暂时不可用'
     } else {
       streamStatusText.value = result.detections.length ? `检测到缺陷，连续 ${hitState.hitStreak} 帧` : '实时检测进行中'
     }
@@ -839,12 +956,7 @@ const pushCurrentFrame = async () => {
       streamStatusText.value = '浏览器本地推理失败'
     }
   } finally {
-    if (runToken === streamRunToken.value) {
-      frameSending.value = false
-      if (streamRunning.value) {
-        scheduleNextFrameSend(streamErrorText.value ? getRealtimeFrameIntervalMs() * 2 : undefined)
-      }
-    }
+    frameSending.value = false
   }
 }
 
@@ -888,7 +1000,7 @@ const startRealtimeDetection = async () => {
     streamRunning.value = true
     realtimeFrameIndex.value = 0
     realtimeHitTracker.reset()
-    scheduleNextFrameSend(0)
+    startFrameLoop()
     message.success('浏览器本地实时质检已启动')
   } catch (error) {
     streamErrorText.value = error instanceof Error ? error.message : '实时视频流检测启动失败'
@@ -900,7 +1012,11 @@ const startRealtimeDetection = async () => {
   }
 }
 
-const stopRealtimeDetection = async ({ silent = false, preserveStatusText = false }: { silent?: boolean; preserveStatusText?: boolean } = {}) => {
+const stopRealtimeDetection = async ({
+  silent = false,
+  preserveStatusText = false,
+  disposeInference = false,
+}: { silent?: boolean; preserveStatusText?: boolean; disposeInference?: boolean } = {}) => {
   if (streamClosing.value) {
     return
   }
@@ -909,10 +1025,11 @@ const stopRealtimeDetection = async ({ silent = false, preserveStatusText = fals
   const sessionId = streamSession.value?.sessionId
   streamRunToken.value += 1
   streamRunning.value = false
-  clearFrameLoopTimer()
+  clearFrameLoop()
   frameSending.value = false
-  eventUploadInFlight.value = false
   realtimeHitTracker.reset()
+  evidenceUploadQueue.stopAccepting()
+  await evidenceUploadQueue.drain(3_000)
 
   try {
     if (sessionId) {
@@ -924,11 +1041,13 @@ const stopRealtimeDetection = async ({ silent = false, preserveStatusText = fals
         }
       }
     }
-    try {
-      await browserInferenceClient.dispose()
-    } catch (error) {
-      if (!silent) {
-        message.error('浏览器推理资源释放失败，刷新页面后可重新初始化')
+    if (disposeInference) {
+      try {
+        await browserInferenceClient.dispose()
+      } catch (error) {
+        if (!silent) {
+          message.error('浏览器推理资源释放失败，刷新页面后可重新初始化')
+        }
       }
     }
   } finally {
@@ -939,6 +1058,13 @@ const stopRealtimeDetection = async ({ silent = false, preserveStatusText = fals
     if (!preserveStatusText) {
       streamStatusText.value = '实时检测已停止'
       streamErrorText.value = ''
+    }
+    if (evidenceUploadQueue.isIdle) {
+      evidenceUploadQueue.reset()
+    } else {
+      // A slow request may still be finishing after the bounded stop wait.
+      // Allow the next session to enqueue work without resetting the active task.
+      evidenceUploadQueue.resumeAccepting()
     }
     streamClosing.value = false
   }
@@ -952,18 +1078,20 @@ const saveCurrentFrameSnapshot = async () => {
   }
 
   snapshotSaving.value = true
+  let evidenceCanvas: HTMLCanvasElement | null = null
   try {
-    const frame = await captureCurrentFrame(document.createElement('canvas'))
-    const result = await browserInferenceClient.infer(frame.bitmap, {
+    evidenceCanvas = captureEvidenceCanvas()
+    const frameBitmap = await createImageBitmap(evidenceCanvas)
+    const result = await browserInferenceClient.infer(frameBitmap, {
       confidenceThreshold: browserInferenceClient.currentManifest?.realtimeConfidenceThreshold,
     })
-    const frameFile = await createEvidenceSourceFile(frame.canvas, 'stream_manual_source')
+    const frameFile = await createEvidenceSourceFile(evidenceCanvas, 'stream_manual_source')
     latestBrowserInferenceResult.value = result
     latestFrameFile.value = frameFile
     revokeObjectUrl('frame')
     frameSourcePreview.value = URL.createObjectURL(frameFile)
 
-    const renderBitmap = await createImageBitmap(frame.canvas)
+    const renderBitmap = await createImageBitmap(evidenceCanvas)
     const resultBlob = await renderDetectionsToBlob(renderBitmap, result.imageWidth, result.imageHeight, result.detections)
     renderBitmap.close()
     const resultFile = new File([resultBlob], `stream_manual_${Date.now()}.jpg`, { type: 'image/jpeg' })
@@ -971,6 +1099,7 @@ const saveCurrentFrameSnapshot = async () => {
     const snapshotResult = await saveQcStreamClientEvent(sessionId, {
       eventId: `${sessionId}-manual-${Date.now()}`,
       frameIndex: realtimeFrameIndex.value,
+      frameTime: latestFrameTime.value || formatDateTime(new Date().toISOString()),
       sourceFile: frameFile,
       resultFile,
       result,
@@ -980,8 +1109,11 @@ const saveCurrentFrameSnapshot = async () => {
     await acceptStoredResult(snapshotResult)
     message.success('关键帧已保存为正式质检记录')
   } catch (error) {
-    message.error('关键帧保存失败，请确认实时会话与后端快照接口')
+    message.error('关键帧保存失败，请确认实时会话与证据保存接口')
   } finally {
+    if (evidenceCanvas) {
+      disposeEvidenceCanvas(evidenceCanvas)
+    }
     snapshotSaving.value = false
   }
 }
@@ -1044,6 +1176,8 @@ const resetMonitorForm = async () => {
   streamStatusText.value = '未开始实时检测'
   streamErrorText.value = ''
   latestSavedFrameTime.value = ''
+  evidenceQueueError.value = ''
+  evidenceQueueSnapshot.value = evidenceUploadQueue.snapshot
   revokeObjectUrl('frame')
   clearStoredDetectionState()
 }
@@ -1074,7 +1208,11 @@ onMounted(async () => {
 onBeforeUnmount(() => {
   unsubscribeInitializationStage?.()
   window.removeEventListener('resize', handleViewportResize)
-  void stopRealtimeDetection({ silent: true })
+  if (recentRecordsRefreshTimerId.value !== null) {
+    window.clearTimeout(recentRecordsRefreshTimerId.value)
+    recentRecordsRefreshTimerId.value = null
+  }
+  void stopRealtimeDetection({ silent: true, disposeInference: true })
   revokeObjectUrl()
 })
 </script>
@@ -1102,7 +1240,6 @@ onBeforeUnmount(() => {
                           </div>
                           <a-empty v-if="!cameraActive" description="点击“开始检测”后调用电脑摄像头并进入实时流检测" />
                         </div>
-                        <canvas ref="frameCanvasRef" class="capture-canvas" />
                         <div class="camera-actions">
                           <a-button :loading="cameraLoading" :disabled="cameraActive" @click="ensureCameraPreview">打开视频预览</a-button>
                           <a-button :disabled="!cameraActive && !streamRunning" @click="stopRealtimeDetection">停止检测</a-button>
@@ -1368,6 +1505,11 @@ onBeforeUnmount(() => {
             <a-descriptions-item label="状态">{{ streamStatusText }}</a-descriptions-item>
             <a-descriptions-item label="错误信息">{{ streamErrorText || '-' }}</a-descriptions-item>
             <a-descriptions-item label="实时消息数">{{ streamMessageCount }}</a-descriptions-item>
+            <a-descriptions-item label="调度跳过帧数">{{ streamSkippedFrameCount }}</a-descriptions-item>
+            <a-descriptions-item label="证据队列">
+              待处理 {{ evidenceQueueSnapshot.queued }} / 保存中 {{ evidenceQueueSnapshot.uploading }} / 失败 {{ evidenceQueueSnapshot.failed }} / 丢弃 {{ evidenceQueueSnapshot.dropped }}
+            </a-descriptions-item>
+            <a-descriptions-item label="证据状态">{{ evidenceQueueError || '实时推理不等待证据保存' }}</a-descriptions-item>
             <a-descriptions-item label="最近延迟">
               {{ latestFrameLatency !== null ? `${latestFrameLatency} ms` : '-' }}
             </a-descriptions-item>
@@ -1614,10 +1756,6 @@ onBeforeUnmount(() => {
   background: rgba(15, 23, 42, 0.72);
   backdrop-filter: blur(8px);
   pointer-events: none;
-}
-
-.capture-canvas {
-  display: none;
 }
 
 :deep(.compact-preview-box img),

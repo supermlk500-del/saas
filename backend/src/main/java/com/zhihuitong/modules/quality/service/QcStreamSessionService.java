@@ -1,32 +1,30 @@
 package com.zhihuitong.modules.quality.service;
 
 import com.zhihuitong.common.exception.BusinessException;
-import com.zhihuitong.modules.ai.model.YoloDetectResult;
-import com.zhihuitong.modules.ai.service.OnnxYoloService;
 import com.zhihuitong.modules.plan.service.PlanStepService;
 import com.zhihuitong.modules.quality.config.QcStreamProperties;
 import com.zhihuitong.modules.quality.dto.ClientRealtimeEventRequest;
 import com.zhihuitong.modules.quality.dto.QcStreamSessionCreateRequest;
-import com.zhihuitong.modules.quality.dto.QcStreamSnapshotRequest;
 import com.zhihuitong.modules.quality.model.QcStreamSessionContext;
 import com.zhihuitong.modules.quality.vo.InspectionIntegrationResultVo;
-import com.zhihuitong.modules.quality.vo.QcStreamFrameResultVo;
 import com.zhihuitong.modules.quality.vo.QcStreamSessionVo;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
-import org.springframework.web.socket.CloseStatus;
-import org.springframework.web.socket.WebSocketSession;
 
-import java.io.IOException;
+import java.time.Duration;
 import java.time.LocalDateTime;
-import java.util.Base64;
 import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 
+/**
+ * Owns the short-lived browser QC session and persists client-generated evidence.
+ * Model inference deliberately stays in the browser worker to keep the realtime
+ * loop independent from backend request latency.
+ */
 @Service
 public class QcStreamSessionService {
 
@@ -38,20 +36,17 @@ public class QcStreamSessionService {
     private final PlanStepService planStepService;
     private final QcItemService qcItemService;
     private final QcCameraService qcCameraService;
-    private final OnnxYoloService onnxYoloService;
     private final InspectionIntegrationService inspectionIntegrationService;
 
     public QcStreamSessionService(QcStreamProperties qcStreamProperties,
                                   PlanStepService planStepService,
                                   QcItemService qcItemService,
                                   QcCameraService qcCameraService,
-                                  OnnxYoloService onnxYoloService,
                                   InspectionIntegrationService inspectionIntegrationService) {
         this.qcStreamProperties = qcStreamProperties;
         this.planStepService = planStepService;
         this.qcItemService = qcItemService;
         this.qcCameraService = qcCameraService;
-        this.onnxYoloService = onnxYoloService;
         this.inspectionIntegrationService = inspectionIntegrationService;
     }
 
@@ -83,81 +78,10 @@ public class QcStreamSessionService {
         return response;
     }
 
-    public void registerSocket(String sessionId, WebSocketSession socketSession) {
-        QcStreamSessionContext context = requireSession(sessionId);
-        context.getSockets().put(socketSession.getId(), socketSession);
-        touch(context);
-    }
-
-    public void unregisterSocket(String sessionId, String socketId) {
-        QcStreamSessionContext context = sessions.get(sessionId);
-        if (context != null) {
-            context.getSockets().remove(socketId);
-            touch(context);
-        }
-    }
-
-    public QcStreamFrameResultVo processFrame(String sessionId, byte[] frameBytes, LocalDateTime frameTime) {
-        QcStreamSessionContext context = requireSession(sessionId);
-        touch(context);
-        if (frameBytes == null || frameBytes.length == 0) {
-            throw new BusinessException(400, "Realtime frame must not be empty");
-        }
-        if (frameBytes.length > qcStreamProperties.getMaxFrameSizeBytes()) {
-            throw new BusinessException(400, "Realtime frame exceeds max-frame-size-bytes limit");
-        }
-
-        LocalDateTime now = LocalDateTime.now();
-        if (context.getLastProcessedAt() != null
-                && java.time.Duration.between(context.getLastProcessedAt(), now).toMillis() < qcStreamProperties.getFrameSampleIntervalMs()) {
-            QcStreamFrameResultVo latest = context.getLatestResult();
-            if (latest != null) {
-                latest.setRenderMode("reuse");
-                latest.setFrameTime(frameTime != null ? frameTime : now);
-                touch(context);
-                return latest;
-            }
-        }
-
-        YoloDetectResult detectResult = onnxYoloService.detectRealtime(frameBytes, "video");
-        QcStreamFrameResultVo response = new QcStreamFrameResultVo();
-        response.setSessionId(sessionId);
-        response.setFrameTime(frameTime != null ? frameTime : now);
-        response.setResultJudge(detectResult.getResultJudge());
-        response.setConfidenceScore(detectResult.getConfidenceScore());
-        response.setResultValue(detectResult.getResultValue());
-        response.setBoxes(detectResult.getBoxes());
-        response.setRenderMode("overlay");
-        response.setAutoSaved(false);
-
-        InspectionIntegrationResultVo savedResult = autoSaveDefectFrameIfNeeded(context, frameBytes, response.getFrameTime(), detectResult, now);
-        if (savedResult != null) {
-            response.setInspectionId(savedResult.getInspectionId());
-            response.setImageUrl(savedResult.getImageUrl());
-            response.setSourceImageUrl(savedResult.getSourceImageUrl());
-            response.setAutoSaved(true);
-        }
-
-        context.setLatestResult(response);
-        context.setLastProcessedAt(now);
-        touch(context);
-        return response;
-    }
-
-    public InspectionIntegrationResultVo snapshot(String sessionId, QcStreamSnapshotRequest request) {
-        QcStreamSessionContext context = requireSession(sessionId);
-        MultipartFile file = request.getFile();
-        if (file == null || file.isEmpty()) {
-            throw new BusinessException(400, "snapshot file must not be empty");
-        }
-        touch(context);
-        return inspectionIntegrationService.snapshotFromStreamSession(context, request);
-    }
-
     public InspectionIntegrationResultVo persistClientEvent(String sessionId,
-                                                           ClientRealtimeEventRequest request,
-                                                           MultipartFile sourceFile,
-                                                           MultipartFile resultFile) {
+                                                            ClientRealtimeEventRequest request,
+                                                            MultipartFile sourceFile,
+                                                            MultipartFile resultFile) {
         QcStreamSessionContext context = requireSession(sessionId);
         touch(context);
         Map<String, InspectionIntegrationResultVo> acceptedEvents = context.getAcceptedEvents();
@@ -173,33 +97,14 @@ public class QcStreamSessionService {
                     resultFile
             );
             acceptedEvents.put(request.getEventId(), result);
-            updateLatestClientEvent(context, result);
             return result;
         }
     }
 
-    private void updateLatestClientEvent(QcStreamSessionContext context, InspectionIntegrationResultVo result) {
-        QcStreamFrameResultVo latest = new QcStreamFrameResultVo();
-        latest.setSessionId(context.getSessionId());
-        latest.setInspectionId(result.getInspectionId());
-        latest.setFrameTime(LocalDateTime.now());
-        latest.setResultJudge(result.getResultJudge());
-        latest.setConfidenceScore(result.getConfidenceScore());
-        latest.setResultValue(result.getResultValue());
-        latest.setBoxes(result.getBoxes());
-        latest.setRenderMode("overlay");
-        latest.setImageUrl(result.getImageUrl());
-        latest.setSourceImageUrl(result.getSourceImageUrl());
-        latest.setAutoSaved(true);
-        context.setLatestResult(latest);
-    }
-
     public void closeSession(String sessionId) {
-        QcStreamSessionContext context = sessions.remove(sessionId);
-        if (context == null) {
+        if (sessions.remove(sessionId) == null) {
             throw new BusinessException(404, "QC stream session not found");
         }
-        closeSockets(context);
     }
 
     public QcStreamSessionContext requireSession(String sessionId) {
@@ -215,89 +120,16 @@ public class QcStreamSessionService {
         LocalDateTime now = LocalDateTime.now();
         sessions.entrySet().removeIf(entry -> {
             QcStreamSessionContext context = entry.getValue();
-            long idleMillis = java.time.Duration.between(context.getLastActiveAt(), now).toMillis();
+            long idleMillis = Duration.between(context.getLastActiveAt(), now).toMillis();
             if (idleMillis < qcStreamProperties.getSessionIdleTimeoutMs()) {
                 return false;
             }
             log.info("Closing expired QC stream session: sessionId={}, idleMillis={}", context.getSessionId(), idleMillis);
-            closeSockets(context);
             return true;
         });
-    }
-
-    public byte[] decodeBase64Frame(String frameData) {
-        if (frameData == null || frameData.isBlank()) {
-            throw new BusinessException(400, "frameData must not be blank");
-        }
-        String normalized = frameData;
-        int commaIndex = normalized.indexOf(',');
-        if (commaIndex >= 0) {
-            normalized = normalized.substring(commaIndex + 1);
-        }
-        try {
-            return Base64.getDecoder().decode(normalized);
-        } catch (IllegalArgumentException exception) {
-            throw new BusinessException(400, "frameData is not a valid base64 image");
-        }
-    }
-
-    private void closeSockets(QcStreamSessionContext context) {
-        context.getSockets().values().forEach(socket -> {
-            try {
-                if (socket.isOpen()) {
-                    socket.close(CloseStatus.NORMAL);
-                }
-            } catch (IOException exception) {
-                log.warn("Failed to close websocket session cleanly: sessionId={}, socketId={}, message={}",
-                        context.getSessionId(), socket.getId(), exception.getMessage());
-            }
-        });
-        context.getSockets().clear();
     }
 
     private void touch(QcStreamSessionContext context) {
         context.setLastActiveAt(LocalDateTime.now());
-    }
-
-    private InspectionIntegrationResultVo autoSaveDefectFrameIfNeeded(QcStreamSessionContext context,
-                                                                      byte[] frameBytes,
-                                                                      LocalDateTime frameTime,
-                                                                      YoloDetectResult detectResult,
-                                                                      LocalDateTime now) {
-        if (!isDefectFrame(detectResult) || !autoSaveIntervalElapsed(context, now)) {
-            return null;
-        }
-        context.setLastAutoSavedAt(now);
-        try {
-            return inspectionIntegrationService.persistStreamDetection(
-                    context,
-                    frameBytes,
-                    frameTime,
-                    detectResult
-            );
-        } catch (RuntimeException exception) {
-            log.warn("Failed to auto-save QC stream defect frame: sessionId={}, message={}",
-                    context.getSessionId(),
-                    exception.getMessage());
-            return null;
-        }
-    }
-
-    private boolean isDefectFrame(YoloDetectResult detectResult) {
-        if (detectResult == null) {
-            return false;
-        }
-        if ("FAIL".equalsIgnoreCase(detectResult.getResultJudge()) || "RECHECK".equalsIgnoreCase(detectResult.getResultJudge())) {
-            return true;
-        }
-        return detectResult.getBoxes() != null && !detectResult.getBoxes().isEmpty();
-    }
-
-    private boolean autoSaveIntervalElapsed(QcStreamSessionContext context, LocalDateTime now) {
-        if (context.getLastAutoSavedAt() == null) {
-            return true;
-        }
-        long elapsedMillis = java.time.Duration.between(context.getLastAutoSavedAt(), now).toMillis();
-        return elapsedMillis >= qcStreamProperties.getAutoSaveDefectIntervalMs();
     }
 }

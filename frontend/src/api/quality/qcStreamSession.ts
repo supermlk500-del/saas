@@ -1,5 +1,4 @@
 import request, { type ApiSuccessResponse } from '@/utils/request'
-import { readAccessToken } from '@/utils/authToken'
 import type { IdValue, QcDetectionBox, QcDetectionResult } from '@/types/domain'
 import type { BrowserInferenceResult } from '@/inference/types'
 
@@ -33,32 +32,13 @@ export type QcStreamResultMessage = {
   autoSaved?: boolean
 }
 
-export type QcStreamFramePayload = {
-  frameData: string
-  frameTime?: string
-}
-
-export type QcStreamSnapshotRequest = {
-  file: File
-  frameTime?: string
-  resultJudge?: string
-  confidenceScore?: number | null
-  resultValue?: string | null
-  remark?: string
-}
-
 export type QcStreamClientEventRequest = {
   eventId: string
   frameIndex: number
+  frameTime?: string
   sourceFile: File
   resultFile: File
   result: BrowserInferenceResult
-}
-
-const appendFormValue = (formData: FormData, key: string, value?: string | number | null) => {
-  if (value !== undefined && value !== null && value !== '') {
-    formData.append(key, String(value))
-  }
 }
 
 export const createQcStreamSession = (payload: QcStreamSessionCreateRequest) =>
@@ -67,27 +47,6 @@ export const createQcStreamSession = (payload: QcStreamSessionCreateRequest) =>
     method: 'post',
     data: payload,
   })
-
-export const snapshotQcStreamSession = async (
-  sessionId: string,
-  payload: QcStreamSnapshotRequest,
-): Promise<QcDetectionResult> => {
-  const formData = new FormData()
-  formData.append('file', payload.file)
-  appendFormValue(formData, 'frameTime', payload.frameTime)
-  appendFormValue(formData, 'resultJudge', payload.resultJudge)
-  appendFormValue(formData, 'confidenceScore', payload.confidenceScore)
-  appendFormValue(formData, 'resultValue', payload.resultValue)
-  appendFormValue(formData, 'remark', payload.remark?.trim())
-
-  const response = await request<ApiSuccessResponse<QcDetectionResult>>({
-    url: `/api/qc-stream-sessions/${sessionId}/snapshot`,
-    method: 'post',
-    data: formData,
-  })
-
-  return response.data
-}
 
 export const closeQcStreamSession = (sessionId: string) =>
   request<ApiSuccessResponse<null>>({
@@ -104,6 +63,7 @@ export const saveQcStreamClientEvent = async (
   formData.append('resultFile', payload.resultFile)
   formData.append('payload', new Blob([JSON.stringify({
     eventId: payload.eventId,
+    frameTime: payload.frameTime,
     modelSha256: payload.result.modelSha256,
     frameIndex: payload.frameIndex,
     imageWidth: payload.result.imageWidth,
@@ -131,16 +91,4 @@ export const saveQcStreamClientEvent = async (
     timeout: 60_000,
   })
   return response.data
-}
-
-export const buildQcStreamSocketUrl = (sessionId: string) => {
-  const baseApi = (import.meta.env.VITE_APP_BASE_API ?? '/prod-api').replace(/\/+$/, '')
-  const wsProtocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:'
-  const tokenQuery = `?access_token=${encodeURIComponent(readAccessToken())}`
-
-  if (/^https?:\/\//i.test(baseApi)) {
-    return `${baseApi.replace(/^http/i, 'ws')}/ws/qc-stream/${sessionId}${tokenQuery}`
-  }
-
-  return `${wsProtocol}//${window.location.host}${baseApi}/ws/qc-stream/${sessionId}${tokenQuery}`
 }

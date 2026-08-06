@@ -74,18 +74,10 @@ ai:
   yolo:
     enabled: ${AI_YOLO_ENABLED:true}
     model-path: ${AI_YOLO_MODEL_PATH}
-    conf-threshold: ${AI_YOLO_CONF_THRESHOLD:0.5}
-    iou-threshold: ${AI_YOLO_IOU_THRESHOLD:0.45}
-    video-conf-threshold: ${AI_YOLO_VIDEO_CONF_THRESHOLD:0.25}
-    video-fallback-conf-threshold: ${AI_YOLO_VIDEO_FALLBACK_CONF_THRESHOLD:0.12}
-    video-iou-threshold: ${AI_YOLO_VIDEO_IOU_THRESHOLD:0.40}
 
 qc:
   stream:
-    frame-sample-interval-ms: 250
     session-idle-timeout-ms: 300000
-    max-frame-size-bytes: 5242880
-    auto-save-defect-interval-ms: 5000
 security:
   jwt:
     secret: ${JWT_SECRET}

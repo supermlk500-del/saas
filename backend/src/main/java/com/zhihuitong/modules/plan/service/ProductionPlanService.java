@@ -154,6 +154,8 @@ public class ProductionPlanService {
         plan.setPlanStartTime(request.getPlanStartTime());
         plan.setPlanEndTime(request.getPlanEndTime());
         plan.setStatus("DRAFT");
+        plan.setDeptId(dataScopeService.currentDeptId());
+        plan.setCreatedBy(dataScopeService.currentUserId());
         plan.setCreateTime(LocalDateTime.now());
         plan.setRemark(request.getRemark());
         productionPlanMapper.insert(plan);

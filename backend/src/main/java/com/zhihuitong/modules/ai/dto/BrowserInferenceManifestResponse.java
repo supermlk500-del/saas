@@ -43,7 +43,7 @@ public class BrowserInferenceManifestResponse {
 
     private float realtimeConfidenceThreshold;
 
-    private int targetInferenceFps = 10;
+    private int targetInferenceFps = 60;
 
     private int continuousHitFrames = 3;
 

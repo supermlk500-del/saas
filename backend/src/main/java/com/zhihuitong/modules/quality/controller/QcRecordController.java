@@ -2,8 +2,6 @@ package com.zhihuitong.modules.quality.controller;
 
 import com.zhihuitong.common.domain.AjaxResult;
 import com.zhihuitong.common.domain.TableDataInfo;
-import com.zhihuitong.modules.quality.dto.QcDetectFrameRequest;
-import com.zhihuitong.modules.quality.dto.QcDetectImageRequest;
 import com.zhihuitong.modules.quality.dto.ClientImageDetectionRequest;
 import com.zhihuitong.modules.quality.dto.QcRecordCloseRequest;
 import com.zhihuitong.modules.quality.dto.QcRecordQuery;
@@ -62,25 +60,11 @@ public class QcRecordController {
     }
 
     @PreAuthorize("@auth.hasPermission('quality:realtime:detect')")
-    @PostMapping(value = "/detect-image", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
-    public AjaxResult detectImage(@Valid @ModelAttribute QcDetectImageRequest request) {
-        InspectionIntegrationResultVo result = inspectionIntegrationService.detectImage(request);
-        return AjaxResult.success(result);
-    }
-
-    @PreAuthorize("@auth.hasPermission('quality:realtime:detect')")
     @PostMapping(value = "/client-detect-results", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     public AjaxResult clientDetectResults(@Valid @RequestPart("payload") ClientImageDetectionRequest payload,
                                           @RequestPart("sourceFile") MultipartFile sourceFile,
                                           @RequestPart("resultFile") MultipartFile resultFile) {
         InspectionIntegrationResultVo result = inspectionIntegrationService.persistClientImageDetection(payload, sourceFile, resultFile);
-        return AjaxResult.success(result);
-    }
-
-    @PreAuthorize("@auth.hasPermission('quality:realtime:detect')")
-    @PostMapping(value = "/detect-frame", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
-    public AjaxResult detectFrame(@Valid @ModelAttribute QcDetectFrameRequest request) {
-        InspectionIntegrationResultVo result = inspectionIntegrationService.detectFrame(request);
         return AjaxResult.success(result);
     }
 
