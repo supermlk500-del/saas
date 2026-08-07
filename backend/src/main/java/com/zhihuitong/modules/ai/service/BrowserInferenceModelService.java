@@ -3,6 +3,7 @@ package com.zhihuitong.modules.ai.service;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import jakarta.annotation.PostConstruct;
 import com.zhihuitong.common.exception.BusinessException;
+import com.zhihuitong.common.util.ProjectPathResolver;
 import com.zhihuitong.modules.ai.config.AiYoloProperties;
 import com.zhihuitong.modules.ai.dto.BrowserInferenceManifestResponse;
 import org.springframework.core.io.ClassPathResource;
@@ -114,7 +115,7 @@ public class BrowserInferenceModelService {
         if (!StringUtils.hasText(properties.getModelPath())) {
             throw new BusinessException(500, "ai.yolo.model-path must not be blank");
         }
-        Path modelPath = Path.of(properties.getModelPath()).toAbsolutePath().normalize();
+        Path modelPath = ProjectPathResolver.resolve(properties.getModelPath());
         if (!Files.isRegularFile(modelPath)) {
             throw new BusinessException(500, "ONNX model file does not exist: " + modelPath);
         }

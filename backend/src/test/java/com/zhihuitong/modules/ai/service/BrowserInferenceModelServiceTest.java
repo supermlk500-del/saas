@@ -1,6 +1,7 @@
 package com.zhihuitong.modules.ai.service;
 
 import com.zhihuitong.common.exception.BusinessException;
+import com.zhihuitong.common.util.ProjectPathResolver;
 import com.zhihuitong.modules.ai.config.AiYoloProperties;
 import com.zhihuitong.modules.ai.dto.BrowserInferenceManifestResponse;
 import org.junit.jupiter.api.Test;
@@ -18,7 +19,7 @@ class BrowserInferenceModelServiceTest {
 
     @Test
     void getManifest_inspectsRealOnnxModel() {
-        Path modelPath = Path.of("..", "docs", "best.onnx").toAbsolutePath().normalize();
+        Path modelPath = ProjectPathResolver.resolve("docs/best.onnx");
         assertTrue(Files.isRegularFile(modelPath), "docs/best.onnx must exist for browser inference");
 
         AiYoloProperties properties = new AiYoloProperties();
@@ -47,7 +48,7 @@ class BrowserInferenceModelServiceTest {
 
     @Test
     void getModelResource_rejectsInactiveSha() {
-        Path modelPath = Path.of("..", "docs", "best.onnx").toAbsolutePath().normalize();
+        Path modelPath = ProjectPathResolver.resolve("docs/best.onnx");
         AiYoloProperties properties = new AiYoloProperties();
         properties.setModelPath(modelPath.toString());
         BrowserInferenceModelService service = new BrowserInferenceModelService(properties);

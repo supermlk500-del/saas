@@ -1,6 +1,7 @@
 package com.zhihuitong.modules.quality.config;
 
 import com.zhihuitong.common.exception.BusinessException;
+import com.zhihuitong.common.util.ProjectPathResolver;
 import jakarta.annotation.PostConstruct;
 import org.springframework.stereotype.Component;
 
@@ -19,8 +20,8 @@ public class InspectionStorageValidator {
 
     @PostConstruct
     public void validateDirectories() {
-        ensureUsableDirectory(Path.of(properties.getUploadRoot()), "inspection.storage.upload-root");
-        ensureUsableDirectory(Path.of(properties.getResultRoot()), "inspection.storage.result-root");
+        ensureUsableDirectory(ProjectPathResolver.resolve(properties.getUploadRoot()), "inspection.storage.upload-root");
+        ensureUsableDirectory(ProjectPathResolver.resolve(properties.getResultRoot()), "inspection.storage.result-root");
     }
 
     private void ensureUsableDirectory(Path path, String propertyName) {

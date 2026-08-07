@@ -1,6 +1,7 @@
 package com.zhihuitong.config;
 
 import com.zhihuitong.modules.quality.config.InspectionStorageProperties;
+import com.zhihuitong.common.util.ProjectPathResolver;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.web.servlet.config.annotation.CorsRegistry;
 import org.springframework.web.servlet.config.annotation.ResourceHandlerRegistry;
@@ -36,6 +37,6 @@ public class WebMvcConfig implements WebMvcConfigurer {
     }
 
     private String toFileResourceLocation(String path) {
-        return Path.of(path).toUri().toString();
+        return ProjectPathResolver.resolve(path).toUri().toString();
     }
 }

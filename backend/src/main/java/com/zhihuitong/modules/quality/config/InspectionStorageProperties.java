@@ -13,8 +13,8 @@ import org.springframework.validation.annotation.Validated;
 public class InspectionStorageProperties {
 
     @NotBlank(message = "inspection.storage.upload-root must not be blank")
-    private String uploadRoot = "C:/Users/lhr/Desktop/saas/photo/upload";
+    private String uploadRoot = "photo/upload";
 
     @NotBlank(message = "inspection.storage.result-root must not be blank")
-    private String resultRoot = "C:/Users/lhr/Desktop/saas/photo/results";
+    private String resultRoot = "photo/results";
 }

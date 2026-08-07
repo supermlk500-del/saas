@@ -19,5 +19,5 @@ public class AiYoloProperties {
     private boolean enabled = true;
 
     @NotBlank(message = "ai.yolo.model-path must not be blank")
-    private String modelPath = "C:/Users/lhr/Desktop/saas/docs/best.onnx";
+    private String modelPath = "docs/best.onnx";
 }

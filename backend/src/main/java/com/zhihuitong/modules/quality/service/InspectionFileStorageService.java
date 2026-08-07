@@ -1,6 +1,7 @@
 package com.zhihuitong.modules.quality.service;
 
 import com.zhihuitong.common.exception.BusinessException;
+import com.zhihuitong.common.util.ProjectPathResolver;
 import com.zhihuitong.modules.quality.config.InspectionStorageProperties;
 import com.zhihuitong.modules.quality.vo.StoredInspectionFile;
 import org.springframework.stereotype.Service;
@@ -32,19 +33,19 @@ public class InspectionFileStorageService {
     }
 
     public StoredInspectionFile storeSourceImage(MultipartFile file) {
-        return store(file, Path.of(storageProperties.getUploadRoot()), "photo/upload", "source");
+        return store(file, ProjectPathResolver.resolve(storageProperties.getUploadRoot()), "photo/upload", "source");
     }
 
     public StoredInspectionFile storeResultImage(MultipartFile file) {
-        return store(file, Path.of(storageProperties.getResultRoot()), "photo/results", "result");
+        return store(file, ProjectPathResolver.resolve(storageProperties.getResultRoot()), "photo/results", "result");
     }
 
     public StoredInspectionFile storeSourceImage(byte[] imageBytes, String extension) {
-        return store(imageBytes, Path.of(storageProperties.getUploadRoot()), "photo/upload", "source", extension);
+        return store(imageBytes, ProjectPathResolver.resolve(storageProperties.getUploadRoot()), "photo/upload", "source", extension);
     }
 
     public StoredInspectionFile prepareResultImageTarget(String extension) {
-        return prepareTarget(Path.of(storageProperties.getResultRoot()), "photo/results", "result", extension);
+        return prepareTarget(ProjectPathResolver.resolve(storageProperties.getResultRoot()), "photo/results", "result", extension);
     }
 
     public void writeRenderedImage(BufferedImage image, StoredInspectionFile targetFile) {
@@ -64,11 +65,11 @@ public class InspectionFileStorageService {
     }
 
     public String normalizeResultRelativePath(String path) {
-        return normalizeRelativePath(path, Path.of(storageProperties.getResultRoot()), "photo/results");
+        return normalizeRelativePath(path, ProjectPathResolver.resolve(storageProperties.getResultRoot()), "photo/results");
     }
 
     public String normalizeUploadRelativePath(String path) {
-        return normalizeRelativePath(path, Path.of(storageProperties.getUploadRoot()), "photo/upload");
+        return normalizeRelativePath(path, ProjectPathResolver.resolve(storageProperties.getUploadRoot()), "photo/upload");
     }
 
     private StoredInspectionFile store(MultipartFile file, Path rootPath, String relativePrefix, String logicalPrefix) {

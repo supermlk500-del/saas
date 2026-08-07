@@ -1,6 +1,7 @@
 package com.zhihuitong.modules.ai.config;
 
 import com.zhihuitong.common.exception.BusinessException;
+import com.zhihuitong.common.util.ProjectPathResolver;
 import jakarta.annotation.PostConstruct;
 import org.springframework.stereotype.Component;
 
@@ -21,7 +22,7 @@ public class AiYoloValidator {
         if (!properties.isEnabled()) {
             return;
         }
-        Path modelPath = Path.of(properties.getModelPath());
+        Path modelPath = ProjectPathResolver.resolve(properties.getModelPath());
         if (!Files.exists(modelPath) || !Files.isRegularFile(modelPath)) {
             throw new BusinessException(500, "YOLO ONNX model file does not exist: " + modelPath);
         }

@@ -21,12 +21,12 @@ mybatis-plus:
 
 inspection:
   storage:
-    upload-root: ${INSPECTION_STORAGE_UPLOAD_ROOT:D:/lhr/Desktop/saas/photo/upload}
-    result-root: ${INSPECTION_STORAGE_RESULT_ROOT:D:/lhr/Desktop/saas/photo/results}
+    upload-root: ${INSPECTION_STORAGE_UPLOAD_ROOT:photo/upload}
+    result-root: ${INSPECTION_STORAGE_RESULT_ROOT:photo/results}
 
 ai:
   yolo:
-    model-path: ${AI_YOLO_MODEL_PATH:D:/lhr/Desktop/saas/docs/best.onnx}
+    model-path: ${AI_YOLO_MODEL_PATH:docs/best.onnx}
 
 security:
   jwt:
