@@ -12,6 +12,7 @@ import jakarta.validation.constraints.Min;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.ModelAttribute;
 import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -61,5 +62,12 @@ public class MachineController {
     public AjaxResult patchStatus(@PathVariable @Min(value = 1, message = "machineId must be greater than 0") Long machineId,
                                   @Valid @RequestBody MachineStatusPatchRequest request) {
         return AjaxResult.success(machineService.patchStatus(machineId, request));
+    }
+
+    @PreAuthorize("@auth.hasPermission('process:machine:edit')")
+    @DeleteMapping("/{machineId}")
+    public AjaxResult delete(@PathVariable @Min(value = 1, message = "machineId must be greater than 0") Long machineId) {
+        machineService.delete(machineId);
+        return AjaxResult.success();
     }
 }

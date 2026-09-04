@@ -1,0 +1,18 @@
+services:
+  zhihuitong:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: zhihuitong:latest
+    container_name: zhihuitong
+    restart: unless-stopped
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    env_file:
+      - ./deploy/single-container/env
+    ports:
+      - "18080:80"
+    volumes:
+      - ./photo:/app/data
+    mem_limit: 1g
+    cpus: 1.5

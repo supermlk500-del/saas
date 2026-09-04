@@ -34,7 +34,8 @@ docs/
 │   ├── zhihuitong.sql
 │   ├── auth_schema.sql
 │   ├── data_scope_migration.sql
-│   └── ai_decision_support_migration.sql
+│   ├── ai_decision_support_migration.sql
+│   └── 20260830_device_capability_menu.sql
 └── best.onnx                 # 质检模型运行资产，后端默认会读取它
 ```
 

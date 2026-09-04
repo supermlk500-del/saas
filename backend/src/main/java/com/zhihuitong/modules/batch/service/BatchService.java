@@ -136,6 +136,8 @@ public class BatchService {
         checkBatchNoUnique(request.getBatchNo(), null);
         BatchInfo entity = new BatchInfo();
         copyUpsertRequest(request, entity);
+        entity.setDeptId(dataScopeService.currentDeptId());
+        entity.setCreatedBy(dataScopeService.currentUserId());
         batchInfoMapper.insert(entity);
         return Map.of(
                 "batchId", entity.getBatchId(),

@@ -11,7 +11,11 @@ import com.zhihuitong.modules.process.dto.MachineQuery;
 import com.zhihuitong.modules.process.dto.MachineStatusPatchRequest;
 import com.zhihuitong.modules.process.dto.MachineUpsertRequest;
 import com.zhihuitong.modules.process.entity.Machine;
+import com.zhihuitong.modules.process.entity.StepMachineCapability;
 import com.zhihuitong.modules.process.mapper.MachineMapper;
+import com.zhihuitong.modules.process.mapper.StepMachineCapabilityMapper;
+import com.zhihuitong.modules.plan.entity.PlanStep;
+import com.zhihuitong.modules.plan.mapper.PlanStepMapper;
 import com.zhihuitong.modules.process.vo.MachineVo;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -24,9 +28,15 @@ import java.util.List;
 public class MachineService {
 
     private final MachineMapper machineMapper;
+    private final StepMachineCapabilityMapper stepMachineCapabilityMapper;
+    private final PlanStepMapper planStepMapper;
 
-    public MachineService(MachineMapper machineMapper) {
+    public MachineService(MachineMapper machineMapper,
+                          StepMachineCapabilityMapper stepMachineCapabilityMapper,
+                          PlanStepMapper planStepMapper) {
         this.machineMapper = machineMapper;
+        this.stepMachineCapabilityMapper = stepMachineCapabilityMapper;
+        this.planStepMapper = planStepMapper;
     }
 
     public TableDataInfo<MachineVo> list(MachineQuery query) {
@@ -73,6 +83,27 @@ public class MachineService {
         }
         machineMapper.updateById(machine);
         return toVo(machine);
+    }
+
+    @Transactional
+    public void delete(Long machineId) {
+        requireMachine(machineId);
+
+        Long capabilityCount = stepMachineCapabilityMapper.selectCount(Wrappers.<StepMachineCapability>lambdaQuery()
+                .eq(StepMachineCapability::getMachineId, machineId));
+        if (capabilityCount != null && capabilityCount > 0) {
+            throw new BusinessException(409,
+                    "Machine is referenced by process capabilities and cannot be deleted; disable it instead");
+        }
+
+        Long planStepCount = planStepMapper.selectCount(Wrappers.<PlanStep>lambdaQuery()
+                .eq(PlanStep::getMachineId, machineId));
+        if (planStepCount != null && planStepCount > 0) {
+            throw new BusinessException(409,
+                    "Machine is referenced by production plan steps and cannot be deleted; disable it instead");
+        }
+
+        machineMapper.deleteById(machineId);
     }
 
     public Machine requireMachine(Long machineId) {

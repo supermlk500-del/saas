@@ -45,6 +45,12 @@ export const updateEquipment = (machineId: IdValue, payload: MachineUpsertReques
     data: payload,
   })
 
+export const deleteEquipment = (machineId: IdValue) =>
+  request<ApiSuccessResponse<null>>({
+    url: `/api/machines/${machineId}`,
+    method: 'delete',
+  })
+
 export const fetchEquipments = async (query?: EquipmentQuery): Promise<PageResult<EquipmentItem>> => {
   const response = await listEquipments(query)
   return {

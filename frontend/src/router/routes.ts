@@ -76,6 +76,12 @@ export const appRoutes: RouteRecordRaw[] = [
     meta: { title: '设备管理', section: '工艺中心', sectionKey: 'process-center', menuOrder: 22, showInMenu: true },
   },
   {
+    path: '/master/capability',
+    name: 'master-capability',
+    component: view(() => import('@/views/master/CapabilityList.vue')),
+    meta: { title: '设备能力', section: '工艺中心', sectionKey: 'process-center', menuOrder: 23, showInMenu: true, menuKey: 'master-capability' },
+  },
+  {
     path: '/process-center/shift',
     name: 'process-center-shift',
     component: view(() => import('@/views/master/ShiftList.vue')),

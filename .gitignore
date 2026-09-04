@@ -35,3 +35,13 @@ photo/results/
 .env
 .env.*
 !.env.example
+/deploy/single-container/env
+
+# Documentation rendering temporary files
+/lo-profile-*/
+/render-*/
+/manual_rebuild_work/
+/backend-manual.*.log
+/soft_toc_compact*.pdf
+/soft_toc_compact*.png
+/docs/manual-assets/capture-summary.json

@@ -1,8 +1,9 @@
 <script setup lang="ts">
 import { onMounted, reactive, ref } from 'vue'
-import { message } from 'ant-design-vue'
+import { message, Modal } from 'ant-design-vue'
 import {
   createEquipment,
+  deleteEquipment,
   fetchEquipments,
   updateEquipment,
   type EquipmentQuery,
@@ -53,7 +54,7 @@ const columns = [
   { title: '描述', dataIndex: 'description', key: 'description', width: 360 },
   { title: '状态', dataIndex: 'status', key: 'status', width: 80 },
   { title: '创建时间', dataIndex: 'createTime', key: 'createTime', width: 158 },
-  { title: '操作', key: 'action', width: 64 },
+  { title: '操作', key: 'action', width: 118 },
 ]
 
 const { data, loading, pagination } = useTable<MachineItem>()
@@ -176,6 +177,21 @@ const handleCancel = () => {
   modalOpen.value = false
 }
 
+const handleDelete = (record: MachineItem) => {
+  Modal.confirm({
+    title: '删除设备',
+    content: `确定删除设备“${record.machineName}”吗？如果设备已关联工艺能力或生产计划，系统会阻止删除。`,
+    okText: '删除',
+    okType: 'danger',
+    cancelText: '取消',
+    async onOk() {
+      await deleteEquipment(record.machineId)
+      message.success('设备删除成功')
+      await loadData()
+    },
+  })
+}
+
 onMounted(() => {
   void loadData()
 })
@@ -224,7 +240,10 @@ onMounted(() => {
         </a-tooltip>
       </template>
       <template v-else-if="column.key === 'action'">
-        <a-button type="link" @click="openEditModal(record)">编辑</a-button>
+        <a-space size="small">
+          <a-button type="link" @click="openEditModal(record)">编辑</a-button>
+          <a-button v-permission="'process:machine:edit'" type="link" danger @click="handleDelete(record)">删除</a-button>
+        </a-space>
       </template>
     </template>
   </TablePage>
